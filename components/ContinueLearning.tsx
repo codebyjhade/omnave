@@ -33,7 +33,7 @@ export default function ContinueLearning() {
     <div className="w-full flex flex-col gap-4">
       
       {/* Header */}
-      <div className="flex flex-col gap-1 mb-1 px-6 md:px-10 lg:px-0">
+      <div className="flex flex-col gap-1 mb-1">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-extrabold tracking-[0.2em] text-neutral-500 uppercase">Continue Learning</span>
           <button className="text-xs font-bold text-neutral-500 hover:text-white transition-colors cursor-pointer">Swipe &rarr;</button>
@@ -41,7 +41,7 @@ export default function ContinueLearning() {
       </div>
  
       {/* Horizontal Scroll Container */}
-      <div className="flex w-full overflow-x-auto gap-4 pt-2 pb-4 snap-x snap-mandatory scroll-smooth -mx-6 px-6 md:-mx-10 md:px-10 lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="flex w-full overflow-x-auto gap-4 pt-2 pb-4 snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {recentLessons.map((lesson, idx) => (
           <Link 
             key={idx}

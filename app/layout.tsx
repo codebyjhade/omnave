@@ -51,12 +51,14 @@ export default function RootLayout({
           <UploadProvider>
             <AssessmentProvider>
               {/* PAGE CONTENT */}
-              <div className="relative z-10 w-full min-h-screen">
-                {children}
+              <div className="relative z-10 w-full min-h-screen flex flex-col">
+                <TopRightActions/>
+                <div className="flex-1 w-full">
+                  {children}
+                </div>
               </div>
 
               {/* GLOBAL HUDS - Restored to fix the missing header */}
-              <TopRightActions/>
               <BottomNav/>
             </AssessmentProvider>
           </UploadProvider>

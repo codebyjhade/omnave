@@ -53,7 +53,7 @@ export default function ProfilePage() {
     <div className="relative min-h-screen">
  
       {/* Main Container */}
-      <main className="relative z-10 w-full max-w-[1200px] mx-auto pt-28 md:pt-24 pb-40 md:pb-24 lg:px-10 xl:px-12 flex flex-col gap-8 md:gap-12">
+      <main className="relative z-10 w-full max-w-[1200px] mx-auto pt-4 pb-40 md:pb-24 lg:px-10 xl:px-12 flex flex-col gap-8 md:gap-12">
         <header className="px-6 md:px-10 lg:px-0 text-left">
           <h2 className="text-[10px] font-extrabold tracking-[0.2em] text-neutral-500 uppercase mb-2">Account</h2>
           <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-white">Your Profile.</h1>

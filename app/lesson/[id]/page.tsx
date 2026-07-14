@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { BrainCircuit } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,6 +21,8 @@ import { useUserContext } from "@/context/UserContext";
 
 export default function LessonView() {
   const { id } = useParams();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
   const { isAssessmentActive, triggerNavAttempt } = useAssessmentGuard();
   const { loading: contextLoading } = useUserContext();
 
@@ -30,6 +32,18 @@ export default function LessonView() {
 
   // Layout State
   const [activeTab, setActiveTab] = useState<TabId>("summary");
+
+  // Sync active tab from query params
+  useEffect(() => {
+    if (tabParam) {
+      if (tabParam === "flashcards" || tabParam === "slides") {
+        setActiveTab("slides");
+      } else if (tabParam === "quiz" || tabParam === "exam" || tabParam === "summary") {
+        setActiveTab(tabParam as TabId);
+      }
+    }
+  }, [tabParam]);
+
   const [studyDuration, setStudyDuration] = useState(0);
   const studyIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [xpReward, setXpReward] = useState<{ xp: number, streakBonus: boolean } | null>(null);
@@ -98,7 +112,7 @@ export default function LessonView() {
   if (loading || contextLoading) {
     return (
       <div className="relative min-h-screen pb-32 px-4 md:px-8 overflow-hidden flex flex-col items-center">
-        <main className="relative z-10 w-full max-w-6xl pt-28 md:pt-24 pb-40 md:pb-24 animate-pulse">
+        <main className="relative z-10 w-full max-w-6xl pt-4 pb-40 md:pb-24 animate-pulse">
           <div className="flex flex-col w-full">
             <Skeleton className="w-24 h-4 mb-6 rounded-md" />
             <Skeleton className="w-3/4 h-8 mb-4" />
@@ -162,7 +176,7 @@ export default function LessonView() {
 
   return (
     <div className="relative min-h-screen pb-32 px-4 md:px-8 overflow-hidden flex flex-col items-center">
-      <main className="relative z-10 w-full max-w-6xl pt-28 md:pt-24 pb-40 md:pb-24">
+      <main className="relative z-10 w-full max-w-6xl pt-4 pb-40 md:pb-24">
         <div className="flex flex-col w-full">
 
           {/* HEADER SECTION (Hidden if full-screen exam mode active) */}

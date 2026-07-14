@@ -12,7 +12,7 @@ export default function ImportPage() {
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 w-full max-w-[1200px] mx-auto pt-28 md:pt-24 pb-40 md:pb-24 lg:px-10 xl:px-12 flex flex-col gap-8 md:gap-12 bg-transparent"
+        className="relative z-10 w-full max-w-[1200px] mx-auto pt-4 pb-40 md:pb-24 lg:px-10 xl:px-12 flex flex-col gap-8 md:gap-12 bg-transparent"
       >
         <div className="w-full max-w-3xl mx-auto px-6 md:px-10 lg:px-0 flex flex-col gap-10">
           {/* Header Section */}

@@ -16,7 +16,7 @@ export default function ProgressPage() {
     <div className="relative min-h-screen">
  
       {/* Main Content - Vertically aligned to top-right global icons */}
-      <main className="relative z-10 w-full max-w-[1200px] mx-auto pt-28 md:pt-24 pb-40 md:pb-24 lg:px-10 xl:px-12 flex flex-col gap-8 md:gap-12">
+      <main className="relative z-10 w-full max-w-[1200px] mx-auto pt-4 pb-40 md:pb-24 lg:px-10 xl:px-12 flex flex-col gap-8 md:gap-12">
         <header className="px-6 md:px-10 lg:px-0 text-left flex flex-col">
           <h2 className="text-[10px] font-extrabold tracking-[0.2em] uppercase text-neutral-500 mb-1.5">
             Analytics
