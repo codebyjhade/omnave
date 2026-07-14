@@ -45,7 +45,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="relative flex flex-col items-center justify-center min-h-screen pt-6 md:pt-12 pb-40 md:pb-16 lg:px-10 xl:px-12 w-full max-w-[1200px] mx-auto overflow-hidden">
+    <div className="relative flex flex-col items-center justify-center min-h-screen pt-6 md:pt-12 pb-40 md:pb-16 px-6 md:px-12 w-full max-w-7xl mx-auto overflow-hidden">
       
       {/* Background - Hero Focus */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
@@ -54,36 +54,37 @@ export default function LandingPage() {
       </div>
 
       {/* Hero Content */}
-      <div className="relative z-10 flex flex-col items-center text-center max-w-2xl w-full mt-4">
+      <div className="relative z-10 flex flex-col items-center justify-center text-center gap-8 md:gap-10 mt-12 md:mt-24 max-w-3xl w-full mx-auto">
         {/* Hero Ambient Glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] h-[400px] bg-omnave-primary/10 blur-[150px] rounded-full pointer-events-none" aria-hidden="true" />
         
         {/* Top Beta Badge - Tier 1 Glass */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.08] mb-8 backdrop-blur-md">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/[0.08] backdrop-blur-md">
           <span className="text-omnave-primary text-xs">✨</span>
           <span className="text-[10px] font-bold tracking-wider text-white/80 uppercase">Omnave Beta is Live</span>
         </div>
 
-        <div className="mb-4 relative flex items-center justify-center">
+        <div className="relative flex items-center justify-center">
           <div className="absolute inset-0 bg-omnave-primary/20 blur-2xl rounded-full" />
           <Image src="/omnave.png" alt="Omnave Logo" width={88} height={88} className="relative z-10 drop-shadow-2xl" priority />
         </div>
 
-        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white leading-tight mb-6">
-          Learn anything.<br className="hidden md:block" /> Forget nothing.
+        <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-white tracking-tighter leading-[1.1] max-w-3xl mx-auto">
+          <span className="block">Learn anything.</span>
+          <span className="block">Forget nothing.</span>
         </h1>
-        <p className="text-base md:text-lg text-white/50 mb-10 max-w-lg mx-auto leading-relaxed">
+        <p className="text-base md:text-lg text-white/50 max-w-lg mx-auto leading-relaxed">
           Upload any document, link, or lecture. Omnave instantly transforms it into interactive quizzes, deep-dives, and flashcards powered by spaced repetition.
         </p>
 
         {/* Trigger Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto mb-16 min-h-[56px]">
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full max-w-md mx-auto mt-4 min-h-[56px]">
           {hasSession === null ? (
             // Keeps the space layout stable while quickly checking session state
-            <div className="h-[56px] w-[200px] animate-pulse bg-white/5 border border-white/10 rounded-full" />
+            <div className="h-[56px] w-full max-w-md animate-pulse bg-white/5 border border-white/10 rounded-full" />
           ) : (
             // Only renders the Auth buttons (Go to Dashboard button is completely removed)
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full">
               <button
                 onClick={() => openAuth('signup')}
                 className="flex w-full sm:w-auto items-center justify-center px-8 py-4 rounded-full bg-omnave-primary shadow-[0_0_20px_rgba(127,34,254,0.3)] text-white font-bold transition-all hover:scale-105 hover:bg-omnave-primary/90 hover:shadow-[0_0_25px_rgba(127,34,254,0.5)] active:scale-[0.98] cursor-pointer"
@@ -92,7 +93,7 @@ export default function LandingPage() {
               </button>
               <button
                 onClick={() => openAuth('login')}
-                className="flex w-full sm:w-auto items-center justify-center px-8 py-4 rounded-full bg-white/[0.03] border border-white/[0.08] backdrop-blur-md text-white/80 transition-all hover:bg-white/[0.06] shadow-lg hover:scale-105 active:scale-[0.98] cursor-pointer"
+                className="flex w-full sm:w-auto items-center justify-center px-8 py-4 rounded-full bg-white/5 border border-white/10 text-white/90 transition-all hover:bg-white/10 hover:text-white hover:scale-105 active:scale-[0.98] cursor-pointer"
               >
                 Sign In
               </button>

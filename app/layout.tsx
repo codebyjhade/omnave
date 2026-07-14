@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
+import TopRightActions from "@/components/TopRightActions";
 import { UserProvider } from "@/context/UserContext";
 import { AssessmentProvider } from "@/context/AssessmentContext";
 import { UploadProvider } from "@/context/UploadContext";
@@ -37,8 +38,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      {/* Scrollbars hidden here via Tailwind utilities, antialiased and grayscale added for crisp text */}
-      <body className="bg-omnave-canvas text-white antialiased grayscale min-h-screen relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      {/* Removed the destructive 'grayscale' class so your colors return! */}
+      <body className="bg-omnave-canvas text-white antialiased min-h-screen relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         
         {/* Global Immersive Background Grid & Ambient Glows */}
         <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
@@ -54,8 +55,8 @@ export default function RootLayout({
                 {children}
               </div>
 
-              {/* GLOBAL HUDS */}
-              {/* TopRightActions has been moved directly inside the global Header component to prevent duplicates! */}
+              {/* GLOBAL HUDS - Restored to fix the missing header */}
+              <TopRightActions/>
               <BottomNav/>
             </AssessmentProvider>
           </UploadProvider>
