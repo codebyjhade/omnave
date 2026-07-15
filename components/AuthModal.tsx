@@ -81,21 +81,27 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
         
         setView('login');
         setPassword('');
-        setError('Workspace created successfully! Please sign in.');
+        setError('Account created! Please sign in to continue.');
         
         // Stop the loading spinner ONLY because they still need to click "Sign In"
         setIsLoading(false); 
         
       } else {
-        const { error: authError } = await supabase.auth.signInWithPassword({ 
+        const { data: { user }, error: authError } = await supabase.auth.signInWithPassword({ 
           email, 
           password 
         });
         
         if (authError) throw authError;
         
+        const onboardingComplete = !!user?.user_metadata?.onboarding_complete;
+        
         // SUCCESS: Use a hard redirect to force the browser to send the new auth cookies to the Next.js server
-        window.location.href = '/home';
+        if (onboardingComplete) {
+          window.location.href = '/home';
+        } else {
+          window.location.href = '/welcome';
+        }
       }
     } catch (err: any) {
       // We only stop the loading spinner if something went wrong

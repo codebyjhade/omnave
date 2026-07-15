@@ -11,7 +11,8 @@ import React, {
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 import { useUserContext } from '@/context/UserContext';
-import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
+import BackgroundProcessingWidget from '@/components/BackgroundProcessingWidget';
 
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
 
@@ -162,47 +163,13 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     <UploadContext.Provider value={value}>
       {children}
       
-      {/* THE PREMIUM FLOATING WIDGET - TOP RIGHT ALIGNED */}
-      {uploadStatus !== 'idle' && (
-        <div className="fixed top-24 right-6 md:right-10 xl:right-12 z-[9999] w-80 bg-[#0A0A0A]/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-5 shadow-2xl animate-in slide-in-from-right-8 duration-300 pointer-events-auto">
-          {/* Header Row */}
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center space-x-2">
-              {uploadStatus === 'uploading' && <Loader2 className="animate-spin text-omnave-primary" size={18} />}
-              {uploadStatus === 'success' && <CheckCircle className="text-emerald-400" size={18} />}
-              {uploadStatus === 'error' && <AlertCircle className="text-red-400" size={18} />}
-              
-              <span className={`text-sm font-bold tracking-wide ${
-                uploadStatus === 'error' ? 'text-red-400' : 
-                uploadStatus === 'success' ? 'text-emerald-400' : 'text-white'
-              }`}>
-                {uploadStatus === 'uploading' ? 'Processing' : 
-                 uploadStatus === 'success' ? 'Complete' : 'Failed'}
-              </span>
-            </div>
-            
-            {uploadStatus === 'uploading' && (
-              <span className="text-sm font-black text-white">{uploadProgress}%</span>
-            )}
-          </div>
-          
-          {/* Status Message */}
-          <div className="text-xs font-medium text-white/60 mb-3">
-            {uploadMessage}
-          </div>
-          
-          {/* Progress Bar (Only visible while uploading) */}
-          {uploadStatus === 'uploading' && (
-            <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden relative border border-white/5">
-              <div
-                className="absolute top-0 left-0 h-full bg-omnave-primary rounded-full transition-all duration-500 ease-out shadow-[0_0_15px_rgba(127,34,254,0.6)]"
-                style={{ width: `${uploadProgress}%` }}
-              />
-            </div>
-          )}
-
-        </div>
-      )}
+      {/* Background Processing Manager Widget */}
+      <BackgroundProcessingWidget
+        uploadStatus={uploadStatus}
+        uploadMessage={uploadMessage}
+        uploadProgress={uploadProgress}
+        onDismiss={clearUploadState}
+      />
     </UploadContext.Provider>
   );
 }

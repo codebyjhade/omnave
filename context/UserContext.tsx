@@ -270,23 +270,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (loading) return;
     
     if (user) {
-      setHasCompletedOnboarding(!!user.user_metadata?.has_completed_onboarding);
+      setHasCompletedOnboarding(!!user.user_metadata?.onboarding_complete);
     } else {
-      const guestCompleted = typeof window !== 'undefined' && localStorage.getItem('omnave_onboarding_completed') === 'true';
-      setHasCompletedOnboarding(guestCompleted);
+      setHasCompletedOnboarding(false);
     }
   }, [user, loading]);
 
   const completeOnboarding = useCallback(async () => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('omnave_onboarding_completed', 'true');
-    }
     setHasCompletedOnboarding(true);
     if (user) {
       try {
         const supabase = createClient();
         await supabase.auth.updateUser({
-          data: { has_completed_onboarding: true }
+          data: { onboarding_complete: true }
         });
         await refreshUser();
       } catch (err) {
