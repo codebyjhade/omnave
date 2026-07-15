@@ -7,23 +7,16 @@ import Link from "next/link";
 import { calculateLevel } from "@/lib/gamification";
 
 interface ProfileHeroProps {
-  username: string;
+  profileName: string;
   email: string;
+  initial: string;
+  joinDate: string;
+  userTags: string[];
   xp: number;
   streak: number;
-  joinDate: string;
 }
 
-function formatJoinDate(dateString: string): string {
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
-  } catch {
-    return "Recently";
-  }
-}
-
-export const ProfileHero = memo(function ProfileHero({ username, email, xp, streak, joinDate }: ProfileHeroProps) {
+export const ProfileHero = memo(function ProfileHero({ profileName, email, initial, joinDate, userTags, xp, streak }: ProfileHeroProps) {
   const levelInfo = calculateLevel(xp);
   const level = levelInfo.level;
   const xpInCurrentLevel = levelInfo.xpInLevel;
@@ -47,18 +40,18 @@ export const ProfileHero = memo(function ProfileHero({ username, email, xp, stre
           {/* Avatar */}
           <div className="relative mb-3">
             <div className="w-20 h-20 rounded-full bg-[#3b0764] border border-white/10 flex items-center justify-center text-3xl font-black text-purple-400 ring-2 ring-black/20 shadow-inner">
-              {username.charAt(0).toUpperCase()}
+              {initial}
             </div>
             <div className="absolute bottom-0 right-0 w-6 h-6 bg-[#0A0A0A] rounded-full border border-white/10 flex items-center justify-center shadow-lg">
               <Award className="text-omnave-primary" size={12}/>
             </div>
           </div>
           {/* Centered Typography */}
-          <h2 className="text-lg font-black text-white tracking-tight leading-none mb-1 truncate w-full">{username}</h2>
+          <h2 className="text-lg font-black text-white tracking-tight leading-none mb-1 truncate w-full">{profileName}</h2>
           <p className="text-[10px] text-white/50 mb-2 truncate w-full">{email}</p>
           <div className="flex items-center gap-1 text-white/30">
             <Calendar size={10}/>
-            <span className="text-[9px] font-medium tracking-wide uppercase">Joined {formatJoinDate(joinDate)}</span>
+            <span className="text-[9px] font-medium tracking-wide uppercase">{joinDate}</span>
           </div>
         </div>
 
@@ -81,12 +74,21 @@ export const ProfileHero = memo(function ProfileHero({ username, email, xp, stre
           <div className="flex flex-col gap-3 px-2 mt-1">
             {/* Compact Badges instead of wrapping text */}
             <div className="flex flex-wrap justify-center gap-1.5">
-              <span className="px-2 py-1 bg-omnave-primary/10 border border-omnave-primary/20 text-omnave-primary rounded-md text-[9px] font-black uppercase tracking-wider">
-                💻 CS Major
-              </span>
-              <span className="px-2 py-1 bg-white/5 border border-white/10 text-white/70 rounded-md text-[9px] font-bold uppercase tracking-wider whitespace-nowrap">
-                ⚡ Full-Stack
-              </span>
+              {userTags.map((tag, idx) => {
+                const isPrimary = idx === 0;
+                return (
+                  <span
+                    key={tag}
+                    className={`px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider whitespace-nowrap border ${
+                      isPrimary
+                        ? "bg-omnave-primary/10 border-omnave-primary/20 text-omnave-primary font-black"
+                        : "bg-white/5 border-white/10 text-white/70"
+                    }`}
+                  >
+                    {tag}
+                  </span>
+                );
+              })}
             </div>
 
             <button className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold text-white transition-colors">

@@ -3,8 +3,9 @@
 import { useUserContext } from "@/context/UserContext";
 
 export default function Checklist() {
-  const { tasks } = useUserContext();
+  const { tasks, lessons } = useUserContext();
   const goals = tasks.dailyGoals;
+  const isZeroState = lessons.length === 0;
 
   return (
     <div className="w-full flex flex-col gap-4">
@@ -15,12 +16,16 @@ export default function Checklist() {
       </div>
 
       {/* Checklist Card */}
-      <div className="w-full p-6 bg-black/[0.4] border border-white/[0.1] backdrop-blur-2xl rounded-3xl flex flex-col gap-5 relative overflow-hidden shadow-2xl">
+      <div className={`w-full p-6 ${
+        isZeroState 
+          ? "bg-[#130E24] border border-white/5" 
+          : "bg-black/[0.4] border border-white/[0.1]"
+      } backdrop-blur-2xl rounded-3xl flex flex-col gap-5 relative overflow-hidden shadow-2xl`}>
         {/* Ambient Inner Glow */}
         <div className="absolute -bottom-[20%] -left-[10%] w-[250px] h-[250px] bg-omnave-primary/15 blur-[90px] rounded-full pointer-events-none" aria-hidden="true" />
         
         {goals.map((goal, idx) => (
-          <div key={goal.id || idx} className={`flex gap-4 items-start ${goal.completed ? "opacity-50" : "group cursor-pointer"}`}>
+          <div key={goal.id || idx} className={`flex gap-4 items-start ${goal.completed ? "opacity-50" : "group cursor-pointer"} ${isZeroState ? "opacity-40" : ""}`}>
             {goal.completed ? (
               <div className="mt-1 flex items-center justify-center size-5 rounded-full bg-[#1db954]/20 text-[#1db954] border border-[#1db954]/50 shrink-0">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -38,6 +43,12 @@ export default function Checklist() {
             </div>
           </div>
         ))}
+
+        {isZeroState && (
+          <p className="text-[10px] text-white/40 font-bold mt-2 pt-3 border-t border-white/5 tracking-wider uppercase">
+            Waiting for activity data to track daily goals.
+          </p>
+        )}
 
       </div>
     </div>

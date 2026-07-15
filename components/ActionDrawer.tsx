@@ -23,7 +23,7 @@ export default function ActionDrawer({ isOpen, onClose }: ActionDrawerProps) {
 
   const handleActionClick = (actionId: string) => {
     if (actionId === 'import') {
-      router.push('/import');
+      router.push('/upload');
       onClose();
     } else {
       setActiveTab(actionId);
@@ -148,7 +148,7 @@ export default function ActionDrawer({ isOpen, onClose }: ActionDrawerProps) {
                     </div>
 
                     <button 
-                      onClick={() => { router.push('/import'); onClose(); }}
+                      onClick={() => { router.push('/upload'); onClose(); }}
                       className="w-full mt-4 py-3 rounded-xl bg-omnave-primary/20 text-omnave-primary font-bold text-sm border border-omnave-primary/30 hover:bg-omnave-primary/30 transition-colors cursor-pointer"
                     >
                       + Import New Material

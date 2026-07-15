@@ -35,7 +35,7 @@ export default function EmptyLessonCard() {
 
         {/* Action Button */}
         <button 
-          onClick={() => router.push('/import')}
+          onClick={() => router.push('/upload')}
           className="bg-omnave-primary text-white font-bold px-8 py-3 rounded-xl shadow-[0_0_20px_rgba(127,34,254,0.4)] hover:bg-omnave-primary/90 transition-all active:scale-95 cursor-pointer"
         >
           Import Material

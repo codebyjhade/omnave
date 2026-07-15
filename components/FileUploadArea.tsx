@@ -74,33 +74,40 @@ export default function FileUploadArea() {
       )}
 
       {!file ? (
-        <div
-          onDragEnter={handleDrag}
-          onDragOver={handleDrag}
-          onDragLeave={handleDrag}
-          onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-[24px] flex flex-col items-center justify-center p-10 py-20 text-center transition-all duration-300 group relative cursor-pointer backdrop-blur-2xl ${
-            isDragActive
-              ? "border-omnave-primary bg-omnave-primary/10 scale-[1.02] shadow-[0_0_30px_rgba(127,34,254,0.15)]"
-              : "border-white/[0.1] bg-black/[0.4] hover:bg-black/[0.5] hover:border-white/25"
-          }`}
-        >
-          <input
-            type="file"
-            accept=".pdf"
-            onChange={handleFileChange}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-          />
-          <div className="w-20 h-20 bg-white/[0.05] border border-white/10 rounded-full flex items-center justify-center text-white/60 mb-6 group-hover:scale-110 group-hover:text-omnave-primary group-hover:border-omnave-primary/30 transition-all duration-300 shadow-premium-glass">
-            <UploadCloud size={32} />
+        <>
+          {/* Ambient Environment Lighting */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-omnave-primary/10 blur-[100px] pointer-events-none rounded-full z-0" aria-hidden="true" />
+
+          {/* Elevated Dropzone Container (Glassmorphism & Drag States) */}
+          <div
+            onDragEnter={handleDrag}
+            onDragOver={handleDrag}
+            onDragLeave={handleDrag}
+            onDrop={handleDrop}
+            className={`bg-[#0f0a1c]/60 backdrop-blur-md border-2 border-dashed border-white/10 hover:border-omnave-primary/50 hover:bg-omnave-primary/5 rounded-3xl transition-all duration-300 ease-in-out flex flex-col items-center justify-center p-10 text-center max-w-md mx-auto w-full group relative cursor-pointer z-10 ${
+              isDragActive
+                ? "border-omnave-primary bg-omnave-primary/5 shadow-[0_0_30px_rgba(127,34,254,0.2)] scale-[1.02]"
+                : ""
+            }`}
+          >
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={handleFileChange}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+            />
+            {/* Polished Upload Icon */}
+            <div className="w-16 h-16 rounded-full bg-omnave-primary/10 flex items-center justify-center mb-6 ring-1 ring-omnave-primary/30 shadow-[0_0_15px_rgba(127,34,254,0.2)] group-hover:scale-110 group-hover:bg-omnave-primary/20 group-hover:ring-omnave-primary/50 transition-all duration-300">
+              <UploadCloud size={28} className="text-omnave-primary" />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">
+              {isDragActive ? "Drop your PDF file here!" : "Tap or Drag a PDF"}
+            </h3>
+            <p className="text-sm text-white/40 font-medium max-w-[200px] leading-relaxed">
+              Max file size 10MB. We'll handle the rest.
+            </p>
           </div>
-          <h3 className="text-lg font-bold text-white mb-2">
-            {isDragActive ? "Drop your PDF file here!" : "Tap or Drag a PDF"}
-          </h3>
-          <p className="text-sm text-white/40 font-medium max-w-[200px] leading-relaxed">
-            Max file size 10MB. We'll handle the rest.
-          </p>
-        </div>
+        </>
       ) : (
         <div className="bg-black/[0.4] border border-white/[0.1] backdrop-blur-2xl rounded-[24px] p-6 md:p-8 shadow-premium-glass">
           <div className="flex items-center space-x-4 mb-8">

@@ -3,9 +3,9 @@
 import { motion } from "framer-motion";
 import FileUploadArea from "@/components/FileUploadArea";
 
-export default function ImportPage() {
+export default function UploadPage() {
   return (
-    <div className="min-h-screen bg-omnave-canvas flex flex-col relative w-full overflow-x-hidden pb-40">
+    <div className="min-h-screen bg-[#0f0a1c] bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:48px_48px] flex flex-col relative w-full overflow-x-hidden pb-40">
  
       {/* Main Content - Synced with Home layout margins */}
       <motion.div 
@@ -25,7 +25,7 @@ export default function ImportPage() {
               Upload your material.
             </h1>
             <p className="text-sm md:text-base text-white/50 max-w-md mx-auto">
-              Drop your PDFs, lecture slides, or paste a video link. Our AI will instantly convert them into a structured lesson hub.
+              Drop your PDFs, lecture slides, and notes. Our AI will instantly convert them into a structured lesson hub.
             </p>
           </div>
 

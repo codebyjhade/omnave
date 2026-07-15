@@ -1,9 +1,30 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useUserContext } from "@/context/UserContext";
 
 export default function Header() {
-  const { quizScores } = useUserContext();
+  const { quizScores, user } = useUserContext();
+  const [mounted, setMounted] = useState(false);
+  const [greeting, setGreeting] = useState("GOOD MORNING,");
+  const [firstName, setFirstName] = useState("Learner");
+
+  useEffect(() => {
+    setMounted(true);
+
+    const localHour = new Date().getHours();
+    let currentGreeting = "GOOD MORNING,";
+    if (localHour >= 12 && localHour < 18) {
+      currentGreeting = "GOOD AFTERNOON,";
+    } else if (localHour >= 18) {
+      currentGreeting = "GOOD EVENING,";
+    }
+    setGreeting(currentGreeting);
+
+    const fullName = user?.user_metadata?.full_name || user?.user_metadata?.nickname || user?.email?.split('@')[0] || "Learner";
+    const nameFirst = fullName.split(' ')[0] || "Learner";
+    setFirstName(nameFirst);
+  }, [user]);
 
   // Calculate dynamic study minutes for today
   const today = new Date();
@@ -20,15 +41,19 @@ export default function Header() {
   const hours = Math.floor(todayStudyMinutes / 60);
   const mins = todayStudyMinutes % 60;
 
+  if (!mounted) {
+    return null;
+  }
+
   return (
     <header className="flex flex-row justify-between items-end w-full mb-2">
       {/* Left Side: Typography */}
       <div className="flex flex-col">
         <h2 className="text-[10px] md:text-xs font-extrabold tracking-[0.2em] text-neutral-500 uppercase">
-          Good Morning,
+          {greeting}
         </h2>
         <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter mt-1">
-          Bryan.
+          {firstName}.
         </h1>
       </div>
       

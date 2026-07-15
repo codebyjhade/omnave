@@ -54,7 +54,7 @@ export async function proxy(request: NextRequest) {
     path.startsWith('/library') || 
     path.startsWith('/progress') || 
     path.startsWith('/profile') || 
-    path.startsWith('/import') || 
+    path.startsWith('/upload') || 
     path.startsWith('/lesson');
 
   // If a guest tries to access the app, kick them to the landing page

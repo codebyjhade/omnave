@@ -117,7 +117,7 @@ export default function OnboardingPage() {
     await completeOnboarding();
     localStorage.removeItem('omnave_onboarding_step');
     if (action === 'upload') {
-      router.push('/import');
+      router.push('/upload');
     } else {
       router.push('/home');
     }

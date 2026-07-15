@@ -596,6 +596,14 @@ export default function LandingPage() {
               <div className="h-[1px] bg-white/5 w-full" />
 
               <ul className="flex flex-col gap-3.5 text-xs text-white/80 font-medium">
+                {/* Base Value Anchor */}
+                <li className="flex items-center gap-2.5 border-b border-white/5 pb-3">
+                  <Check size={14} className="text-omnave-primary shrink-0" />
+                  <span className="text-xs font-medium text-white/70">
+                    Everything in <span className="text-white font-bold">Free Learner</span>, plus:
+                  </span>
+                </li>
+
                 <li className="flex items-center gap-2.5">
                   <Check size={14} className="text-purple-400" />
                   <span className="font-extrabold text-white">Unlimited document uploads</span>

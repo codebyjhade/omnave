@@ -5,8 +5,13 @@ import CurrentLessonCard from "@/components/CurrentLessonCard";
 import ProgressOverview from "@/components/ProgressOverview";
 import Checklist from "@/components/Checklist";
 import AIRecommendation from "@/components/AIRecommendation";
+import { useLessons } from "@/hooks/useLessons";
+import CinematicLaunchpad from "@/components/CinematicLaunchpad";
 
 export default function HomePage() {
+  const { lessons, loading } = useLessons();
+  const showLaunchpad = !loading && lessons.length === 0;
+
   return (
     <main className="flex flex-col gap-6 w-full max-w-3xl mx-auto mt-4 bg-transparent pb-40 md:pb-24">
       {/* 1. Greeting Block */}
@@ -25,7 +30,7 @@ export default function HomePage() {
 
         {/* 2. Primary Active Action */}
         <div className="px-6 md:px-10 lg:px-0">
-          <CurrentLessonCard/>
+          {showLaunchpad ? <CinematicLaunchpad /> : <CurrentLessonCard />}
         </div>
 
         {/* 3. Compact Quick Stats */}

@@ -34,7 +34,7 @@ export function EmptyLibrary({ onDemoClick }: EmptyLibraryProps) {
 
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">
         <Link 
-          href="/import" 
+          href="/upload" 
           className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-button-gradient hover:brightness-110 text-white rounded-2xl text-xs font-extrabold shadow-[0_4px_15px_rgba(127,34,254,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all focus:outline-none"
           aria-label="Upload first PDF document"
         >
