@@ -5,6 +5,7 @@ import TopRightActions from "@/components/TopRightActions";
 import { UserProvider } from "@/context/UserContext";
 import { AssessmentProvider } from "@/context/AssessmentContext";
 import { UploadProvider } from "@/context/UploadContext";
+import OnboardingGuard from "@/components/OnboardingGuard";
 
 export const metadata: Metadata = {
   title: "Omnave",
@@ -48,20 +49,22 @@ export default function RootLayout({
         </div>
 
         <UserProvider>
-          <UploadProvider>
-            <AssessmentProvider>
-              {/* PAGE CONTENT */}
-              <div className="relative z-10 w-full min-h-screen flex flex-col">
-                <TopRightActions/>
-                <div className="flex-1 w-full">
-                  {children}
+          <OnboardingGuard>
+            <UploadProvider>
+              <AssessmentProvider>
+                {/* PAGE CONTENT */}
+                <div className="relative z-10 w-full min-h-screen flex flex-col">
+                  <TopRightActions/>
+                  <div className="flex-1 w-full">
+                    {children}
+                  </div>
                 </div>
-              </div>
 
-              {/* GLOBAL HUDS - Restored to fix the missing header */}
-              <BottomNav/>
-            </AssessmentProvider>
-          </UploadProvider>
+                {/* GLOBAL HUDS - Restored to fix the missing header */}
+                <BottomNav/>
+              </AssessmentProvider>
+            </UploadProvider>
+          </OnboardingGuard>
         </UserProvider>
       </body>
     </html>

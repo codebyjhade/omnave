@@ -62,6 +62,8 @@ interface UserContextType {
   tasks: { dailyGoals: Task[]; dailyMissions: Task[]; weeklyChallenges: Task[] };
   xpHistory: XpHistoryItem[];
   insights: string[];
+  hasCompletedOnboarding: boolean;
+  completeOnboarding: () => Promise<void>;
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -72,6 +74,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   // Auth state
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Onboarding state
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(true);
 
   // Gamification state
   const [xp, setXp] = useState(0);
@@ -260,6 +265,36 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     [gamificationStats, quizScores]
   );
 
+  // Sync onboarding state on load / auth change
+  useEffect(() => {
+    if (loading) return;
+    
+    if (user) {
+      setHasCompletedOnboarding(!!user.user_metadata?.has_completed_onboarding);
+    } else {
+      const guestCompleted = typeof window !== 'undefined' && localStorage.getItem('omnave_onboarding_completed') === 'true';
+      setHasCompletedOnboarding(guestCompleted);
+    }
+  }, [user, loading]);
+
+  const completeOnboarding = useCallback(async () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('omnave_onboarding_completed', 'true');
+    }
+    setHasCompletedOnboarding(true);
+    if (user) {
+      try {
+        const supabase = createClient();
+        await supabase.auth.updateUser({
+          data: { has_completed_onboarding: true }
+        });
+        await refreshUser();
+      } catch (err) {
+        console.error('[UserContext] Failed to sync onboarding completion:', err);
+      }
+    }
+  }, [user, refreshUser]);
+
   // ── Context value ────────────────────────────────────────────────────────────
 
   const value: UserContextType = {
@@ -281,6 +316,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     tasks,
     xpHistory,
     insights,
+    hasCompletedOnboarding,
+    completeOnboarding,
   };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
