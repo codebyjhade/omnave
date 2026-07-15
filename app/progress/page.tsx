@@ -34,15 +34,19 @@ export default function ProgressPage() {
           <div className="space-y-8 md:space-y-12 animate-in fade-in duration-500 pb-16 px-6 md:px-10 lg:px-0">
             
             {/* Top Metrics - 4 Grid (Mirrors Home Page Quick Stats) */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
               {[
                 { label: "Current Level", value: `Lv. ${gamificationStats.currentLevel}`, icon: Star, color: "text-yellow-400" },
-                { label: "Study Points", value: gamificationStats.currentXp, icon: Zap, color: "text-omnave-primary" },
+                { label: "Study Points", value: gamificationStats.currentXp, icon: null, color: "text-omnave-primary" },
                 { label: "Current Streak", value: `${gamificationStats.currentStreak}d`, icon: Flame, color: "text-orange-400" },
                 { label: "Completion", value: `${stats.completionRate}%`, icon: Target, color: "text-emerald-400" }
               ].map((metric, idx) => (
-                <div key={idx} className="bg-black/[0.25] border border-white/[0.05] backdrop-blur-xl rounded-2xl p-6 flex flex-col items-center justify-center transition-all hover:bg-black/[0.35] shadow-lg">
-                  <metric.icon className={`w-6 h-6 ${metric.color} mb-3`} />
+                <div key={idx} className="bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl rounded-2xl py-4 px-4 flex flex-col items-center justify-center transition-all hover:bg-white/[0.05] shadow-lg">
+                  {metric.icon ? (
+                    <metric.icon className={`w-6 h-6 ${metric.color} mb-3`} />
+                  ) : (
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`${metric.color} mb-3`}><path d="M2 22 12 2l10 20-10-4Z"/></svg>
+                  )}
                   <span className="text-2xl font-bold text-white mb-1">{metric.value}</span>
                   <span className="text-[10px] font-bold tracking-widest text-white/60 uppercase">{metric.label}</span>
                 </div>

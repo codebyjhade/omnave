@@ -40,24 +40,27 @@ export const SubscriptionCard = memo(function SubscriptionCard({ plan = "free" }
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="bg-black/[0.4] border border-white/[0.1] backdrop-blur-2xl rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-2xl flex flex-col w-full"
+      className="bg-gradient-to-br from-[#2e1a5e] to-[#130E24] border border-purple-500/20 rounded-2xl p-6 md:p-8 relative overflow-hidden shadow-[0_8px_30px_rgba(88,28,135,0.15)] flex flex-col w-full"
     >
-      <div className="flex items-center justify-between mb-6">
+      {/* Decorative Radial Glow */}
+      <div className="absolute -top-10 -right-10 w-32 h-32 bg-purple-500/20 blur-[50px] rounded-full pointer-events-none" aria-hidden="true"></div>
+
+      <div className="flex items-center justify-between mb-6 relative z-10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-            <Crown size={20} className={config.color} />
+          <div className="bg-purple-500/20 text-purple-300 p-2.5 rounded-xl flex items-center justify-center shrink-0">
+            <Crown size={20} className="text-purple-300" />
           </div>
           <div>
             <h3 className="text-sm font-bold text-white">{config.label} Plan</h3>
             <p className="text-xs text-white/50 mt-0.5">{config.description}</p>
           </div>
         </div>
-        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-widest ${config.badge}`}>
-          {config.label}
+        <span className="bg-white/10 border border-white/10 text-xs font-bold px-3 py-1 rounded-full text-purple-200 tracking-wider">
+          FREE
         </span>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-3 relative z-10">
         {config.features.map((feature) => (
           <div key={feature} className="flex items-center gap-2.5">
             <div className="w-4 h-4 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
@@ -70,8 +73,7 @@ export const SubscriptionCard = memo(function SubscriptionCard({ plan = "free" }
 
       {plan === "free" && (
         <button
-          disabled
-          className="w-full mt-6 py-2.5 bg-white/5 text-white/40 text-sm font-bold rounded-xl border border-white/10 cursor-not-allowed"
+          className="w-full py-3 mt-6 rounded-xl bg-white/5 border border-white/10 text-white/80 font-medium hover:bg-white/10 hover:text-white transition-all cursor-pointer relative z-10"
         >
           Upgrade Plan — Coming Soon
         </button>

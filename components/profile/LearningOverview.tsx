@@ -9,19 +9,20 @@ interface StatItemProps {
   value: string | number;
   label: string;
   delay: number;
+  colSpan?: string;
 }
 
-const StatItem = memo(function StatItem({ icon, value, label, delay }: StatItemProps) {
+const StatItem = memo(function StatItem({ icon, value, label, delay, colSpan = "" }: StatItemProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, delay }}
-      className="bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl rounded-2xl p-6 flex flex-col items-center justify-center transition-all hover:bg-white/[0.05] shadow-lg"
+      className={`bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl rounded-2xl px-4 py-4 flex flex-col items-center justify-center text-center transition-all hover:bg-white/[0.05] shadow-lg ${colSpan}`}
     >
-      <div className="mb-2.5 text-omnave-primary">{icon}</div>
-      <span className="text-2xl font-black text-white">{value}</span>
-      <span className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase mt-1 text-center">{label}</span>
+      <div className="mb-2 text-omnave-primary shrink-0">{icon}</div>
+      <span className="text-2xl font-black text-white leading-none mb-1">{value}</span>
+      <span className="text-[10px] font-bold tracking-widest text-white/40 uppercase text-center">{label}</span>
     </motion.div>
   );
 });
@@ -51,9 +52,16 @@ export const LearningOverview = memo(function LearningOverview({
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 w-full">
+    <div className="grid grid-cols-2 gap-4 w-full">
       {stats.map((stat, i) => (
-        <StatItem key={stat.label} icon={stat.icon} value={stat.value} label={stat.label} delay={i * 0.05} />
+        <StatItem 
+          key={stat.label} 
+          icon={stat.icon} 
+          value={stat.value} 
+          label={stat.label} 
+          delay={i * 0.05} 
+          colSpan={i === 4 ? "col-span-2" : ""}
+        />
       ))}
     </div>
   );

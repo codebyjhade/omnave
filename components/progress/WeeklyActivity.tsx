@@ -32,33 +32,38 @@ export const WeeklyActivity = memo(function WeeklyActivity({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="bg-black/[0.4] border border-white/[0.1] backdrop-blur-2xl rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-2xl flex flex-col w-full"
+      className="bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl rounded-2xl p-6 md:p-8 relative overflow-hidden shadow-lg flex flex-col w-full transition-all hover:bg-white/[0.05]"
     >
       {/* Ambient Inner Glow */}
       <div className="absolute -top-[50%] -right-[20%] w-[500px] h-[500px] bg-omnave-primary/20 blur-[120px] rounded-full pointer-events-none" aria-hidden="true" />
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="flex items-center gap-2 min-w-0">
-          <BookOpen size={14} className="text-white/50 shrink-0" aria-hidden="true" />
-          <div className="min-w-0">
-            <p className="text-sm font-black text-white leading-none">{totalSessions}</p>
-            <p className="text-[10px] text-white/50 font-semibold mt-0.5">Sessions</p>
+      {/* Weekly Activity Top Stats */}
+      <div className="grid grid-cols-3 divide-x divide-white/10 mb-6 select-none">
+        <div className="flex flex-col items-center justify-center text-center px-2">
+          <div className="flex items-center gap-1.5 text-white/50 mb-1">
+            <BookOpen size={12}/> 
+            <span className="text-[10px] uppercase tracking-wider font-semibold">Sessions</span>
           </div>
+          <span className="text-2xl font-bold text-white leading-none">
+            {totalSessions}
+          </span>
         </div>
-        <div className="flex items-center gap-2 min-w-0">
-          <Calendar size={14} className="text-white/50 shrink-0" aria-hidden="true" />
-          <div className="min-w-0">
-            <p className="text-sm font-black text-white leading-none">{daysStudied}</p>
-            <p className="text-[10px] text-white/50 font-semibold mt-0.5">Days Studied</p>
+        <div className="flex flex-col items-center justify-center text-center px-2">
+          <div className="flex items-center gap-1.5 text-white/50 mb-1">
+            <Calendar size={12}/> 
+            <span className="text-[10px] uppercase tracking-wider font-semibold">Days</span>
           </div>
+          <span className="text-2xl font-bold text-white leading-none">
+            {daysStudied}
+          </span>
         </div>
-        <div className="flex items-center gap-2 min-w-0">
-          <Clock size={14} className="text-white/50 shrink-0" aria-hidden="true" />
-          <div className="min-w-0">
-            <p className="text-sm font-black text-white leading-none">
-              {formatStudyTime(estimatedStudyMinutes)}
-            </p>
-            <p className="text-[10px] text-white/50 font-semibold mt-0.5">Study Time</p>
+        <div className="flex flex-col items-center justify-center text-center px-2">
+          <div className="flex items-center gap-1.5 text-white/50 mb-1">
+            <Clock size={12}/> 
+            <span className="text-[10px] uppercase tracking-wider font-semibold">Time</span>
           </div>
+          <span className="text-2xl font-bold text-white leading-none">
+            {formatStudyTime(estimatedStudyMinutes)}
+          </span>
         </div>
       </div>
 

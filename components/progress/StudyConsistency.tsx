@@ -76,12 +76,12 @@ export const StudyConsistency = memo(function StudyConsistency({
           {heatmapDays.map((day, idx) => {
             const level =
               day.count === 0
-                ? "bg-white/5 border border-white/10"
+                ? "bg-[#1A1A24] border border-white/5"
                 : day.count === 1
                   ? "bg-omnave-primary/20 border border-omnave-primary/30"
                   : day.count === 2
                     ? "bg-omnave-primary/50 border border-omnave-primary/60"
-                    : "bg-omnave-primary border border-omnave-primary/80";
+                    : "bg-omnave-primary border border-omnave-primary/80 shadow-[0_0_8px_rgba(127,34,254,0.8)]";
 
             return (
               <div

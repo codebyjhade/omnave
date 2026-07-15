@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { LogOut } from "lucide-react";
 import { useUserContext } from "@/context/UserContext";
-import { ProfileHero, LearningOverview, BadgeShowcase, SubscriptionCard } from "@/components/profile";
+import { ProfileHero, LearningOverview, BadgeShowcase, SubscriptionCard, BadgeArchiveModal } from "@/components/profile";
 
 export default function ProfilePage() {
   const { user, bestScore, loading: isAuthLoading, gamificationStats } = useUserContext();
@@ -13,6 +13,7 @@ export default function ProfilePage() {
   const [username, setUsername] = useState("");
   const [joinDate, setJoinDate] = useState("");
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [showAllModal, setShowAllModal] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -62,7 +63,7 @@ export default function ProfilePage() {
         <div className="flex flex-col w-full animate-in fade-in duration-500 space-y-8 pb-16 px-6 md:px-10 lg:px-0">
           <ProfileHero email={email} joinDate={joinDate} streak={gamificationStats.currentStreak} username={username} xp={gamificationStats.currentXp} />
           <LearningOverview avgScore={gamificationStats.averageQuizScore} bestScore={bestScore} docCount={gamificationStats.documentsUploaded} quizzesCount={gamificationStats.quizAttempts} streak={gamificationStats.currentStreak} totalStudyHours={gamificationStats.studyMinutes / 60} />
-          <BadgeShowcase />
+          <BadgeShowcase onViewAll={() => setShowAllModal(true)} />
           <SubscriptionCard plan="free" />
           <button
             onClick={handleSignOut}
@@ -76,6 +77,9 @@ export default function ProfilePage() {
           </button>
         </div>
       </main>
+
+      {/* UX/UI AUDIT RESOLUTION: ESCAPING STACKING CONTEXT */}
+      <BadgeArchiveModal isOpen={showAllModal} onClose={() => setShowAllModal(false)} />
     </div>
   );
 }

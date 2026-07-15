@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useMemo } from "react";
+import { memo, useMemo, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Award, Lock, Sparkles, Trophy, Calendar, Zap, X } from "lucide-react";
 import { useUserContext } from "@/context/UserContext";
@@ -48,9 +48,8 @@ const getIcon = (iconName: string) => {
   return Award;
 };
 
-export const BadgeShowcase = memo(function BadgeShowcase() {
+export const BadgeShowcase = memo(function BadgeShowcase({ onViewAll }: { onViewAll: () => void }) {
   const { achievements } = useUserContext();
-  const [showAllModal, setShowAllModal] = useState(false);
 
   const unlockedList = useMemo(() => achievements.filter((a) => a.completed), [achievements]);
   const unlockedCount = unlockedList.length;
@@ -75,7 +74,7 @@ export const BadgeShowcase = memo(function BadgeShowcase() {
           </span>
         </div>
         <button
-          onClick={() => setShowAllModal(true)}
+          onClick={onViewAll}
           className="text-[10px] font-bold px-3 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded-full text-white/70 uppercase tracking-widest transition-all cursor-pointer"
         >
           View All
@@ -84,7 +83,7 @@ export const BadgeShowcase = memo(function BadgeShowcase() {
 
       {/* Completion Slider */}
       <div className="space-y-1.5 w-full">
-        <div className="flex justify-between text-[9px] font-bold text-white/40 uppercase tracking-widest">
+        <div className="flex justify-between text-[9px] font-bold text-white/45 uppercase tracking-widest">
           <span>Overall completion</span>
           <span>{completionPercentage}%</span>
         </div>
@@ -134,7 +133,7 @@ export const BadgeShowcase = memo(function BadgeShowcase() {
           return (
             <div
               key={item.id}
-              className={`min-w-[140px] max-w-[140px] bg-white/[0.02] border ${style.border} ${style.glow} rounded-2xl p-3 flex flex-col justify-between items-center text-center scroll-snap-align-start shrink-0 relative transition-all duration-150 ${
+              className={`min-w-[140px] max-w-[140px] bg-white/[0.04] border border-white/5 ${style.border} ${style.glow} rounded-2xl p-3 flex flex-col justify-between items-center text-center scroll-snap-align-start shrink-0 relative transition-all duration-150 ${
                 item.completed ? "opacity-100" : "opacity-40 grayscale"
               }`}
               role="listitem"
@@ -183,83 +182,6 @@ export const BadgeShowcase = memo(function BadgeShowcase() {
         })}
       </div>
 
-      {/* Modal Archive */}
-      <AnimatePresence>
-        {showAllModal && (
-          <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
-            onClick={() => setShowAllModal(false)}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="modal-heading"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg bg-[#151C2C] border border-white/10 rounded-[24px] p-6 shadow-2xl flex flex-col max-h-[80vh] overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-white/5 mb-4 shrink-0">
-                <div className="space-y-0.5">
-                  <h3 id="modal-heading" className="text-sm font-black text-white">
-                    Badge Archive Gallery
-                  </h3>
-                  <span className="text-[10px] font-bold text-white/40 block">
-                    Check your full milestones progress ({unlockedCount} / {achievements.length})
-                  </span>
-                </div>
-                <button
-                  onClick={() => setShowAllModal(false)}
-                  className="w-8 h-8 rounded-xl hover:bg-white/5 text-white/50 flex items-center justify-center cursor-pointer focus:outline-none"
-                  aria-label="Close dialog"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              {/* Scroll List */}
-              <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-hide">
-                {achievements.map((item) => {
-                  const style = rarityStyles[item.rarity] || rarityStyles.common;
-                  const IconComp = getIcon(item.icon);
-                  const pct = Math.round((item.progress / item.target) * 100);
-
-                  return (
-                    <div
-                      key={item.id}
-                      className={`p-3 bg-white/[0.01] border border-white/5 rounded-2xl flex items-center justify-between gap-3 ${
-                        item.completed ? "opacity-100" : "opacity-60 grayscale"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${style.badgeBorder} ${style.badgeBg} ${style.text}`}>
-                          <IconComp size={16} />
-                        </div>
-                        <div className="leading-tight min-w-0">
-                          <span className="text-xs font-black text-white block truncate">{item.title}</span>
-                          <span className="text-[10px] text-white/50 block truncate mt-0.5">{item.description}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4 shrink-0 text-right">
-                        <div className="space-y-1">
-                          <span className="text-[8px] font-bold text-white/45 block uppercase">{item.rarity}</span>
-                          <span className="text-[10px] font-black text-white block">{item.progress} / {item.target}</span>
-                        </div>
-                        <div className="w-1.5 h-6 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                          <div className="bg-gradient-to-t from-omnave-primary/50 to-omnave-primary w-full rounded-full" style={{ height: `${pct}%` }} />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
       {/* Absolute Bottom-Edge Progress Bar */}
       <div className="absolute bottom-0 left-0 w-full h-[2px] bg-white/5" role="progressbar" aria-valuenow={completionPercentage} aria-valuemin={0} aria-valuemax={100} aria-label="Overall badges completion">
         <motion.div
@@ -270,5 +192,114 @@ export const BadgeShowcase = memo(function BadgeShowcase() {
         />
       </div>
     </div>
+  );
+});
+
+import { createPortal } from "react-dom";
+
+interface BadgeArchiveModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const BadgeArchiveModal = memo(function BadgeArchiveModal({ isOpen, onClose }: BadgeArchiveModalProps) {
+  const { achievements } = useUserContext();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Prevent body scrolling when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
+
+  if (!isOpen || !mounted) return null;
+
+  const unlockedCount = achievements.filter((a) => a.completed).length;
+
+  return createPortal(
+    <AnimatePresence>
+      <div 
+        className="fixed top-0 left-0 w-screen h-[100dvh] z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+        onClick={onClose}
+        role="dialog"
+        aria-modal="true"
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 30, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 30, scale: 0.95 }}
+          transition={{ type: "spring", damping: 25, stiffness: 280 }}
+          className="w-full max-w-md max-h-[85vh] bg-[#0A0A0A] border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col relative overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Sticky Header */}
+          <div className="flex justify-between items-center pb-4 mb-2 border-b border-white/10 shrink-0">
+            <div>
+              <h3 className="text-xl font-black text-white">All Badges</h3>
+              <span className="text-[10px] font-bold text-white/40 block mt-0.5">
+                ({unlockedCount} / {achievements.length} unlocked)
+              </span>
+            </div>
+            {/* 44x44 Touch Target for Accessibility */}
+            <button 
+              onClick={onClose} 
+              className="w-11 h-11 flex items-center justify-center bg-white/5 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+              aria-label="Close modal"
+            >
+              <X size={20}/>
+            </button>
+          </div>
+
+          {/* Scrollable Content Area */}
+          <div className="flex flex-col gap-3 overflow-y-auto pr-2 pb-4 overscroll-contain scrollbar-hide">
+            {achievements.map((item) => {
+              const style = rarityStyles[item.rarity] || rarityStyles.common;
+              const IconComp = getIcon(item.icon);
+              const pct = Math.round((item.progress / item.target) * 100);
+
+              return (
+                <div
+                  key={item.id}
+                  className={`p-3 bg-white/[0.01] border border-white/5 rounded-2xl flex items-center justify-between gap-3 ${
+                    item.completed ? "opacity-100" : "opacity-60 grayscale"
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${style.badgeBorder} ${style.badgeBg} ${style.text}`}>
+                      <IconComp size={16} />
+                    </div>
+                    <div className="leading-tight min-w-0">
+                      <span className="text-xs font-black text-white block truncate">{item.title}</span>
+                      <span className="text-[10px] text-white/50 block truncate mt-0.5">{item.description}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 shrink-0 text-right">
+                    <div className="space-y-1">
+                      <span className="text-[8px] font-bold text-white/45 block uppercase">{item.rarity}</span>
+                      <span className="text-[10px] font-black text-white block">{item.progress} / {item.target}</span>
+                    </div>
+                    <div className="w-1.5 h-6 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                      <div className="bg-gradient-to-t from-omnave-primary/50 to-omnave-primary w-full rounded-full" style={{ height: `${pct}%` }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>,
+    document.body
   );
 });

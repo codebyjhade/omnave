@@ -34,71 +34,83 @@ export const ProfileHero = memo(function ProfileHero({ username, email, xp, stre
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="bg-black/[0.4] border border-white/[0.1] backdrop-blur-2xl rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-2xl"
+      className="bg-[#0f0a1c]/80 border border-white/10 backdrop-blur-md shadow-2xl rounded-2xl p-5 flex flex-col gap-4 relative overflow-hidden"
     >
       {/* Ambient Inner Glow */}
-      <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-omnave-primary/15 blur-[100px] rounded-full pointer-events-none" aria-hidden="true" />
+      <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-omnave-primary/10 blur-[80px] rounded-full pointer-events-none" aria-hidden="true" />
 
-      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-        {/* Avatar */}
-        <div className="relative shrink-0">
-          <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-omnave-primary/20 border-2 border-omnave-primary/40 flex items-center justify-center text-2xl md:text-3xl font-black text-omnave-primary shadow-xs">
-            {username.charAt(0).toUpperCase()}
-          </div>
-          <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-[#151C2C] border border-white/10 flex items-center justify-center">
-            <Award size={14} className="text-amber-400" />
-          </div>
-        </div>
- 
-        {/* Info */}
-        <div className="flex-1 text-center sm:text-left min-w-0 w-full">
-          <div className="flex items-center justify-between gap-3 w-full">
-            <h1 className="text-xl md:text-2xl font-black text-white tracking-tight truncate text-left">{username}</h1>
-            <Link
-              href="/settings"
-              className="h-11 w-11 sm:h-10 sm:w-10 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all shrink-0 active:scale-[0.96]"
-              title="App Settings"
-              aria-label="omnave. Settings"
-            >
-              <Settings size={16} className="text-white/70" />
-            </Link>
-          </div>
-          <p className="text-sm text-white/50 mt-1 truncate text-left sm:text-left">{email}</p>
- 
-          {/* Level & Streak Row */}
-          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-4">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/[0.02] border border-white/5 rounded-full text-xs font-semibold text-white/50">
-              <Award size={12} className="text-amber-400" />
-              Level {level}
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/[0.02] border border-white/5 rounded-full text-xs font-semibold text-white/50">
-              <Flame size={12} className="text-orange-400" />
-              {streak} day streak
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/[0.02] border border-white/5 rounded-full text-xs font-semibold text-white/50">
-              <Calendar size={12} className="text-white/40" />
-              Joined {formatJoinDate(joinDate)}
-            </span>
-          </div>
- 
-          {/* XP Progress Bar */}
-          <div className="mt-5">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase">XP to Level {level + 1}</span>
-              <span className="text-[10px] font-bold text-omnave-primary">{xpInCurrentLevel} / 500 XP</span>
+      {/* Top Section: Split into Left and Right Columns */}
+      <div className="flex flex-row justify-between gap-6 relative z-10 select-none">
+        
+        {/* LEFT COLUMN: Centered Identity Stack */}
+        <div className="flex flex-col items-center text-center shrink-0 w-32">
+          {/* Avatar */}
+          <div className="relative mb-3">
+            <div className="w-20 h-20 rounded-full bg-[#3b0764] border border-white/10 flex items-center justify-center text-3xl font-black text-purple-400 ring-2 ring-black/20 shadow-inner">
+              {username.charAt(0).toUpperCase()}
+            </div>
+            <div className="absolute bottom-0 right-0 w-6 h-6 bg-[#0A0A0A] rounded-full border border-white/10 flex items-center justify-center shadow-lg">
+              <Award className="text-omnave-primary" size={12}/>
             </div>
           </div>
+          {/* Centered Typography */}
+          <h2 className="text-lg font-black text-white tracking-tight leading-none mb-1 truncate w-full">{username}</h2>
+          <p className="text-[10px] text-white/50 mb-2 truncate w-full">{email}</p>
+          <div className="flex items-center gap-1 text-white/30">
+            <Calendar size={10}/>
+            <span className="text-[9px] font-medium tracking-wide uppercase">Joined {formatJoinDate(joinDate)}</span>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: Stats & Action Fill */}
+        <div className="flex-1 flex flex-col justify-center">
+          
+          {/* Stats Row */}
+          <div className="flex justify-around items-center text-center mb-4">
+            <div className="flex flex-col">
+              <span className="text-2xl font-bold text-white leading-tight">{level}</span>
+              <span className="text-[10px] text-white/50 tracking-wide uppercase mt-0.5">Level</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-2xl font-bold text-white leading-tight">{streak}</span>
+              <span className="text-[10px] text-white/50 tracking-wide uppercase mt-0.5">Streak</span>
+            </div>
+          </div>
+
+          {/* Fill the Void: Role Badges & Edit Button */}
+          <div className="flex flex-col gap-3 px-2 mt-1">
+            {/* Compact Badges instead of wrapping text */}
+            <div className="flex flex-wrap justify-center gap-1.5">
+              <span className="px-2 py-1 bg-omnave-primary/10 border border-omnave-primary/20 text-omnave-primary rounded-md text-[9px] font-black uppercase tracking-wider">
+                💻 CS Major
+              </span>
+              <span className="px-2 py-1 bg-white/5 border border-white/10 text-white/70 rounded-md text-[9px] font-bold uppercase tracking-wider whitespace-nowrap">
+                ⚡ Full-Stack
+              </span>
+            </div>
+
+            <button className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold text-white transition-colors">
+              Edit Profile
+            </button>
+          </div>
+
         </div>
       </div>
 
-      {/* Absolute Bottom-Edge Progress Bar */}
-      <div className="absolute bottom-0 left-0 w-full h-[2px] bg-white/5" role="progressbar" aria-valuenow={progressToNextLevel} aria-valuemin={0} aria-valuemax={100} aria-label="XP to next level">
-        <motion.div
-          className="h-full bg-omnave-primary shadow-[0_0_10px_rgba(var(--omnave-primary),0.5)]"
-          initial={{ width: 0 }}
-          animate={{ width: `${progressToNextLevel}%` }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-        />
+      {/* Bottom Row: Minimal XP Bar */}
+      <div className="w-full mt-1 pt-4 border-t border-white/5 relative z-10 select-none">
+        <div className="flex justify-between text-[10px] font-bold text-white/40 mb-2 uppercase tracking-wider">
+          <span>XP TO LEVEL {level + 1}</span>
+          <span>{xpInCurrentLevel} / 500 XP</span>
+        </div>
+        <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-omnave-primary rounded-full shadow-[0_0_10px_rgba(127,34,254,0.8)]"
+            initial={{ width: 0 }}
+            animate={{ width: `${progressToNextLevel}%` }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+          />
+        </div>
       </div>
     </motion.div>
   );
