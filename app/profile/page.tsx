@@ -89,7 +89,7 @@ export default function ProfilePage() {
       <main className="relative z-10 w-full max-w-[1200px] mx-auto pt-4 pb-40 md:pb-24 lg:px-10 xl:px-12 flex flex-col gap-8 md:gap-12">
         <header className="px-6 md:px-10 lg:px-0 text-left">
           <h2 className="text-[10px] font-extrabold tracking-[0.2em] text-neutral-500 uppercase mb-2">Account</h2>
-          <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-white">Your Profile.</h1>
+          <h1 className="text-[clamp(1.75rem,6vw,2.5rem)] md:text-5xl font-black tracking-tighter text-white">Your Profile.</h1>
         </header>
  
         <div className="flex flex-col w-full animate-in fade-in duration-500 space-y-8 pb-16 px-6 md:px-10 lg:px-0">
@@ -108,7 +108,7 @@ export default function ProfilePage() {
           <button
             onClick={handleSignOut}
             disabled={isSigningOut}
-            className="flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A]"
           >
             <LogOut className="w-5 h-5" />
             <span className="font-semibold tracking-wide">

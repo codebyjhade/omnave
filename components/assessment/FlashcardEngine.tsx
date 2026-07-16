@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { ArrowLeft, ChevronRight, Presentation, CheckCircle, BrainCircuit, BookOpen, RotateCcw } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -21,6 +21,15 @@ export function FlashcardEngine({ lessonId, flashcards, onNavigateToQuiz, onNavi
   const [flashcardRatings, setFlashcardRatings] = useState<Record<number, "again" | "hard" | "good" | "easy">>({});
   const [leitnerIntervals, setLeitnerIntervals] = useState<Record<number, "new" | "hard" | "easy">>({});
 
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
   // Load saved Leitner data on mount
   useEffect(() => {
     const leitnerMemory = localStorage.getItem(`omni_leitner_${lessonId}`);
@@ -37,18 +46,19 @@ export function FlashcardEngine({ lessonId, flashcards, onNavigateToQuiz, onNavi
 
     if (currentSlide < flashcards.length - 1) {
       setIsFlipped(false);
-      setTimeout(() => setCurrentSlide((s) => s + 1), 200);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => setCurrentSlide((s) => s + 1), 200);
     } else {
       setIsSessionCompleted(true);
     }
   }, [currentSlide, flashcards.length, leitnerIntervals, lessonId]);
 
-  const restartSession = () => {
+  const restartSession = useCallback(() => {
     setCurrentSlide(0);
     setIsFlipped(false);
     setFlashcardRatings({});
     setIsSessionCompleted(false);
-  };
+  }, []);
 
   // Keyboard Navigation
   useEffect(() => {

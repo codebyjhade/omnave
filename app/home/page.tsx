@@ -5,6 +5,7 @@ import ProgressOverview from "@/components/ProgressOverview";
 import Checklist from "@/components/Checklist";
 import AIRecommendation from "@/components/AIRecommendation";
 import { useLessons } from "@/hooks/useLessons";
+import { Skeleton } from "@/components/Skeleton";
 import dynamic from "next/dynamic";
 
 const CurrentLessonCard = dynamic(() => import("@/components/CurrentLessonCard"), { ssr: false });
@@ -32,7 +33,16 @@ export default function HomePage() {
 
         {/* 2. Primary Active Action */}
         <div className="px-6 md:px-10 lg:px-0">
-          {showLaunchpad ? <CinematicLaunchpad /> : <CurrentLessonCard />}
+          {loading ? (
+            <div className="w-full flex flex-col">
+              <Skeleton className="h-4 w-28 mb-4 rounded-md" />
+              <Skeleton className="h-[210px] w-full rounded-3xl" />
+            </div>
+          ) : showLaunchpad ? (
+            <CinematicLaunchpad />
+          ) : (
+            <CurrentLessonCard />
+          )}
         </div>
 
         {/* 3. Compact Quick Stats */}

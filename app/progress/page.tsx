@@ -21,7 +21,7 @@ export default function ProgressPage() {
           <h2 className="text-[10px] font-extrabold tracking-[0.2em] uppercase text-neutral-500 mb-1.5">
             Analytics
           </h2>
-          <h1 className="text-3xl md:text-5xl font-black text-white tracking-tighter drop-shadow-lg">
+          <h1 className="text-[clamp(1.75rem,6vw,2.5rem)] md:text-5xl font-black text-white tracking-tighter drop-shadow-lg">
             Your Progress.
           </h1>
         </header>

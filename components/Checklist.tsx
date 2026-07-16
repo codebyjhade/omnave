@@ -1,9 +1,22 @@
 "use client";
 
 import { useUserContext } from "@/context/UserContext";
+import { Skeleton } from "@/components/Skeleton";
 
 export default function Checklist() {
-  const { tasks, lessons } = useUserContext();
+  const { tasks, lessons, loading } = useUserContext();
+
+  if (loading) {
+    return (
+      <div className="w-full flex flex-col gap-4">
+        <div className="flex items-center justify-between pl-2 mb-1">
+          <Skeleton className="h-4 w-28 rounded-md" />
+        </div>
+        <Skeleton className="h-[210px] w-full rounded-3xl" />
+      </div>
+    );
+  }
+
   const goals = tasks.dailyGoals;
   const isZeroState = lessons.length === 0;
 

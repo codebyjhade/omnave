@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, memo } from "react";
 import Link from "next/link";
 import { FileText, MoreVertical, Trash2, Clock, Star, Edit3, Share2, BrainCircuit } from "lucide-react";
 
@@ -17,7 +17,7 @@ interface LessonCardProps {
   isProcessed?: boolean;
 }
 
-export function LessonCard({
+export const LessonCard = memo(function LessonCard({
   id,
   filename,
   ai_title,
@@ -227,4 +227,4 @@ export function LessonCard({
       {cardContent}
     </Link>
   );
-}
+});

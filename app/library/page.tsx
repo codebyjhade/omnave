@@ -24,9 +24,17 @@ export default function LibraryPage() {
   const { quizScores } = useProgress();
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterId>("all");
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
 
   const getNoteProgress = useCallback((note: any) => {
     return calculateKitProgress(note, quizScores);
@@ -106,7 +114,7 @@ export default function LibraryPage() {
     return notes.filter((note) => {
       const cleanTitle = getCleanTitle(note.file_path).toLowerCase();
       const subject = cleanTitle.split(/[\s\-_]+/)[0] || "";
-      const matchesSearch = cleanTitle.includes(searchTerm.toLowerCase()) || subject.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = cleanTitle.includes(debouncedSearchTerm.toLowerCase()) || subject.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
       if (!matchesSearch) return false;
 
       const progress = getNoteProgress(note);
@@ -119,7 +127,7 @@ export default function LibraryPage() {
         default: return true;
       }
     });
-  }, [notes, searchTerm, activeFilter, getNoteProgress]);
+  }, [notes, debouncedSearchTerm, activeFilter, getNoteProgress]);
 
   const continueLearningNote = useMemo(() => {
     if (notes.length === 0) return null;
@@ -141,7 +149,7 @@ export default function LibraryPage() {
         <header className="px-6 md:px-10 lg:px-0">
           <h2 className="text-[10px] font-extrabold tracking-[0.2em] text-neutral-500 uppercase mb-2">Knowledge Vault</h2>
           <div className="flex items-center flex-wrap gap-4">
-            <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-white">Your Library.</h1>
+            <h1 className="text-[clamp(1.75rem,6vw,2.5rem)] md:text-5xl font-black tracking-tighter text-white">Your Library.</h1>
             <LibraryHeader totalLessons={stats.total} />
           </div>
         </header>

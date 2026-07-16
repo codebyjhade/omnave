@@ -1,9 +1,20 @@
 "use client";
 
 import { useUserContext } from "@/context/UserContext";
+import { Skeleton } from "@/components/Skeleton";
 
 export default function ProgressOverview() {
-  const { gamificationStats, lessons } = useUserContext();
+  const { gamificationStats, lessons, loading } = useUserContext();
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 gap-4 w-full">
+        <Skeleton className="h-[110px] w-full rounded-2xl" />
+        <Skeleton className="h-[110px] w-full rounded-2xl" />
+      </div>
+    );
+  }
+
   const isZeroState = lessons.length === 0;
 
   return (

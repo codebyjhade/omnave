@@ -1,9 +1,21 @@
 "use client";
 
 import { useUserContext } from "@/context/UserContext";
+import { Skeleton } from "@/components/Skeleton";
 
 export default function AIRecommendation() {
-  const { insights } = useUserContext();
+  const { insights, loading } = useUserContext();
+
+  if (loading) {
+    return (
+      <div className="w-full flex flex-col gap-4">
+        <div className="flex items-center gap-2 pl-2">
+          <Skeleton className="h-4 w-32 rounded-md" />
+        </div>
+        <Skeleton className="h-[140px] w-full rounded-3xl" />
+      </div>
+    );
+  }
   
   const recommendationText = insights && insights.length > 0 
     ? insights[0] 

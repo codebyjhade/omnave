@@ -18,7 +18,10 @@ export default function ActionDrawer({ isOpen, onClose }: ActionDrawerProps) {
 
   // Reset view when drawer closes
   useEffect(() => {
-    if (!isOpen) setTimeout(() => setView('main'), 300);
+    if (!isOpen) {
+      const timer = setTimeout(() => setView('main'), 300);
+      return () => clearTimeout(timer);
+    }
   }, [isOpen]);
 
   const handleActionClick = (actionId: string) => {
@@ -83,7 +86,8 @@ export default function ActionDrawer({ isOpen, onClose }: ActionDrawerProps) {
                       <h2 className="text-lg font-extrabold text-white tracking-tight">Create New</h2>
                       <button 
                         onClick={onClose} 
-                        className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 text-white/50 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+                        className="w-11 h-11 flex items-center justify-center rounded-full bg-white/5 text-white/50 hover:bg-white/10 hover:text-white transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A]"
+                        aria-label="Close menu"
                       >
                         ✕
                       </button>

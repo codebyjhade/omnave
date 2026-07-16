@@ -397,7 +397,7 @@ export default function LessonView() {
                   </div>
                 )}
 
-                <div className="mt-4 md:mt-6">
+                <div className="mt-4 md:mt-6 min-h-[450px]">
                   {/* 1. SUMMARY TAB */}
                   {activeTab === "summary" && (
                     <SummaryTab summary={data.summary || ""} />

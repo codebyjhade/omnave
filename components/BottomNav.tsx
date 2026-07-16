@@ -34,6 +34,7 @@ export default function BottomNav() {
           href="/home"
           active={pathname === '/home'} 
           icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>} 
+          ariaLabel="Home"
         />
         
         {/* Library */}
@@ -41,12 +42,14 @@ export default function BottomNav() {
           href="/library"
           active={pathname === '/library' || pathname?.startsWith('/library/')}
           icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-0-5H20"/></svg>} 
+          ariaLabel="Library"
         />
         
         {/* Center Action Button */}
         <button 
           onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-          className="relative -translate-y-3 w-14 h-14 rounded-full bg-gradient-to-tr from-[#7C3AED] via-[#9333EA] to-[#c084fc] flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-all shadow-[0_8px_25px_rgba(147,51,234,0.5)] border-[1.5px] border-white/20 z-50 overflow-hidden group cursor-pointer"
+          className="relative -translate-y-3 w-14 h-14 rounded-full bg-gradient-to-tr from-[#7C3AED] via-[#9333EA] to-[#c084fc] flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-all shadow-[0_8px_25px_rgba(147,51,234,0.5)] border-[1.5px] border-white/20 z-50 overflow-hidden group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A]"
+          aria-label="Open study menu"
         >
           {/* Inner glow effect */}
           <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-full" />
@@ -59,6 +62,7 @@ export default function BottomNav() {
           href="/progress"
           active={pathname === '/progress'}
           icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>} 
+          ariaLabel="Progress"
         />
         
         {/* Profile */}
@@ -66,20 +70,26 @@ export default function BottomNav() {
           href="/profile"
           active={pathname === '/profile'}
           icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>} 
+          ariaLabel="Profile"
         />
         
       </div>
       <ActionDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
     </>
   );
-
+ 
   // Teleport to body to escape CSS transforms
   return createPortal(navContent, document.body);
 }
-
-function NavItem({ icon, href, active = false }: { icon: React.ReactNode, href: string, active?: boolean }) {
+ 
+function NavItem({ icon, href, active = false, ariaLabel }: { icon: React.ReactNode, href: string, active?: boolean, ariaLabel: string }) {
   return (
-    <Link className="relative flex items-center justify-center p-3 group transition-transform duration-200 active:scale-[0.97] transform-gpu" href={href} prefetch={true}>
+    <Link 
+      className="relative flex items-center justify-center p-3 group transition-transform duration-200 active:scale-[0.97] transform-gpu focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A] rounded-xl" 
+      href={href} 
+      prefetch={true}
+      aria-label={ariaLabel}
+    >
       <div className={`${active ? 'text-white scale-110' : 'text-white/40 group-hover:text-white/70'} transition-[color,transform] duration-300 transform-gpu group-hover:-translate-y-1`}>
         {icon}
       </div>

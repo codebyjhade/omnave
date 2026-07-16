@@ -12,7 +12,7 @@ interface MaterialRow {
   material_type: string;
   content_url: string | null;
   is_processed: boolean;
-  summary: string | null;
+  summary?: string | null;
   flashcards: Array<{ front: string; back: string }> | null;
   quizzes: Array<{ question: string; options: string[]; correctAnswerIndex: number; explanation: string }> | null;
   created_at: string;
@@ -41,7 +41,7 @@ export class LessonService {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('materials')
-      .select('id, user_id, title, material_type, content_url, is_processed, summary, flashcards, quizzes, created_at')
+      .select('id, user_id, title, material_type, content_url, is_processed, flashcards, quizzes, created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .returns<MaterialRow[]>();

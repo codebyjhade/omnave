@@ -54,7 +54,11 @@ export default function OnboardingInstallDrawer() {
                   <h2 className="text-xl font-bold text-white mt-4">
                     {view === "main" ? "Install Omnave" : "Installation Steps"}
                   </h2>
-                  <button onClick={closeDrawer} className="mt-4 p-2 bg-white/5 rounded-full text-white/60 hover:text-white">
+                  <button 
+                    onClick={closeDrawer} 
+                    className="mt-4 w-11 h-11 flex items-center justify-center bg-white/5 rounded-full text-white/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#130E24]"
+                    aria-label="Close installation helper"
+                  >
                      ✕
                   </button>
                 </div>

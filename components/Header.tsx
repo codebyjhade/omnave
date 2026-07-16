@@ -52,7 +52,7 @@ export default function Header() {
         <h2 className="text-[10px] md:text-xs font-extrabold tracking-[0.2em] text-neutral-500 uppercase">
           {greeting}
         </h2>
-        <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter mt-1">
+        <h1 className="text-[clamp(2rem,7vw,3rem)] md:text-5xl font-black text-white tracking-tighter mt-1">
           {firstName}.
         </h1>
       </div>

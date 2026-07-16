@@ -1,10 +1,11 @@
 "use client";
 
+import React, { memo } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { FileUp, Sparkles } from "lucide-react";
 
-export default function CinematicLaunchpad() {
+const CinematicLaunchpad = memo(function CinematicLaunchpad() {
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
@@ -55,4 +56,6 @@ export default function CinematicLaunchpad() {
       </div>
     </motion.div>
   );
-}
+});
+
+export default CinematicLaunchpad;

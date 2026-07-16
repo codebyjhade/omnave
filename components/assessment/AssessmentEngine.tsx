@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   BrainCircuit, Trophy, ShieldAlert, Timer, ChevronLeft, 
@@ -31,6 +31,71 @@ interface AssessmentEngineProps {
 
 type AssessmentState = "setup" | "playing" | "review-screen" | "grading" | "results";
 type AssessmentMode = "quiz" | "mock";
+
+interface IdentificationInputProps {
+  value: string;
+  onChange: (val: string) => void;
+  disabled?: boolean;
+  className?: string;
+}
+
+const IdentificationInput = React.memo(({ value, onChange, disabled = false, className }: IdentificationInputProps) => {
+  const [localValue, setLocalValue] = useState(value);
+
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  useEffect(() => {
+    if (localValue === value) return;
+    const handler = setTimeout(() => {
+      onChange(localValue);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [localValue, onChange, value]);
+
+  const handleBlur = () => {
+    onChange(localValue);
+  };
+
+  return (
+    <input
+      type="text"
+      disabled={disabled}
+      value={localValue}
+      onChange={(e) => setLocalValue(e.target.value)}
+      onBlur={handleBlur}
+      placeholder="Type your answer here..."
+      className={className}
+    />
+  );
+});
+IdentificationInput.displayName = "IdentificationInput";
+
+// Helper function: Fisher-Yates Scrambler for maximum randomness
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
+const prepareScrambledAssessment = (generated: GeneratedQuestion[]) => {
+  // 1. Scramble the order of the questions
+  let scrambledQuestions = shuffleArray(generated);
+  
+  // 2. Scramble the Multiple Choice options inside each question!
+  scrambledQuestions = scrambledQuestions.map(q => {
+    if (q.type === "multiple-choice" && q.options) {
+      return { ...q, options: shuffleArray(q.options) };
+    }
+    return q;
+  });
+
+  return scrambledQuestions;
+};
 
 export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
   const { user, updateStatsAfterQuiz } = useUserContext();
@@ -72,6 +137,16 @@ export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
   // Timers Refs
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const spentIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const gradingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Master cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (spentIntervalRef.current) clearInterval(spentIntervalRef.current);
+      if (gradingIntervalRef.current) clearInterval(gradingIntervalRef.current);
+    };
+  }, []);
 
   // =============================================================================
   // 1. ROUTE GUARD & LOCK STATE INTERCEPT
@@ -120,31 +195,7 @@ export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
     } catch {}
   }, [gameState, mode, questions, currentIdx, userAnswers, flaggedQuestions, timeLeft, timeSpent, duration, quizChecked, lesson.id]);
 
-  const handleResumeSession = () => {
-    try {
-      const saved = localStorage.getItem(`omnilearn:assessment:state:${lesson.id}`);
-      if (saved) {
-        const stateObj = JSON.parse(saved);
-        setMode(stateObj.mode);
-        setQuestions(stateObj.questions);
-        setCurrentIdx(stateObj.currentIdx);
-        setUserAnswers(stateObj.userAnswers);
-        setFlaggedQuestions(stateObj.flaggedQuestions);
-        setTimeLeft(stateObj.timeLeft);
-        setTimeSpent(stateObj.timeSpent || 0);
-        setDuration(stateObj.duration || stateObj.timeLeft);
-        setQuizChecked(stateObj.quizChecked || {});
-        setGameState("playing");
-        setHasSavedSession(false);
-      }
-    } catch {
-      setHasSavedSession(false);
-    }
-  };
 
-  const clearSavedSession = () => {
-    try { localStorage.removeItem(`omnilearn:assessment:state:${lesson.id}`); } catch {}
-  };
 
   // =============================================================================
   // 2. TIMERS CLOCKS
@@ -181,52 +232,33 @@ export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
   // 3. CORE HANDLERS
   // =============================================================================
 
-// Helper function: Fisher-Yates Scrambler for maximum randomness
-  const shuffleArray = <T,>(array: T[]): T[] => {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  };
-
-  const prepareScrambledAssessment = (generated: GeneratedQuestion[]) => {
-    // 1. Scramble the order of the questions
-    let scrambledQuestions = shuffleArray(generated);
-    
-    // 2. Scramble the Multiple Choice options inside each question!
-    scrambledQuestions = scrambledQuestions.map(q => {
-      if (q.type === "multiple-choice" && q.options) {
-        return { ...q, options: shuffleArray(q.options) };
+  const handleResumeSession = useCallback(() => {
+    try {
+      const saved = localStorage.getItem(`omnilearn:assessment:state:${lesson.id}`);
+      if (saved) {
+        const stateObj = JSON.parse(saved);
+        setMode(stateObj.mode);
+        setQuestions(stateObj.questions);
+        setCurrentIdx(stateObj.currentIdx);
+        setUserAnswers(stateObj.userAnswers);
+        setFlaggedQuestions(stateObj.flaggedQuestions);
+        setTimeLeft(stateObj.timeLeft);
+        setTimeSpent(stateObj.timeSpent || 0);
+        setDuration(stateObj.duration || stateObj.timeLeft);
+        setQuizChecked(stateObj.quizChecked || {});
+        setGameState("playing");
+        setHasSavedSession(false);
       }
-      return q;
-    });
+    } catch {
+      setHasSavedSession(false);
+    }
+  }, [lesson.id]);
 
-    return scrambledQuestions;
-  };
+  const clearSavedSession = useCallback(() => {
+    try { localStorage.removeItem(`omnilearn:assessment:state:${lesson.id}`); } catch {}
+  }, [lesson.id]);
 
-  const handleStartQuiz = (config: { count: number; focus: "random" | "weakness"; types: string[] }) => {
-    setMode("quiz");
-    const generated = generateAssessment(
-      lesson.quizzes, lesson.summary || "", "quiz", config.count, "moderate", config.types, "recommended", {}
-    );
-    setQuestions(prepareScrambledAssessment(generated));
-    resetPlayState(0, 0); 
-  };
-
-  const handleStartExam = (config: { count: number; timeLimit: number; difficulty: string }) => {
-    setMode("mock");
-    // Force a mixed array of all types for the exam
-    const generated = generateAssessment(
-      lesson.quizzes, lesson.summary || "", "mock", config.count, config.difficulty as any, ["multiple-choice", "true-false", "identification"], "recommended", {}
-    );
-    setQuestions(prepareScrambledAssessment(generated));
-    const mockTime = config.timeLimit * 60;
-    resetPlayState(mockTime, mockTime);
-  };
-
-  const resetPlayState = (initialTimeLeft: number, initialDuration: number) => {
+  const resetPlayState = useCallback((initialTimeLeft: number, initialDuration: number) => {
     setCurrentIdx(0);
     setUserAnswers({});
     setFlaggedQuestions({});
@@ -237,23 +269,29 @@ export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
     setDuration(initialDuration);
     setGameState("playing");
     setHasSavedSession(false);
-  };
+  }, []);
 
-  const triggerGrading = () => {
-    setGameState("grading");
-    setGradingProgress(0);
-    setGradingText("Validating blueprint answers...");
-    let prog = 0;
-    const interval = setInterval(() => {
-      prog += 20;
-      setGradingProgress(prog);
-      if (prog === 40) setGradingText("Calculating subject mastery levels...");
-      else if (prog === 80) setGradingText("Compiling performance recommendations...");
-      else if (prog >= 100) { clearInterval(interval); submitGrading(); }
-    }, 400);
-  };
+  const handleStartQuiz = useCallback((config: { count: number; focus: "random" | "weakness"; types: string[] }) => {
+    setMode("quiz");
+    const generated = generateAssessment(
+      lesson.quizzes, lesson.summary || "", "quiz", config.count, "moderate", config.types, "recommended", {}
+    );
+    setQuestions(prepareScrambledAssessment(generated));
+    resetPlayState(0, 0); 
+  }, [lesson.quizzes, lesson.summary, resetPlayState]);
 
-  const submitGrading = async () => {
+  const handleStartExam = useCallback((config: { count: number; timeLimit: number; difficulty: string }) => {
+    setMode("mock");
+    // Force a mixed array of all types for the exam
+    const generated = generateAssessment(
+      lesson.quizzes, lesson.summary || "", "mock", config.count, config.difficulty as any, ["multiple-choice", "true-false", "identification"], "recommended", {}
+    );
+    setQuestions(prepareScrambledAssessment(generated));
+    const mockTime = config.timeLimit * 60;
+    resetPlayState(mockTime, mockTime);
+  }, [lesson.quizzes, lesson.summary, resetPlayState]);
+
+  const submitGrading = useCallback(async () => {
     let correctCount = 0;
     questions.forEach((q, idx) => {
       const ans = userAnswers[idx]?.trim().toLowerCase();
@@ -282,22 +320,45 @@ export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
         await updateStatsAfterQuiz(percentage, totalXP);
       } catch (err) { console.error("Error committing score metrics:", err); }
     }
-  };
+  }, [questions, userAnswers, timeSpent, clearSavedSession, mode, user, lesson.id, updateStatsAfterQuiz]);
 
-  const handleSelectAnswer = (ans: string) => setUserAnswers((prev) => ({ ...prev, [currentIdx]: ans }));
-  const toggleFlag = () => setFlaggedQuestions((prev) => ({ ...prev, [currentIdx]: !prev[currentIdx] }));
-  const handlePrev = () => { if (currentIdx > 0) { setCurrentIdx((prev) => prev - 1); setReviewMode(false); } };
-  const handleNext = () => { if (currentIdx < questions.length - 1) { setCurrentIdx((prev) => prev + 1); setReviewMode(false); } };
-  const checkQuizAnswer = () => setQuizChecked((prev) => ({ ...prev, [currentIdx]: true }));
+  const triggerGrading = useCallback(() => {
+    setGameState("grading");
+    setGradingProgress(0);
+    setGradingText("Validating blueprint answers...");
+    let prog = 0;
+
+    if (gradingIntervalRef.current) clearInterval(gradingIntervalRef.current);
+
+    gradingIntervalRef.current = setInterval(() => {
+      prog += 20;
+      setGradingProgress(prog);
+      if (prog === 40) setGradingText("Calculating subject mastery levels...");
+      else if (prog === 80) setGradingText("Compiling performance recommendations...");
+      else if (prog >= 100) { 
+        if (gradingIntervalRef.current) {
+          clearInterval(gradingIntervalRef.current);
+          gradingIntervalRef.current = null;
+        }
+        submitGrading(); 
+      }
+    }, 400);
+  }, [submitGrading]);
+
+  const handleSelectAnswer = useCallback((ans: string) => setUserAnswers((prev) => ({ ...prev, [currentIdx]: ans })), [currentIdx]);
+  const toggleFlag = useCallback(() => setFlaggedQuestions((prev) => ({ ...prev, [currentIdx]: !prev[currentIdx] })), [currentIdx]);
+  const handlePrev = useCallback(() => { if (currentIdx > 0) { setCurrentIdx((prev) => prev - 1); setReviewMode(false); } }, [currentIdx]);
+  const handleNext = useCallback(() => { if (currentIdx < questions.length - 1) { setCurrentIdx((prev) => prev + 1); setReviewMode(false); } }, [currentIdx, questions.length]);
+  const checkQuizAnswer = useCallback(() => setQuizChecked((prev) => ({ ...prev, [currentIdx]: true })), [currentIdx]);
 
   const answeredCount = Object.keys(userAnswers).length;
   const progressPercent = questions.length > 0 ? Math.round((answeredCount / questions.length) * 100) : 0;
   
-  const formatTime = (secs: number) => {
+  const formatTime = useCallback((secs: number) => {
     const mins = Math.floor(secs / 60);
     const remains = secs % 60;
     return `${mins}:${remains < 10 ? "0" : ""}${remains}`;
-  };
+  }, []);
 
   const gradeLetter = useMemo(() => {
     if (questions.length === 0) return "F";
@@ -413,13 +474,11 @@ export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
                    })}
 
                   {questions[currentIdx].type === "identification" && (
-                    <input
-                      type="text"
+                    <IdentificationInput
                       disabled={quizChecked[currentIdx] === true}
                       value={userAnswers[currentIdx] || ""}
-                      onChange={(e) => handleSelectAnswer(e.target.value)}
-                      placeholder="Type your answer here..."
-                      className="w-full h-14 px-5 bg-white/5 border border-white/10 rounded-2xl text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-omnave-primary/50 disabled:opacity-60"
+                      onChange={handleSelectAnswer}
+                      className="w-full h-14 px-5 bg-white/5 border border-white/10 rounded-2xl text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-omnave-primary/50 disabled:opacity-60 transform-gpu"
                     />
                   )}
                 </div>
@@ -518,12 +577,10 @@ export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
                  })}
 
                 {questions[currentIdx].type === "identification" && (
-                  <input
-                    type="text"
+                  <IdentificationInput
                     value={userAnswers[currentIdx] || ""}
-                    onChange={(e) => handleSelectAnswer(e.target.value)}
-                    placeholder="Type your answer here..."
-                    className="w-full bg-[#0A0710] border border-white/10 rounded-xl px-4 py-4 text-white placeholder:text-white/30 focus:outline-none focus:border-omnave-primary focus:ring-1 focus:ring-omnave-primary transition-all mt-6"
+                    onChange={handleSelectAnswer}
+                    className="w-full bg-[#0A0710] border border-white/10 rounded-xl px-4 py-4 text-white placeholder:text-white/30 focus:outline-none focus:border-omnave-primary focus:ring-1 focus:ring-omnave-primary transition-all mt-6 transform-gpu"
                   />
                 )}
               </div>
