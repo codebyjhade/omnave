@@ -5,7 +5,9 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Plus } from 'lucide-react';
-import ActionDrawer from './ActionDrawer';
+import dynamic from 'next/dynamic';
+
+const ActionDrawer = dynamic(() => import('./ActionDrawer'), { ssr: false });
 
 export default function BottomNav() {
   const [mounted, setMounted] = useState(false);
@@ -77,8 +79,8 @@ export default function BottomNav() {
 
 function NavItem({ icon, href, active = false }: { icon: React.ReactNode, href: string, active?: boolean }) {
   return (
-    <Link className="relative flex items-center justify-center p-3 group transition-all duration-200 active:scale-[0.97]" href={href} prefetch={true}>
-      <div className={`${active ? 'text-white scale-110' : 'text-white/40 group-hover:text-white/70'} transition-all duration-300 group-hover:-translate-y-1`}>
+    <Link className="relative flex items-center justify-center p-3 group transition-transform duration-200 active:scale-[0.97] transform-gpu" href={href} prefetch={true}>
+      <div className={`${active ? 'text-white scale-110' : 'text-white/40 group-hover:text-white/70'} transition-[color,transform] duration-300 transform-gpu group-hover:-translate-y-1`}>
         {icon}
       </div>
       {active && (

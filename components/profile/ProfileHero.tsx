@@ -107,9 +107,9 @@ export const ProfileHero = memo(function ProfileHero({ profileName, email, initi
         </div>
         <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-omnave-primary rounded-full shadow-[0_0_10px_rgba(127,34,254,0.8)]"
-            initial={{ width: 0 }}
-            animate={{ width: `${progressToNextLevel}%` }}
+            className="h-full w-full bg-omnave-primary rounded-full shadow-[0_0_10px_rgba(127,34,254,0.8)] origin-left transform-gpu"
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: progressToNextLevel / 100 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
           />
         </div>

@@ -5,7 +5,10 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createBrowserClient } from "@supabase/ssr";
-import AuthModal from "@/components/AuthModal";
+import dynamic from "next/dynamic";
+
+const AuthModal = dynamic(() => import("@/components/AuthModal"), { ssr: false });
+
 import { 
   FileText, 
   Sparkles, 
@@ -124,7 +127,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             <div className="relative w-8 h-8 flex items-center justify-center">
               <div className="absolute inset-0 bg-omnave-primary/30 blur-lg rounded-full" />
-              <Image src="/omnave.png" alt="Logo" width={28} height={28} className="relative z-10" />
+              <Image src="/omnave.png" alt="Logo" width={28} height={28} className="relative z-10" priority sizes="28px" />
             </div>
             <span className="font-black text-lg tracking-tight bg-gradient-to-r from-white via-white to-omnave-primary bg-clip-text text-transparent">
               Omnave
@@ -201,7 +204,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-sm sm:text-base text-white/50 leading-relaxed max-w-lg">
-            Omnave is the AI study companion designed to convert raw files, slide decks, and lecture URLs into custom flashcard decks, gamified recall quizzes, and interactive audio chat modules in under 10 seconds.
+            Omnave is the AI study companion designed to convert raw files, study slides, and lecture URLs into custom flashcard decks, gamified recall quizzes, and interactive audio chat modules in under 10 seconds.
           </p>
 
           {/* Action CTAs */}
@@ -253,16 +256,18 @@ export default function LandingPage() {
               <div className="flex-1 flex flex-col gap-3 relative h-16 justify-center items-center overflow-hidden">
                 <div className="w-full h-[1px] bg-gradient-to-r from-purple-500/10 via-omnave-primary/50 to-emerald-500/10 relative">
                   <motion.div 
-                    animate={{ left: ["-10%", "110%"] }}
+                    initial={{ x: "-100%" }}
+                    animate={{ x: ["-100%", "1100%"] }}
                     transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                    className="absolute h-[3px] w-6 bg-omnave-primary blur-[2px] -top-[1px]"
+                    className="absolute h-[3px] w-[10%] bg-omnave-primary blur-[2px] -top-[1px] left-0 transform-gpu"
                   />
                 </div>
                 <div className="w-full h-[1px] bg-gradient-to-r from-purple-500/10 via-omnave-primary/50 to-amber-500/10 relative">
                   <motion.div 
-                    animate={{ left: ["-10%", "110%"] }}
+                    initial={{ x: "-100%" }}
+                    animate={{ x: ["-100%", "1100%"] }}
                     transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 0.5 }}
-                    className="absolute h-[3px] w-6 bg-omnave-primary blur-[2px] -top-[1px]"
+                    className="absolute h-[3px] w-[10%] bg-omnave-primary blur-[2px] -top-[1px] left-0 transform-gpu"
                   />
                 </div>
               </div>

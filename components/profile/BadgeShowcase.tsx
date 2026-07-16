@@ -185,9 +185,9 @@ export const BadgeShowcase = memo(function BadgeShowcase({ onViewAll }: { onView
       {/* Absolute Bottom-Edge Progress Bar */}
       <div className="absolute bottom-0 left-0 w-full h-[2px] bg-white/5" role="progressbar" aria-valuenow={completionPercentage} aria-valuemin={0} aria-valuemax={100} aria-label="Overall badges completion">
         <motion.div
-          className="h-full bg-omnave-primary shadow-[0_0_10px_rgba(var(--omnave-primary),0.5)]"
-          initial={{ width: 0 }}
-          animate={{ width: `${completionPercentage}%` }}
+          className="h-full w-full bg-omnave-primary shadow-[0_0_10px_rgba(var(--omnave-primary),0.5)] origin-left transform-gpu"
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: completionPercentage / 100 }}
           transition={{ duration: 0.4 }}
         />
       </div>

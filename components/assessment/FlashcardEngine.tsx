@@ -166,9 +166,9 @@ export function FlashcardEngine({ lessonId, flashcards, onNavigateToQuiz, onNavi
         <div className="flex items-center gap-2 flex-1 max-w-md">
           <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden border border-white/5">
             <motion.div
-              className="bg-gradient-to-r from-omnave-primary/50 to-omnave-primary h-full rounded-full"
+              className="bg-gradient-to-r from-omnave-primary/50 to-omnave-primary h-full w-full rounded-full origin-left transform-gpu"
               initial={false}
-              animate={{ width: `${((currentSlide + 1) / flashcards.length) * 100}%` }}
+              animate={{ scaleX: (currentSlide + 1) / flashcards.length }}
               transition={{ duration: 0.3, ease: "easeOut" }}
             />
           </div>

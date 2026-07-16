@@ -11,16 +11,25 @@ import Link from "next/link";
 import { Skeleton } from "@/components/Skeleton";
 import { LessonHeader, LessonNav, type TabId, StudySessionBanner, GamificationToast } from "@/components/lesson";
 
-// Our Newly Extracted Engines
-import { SummaryTab } from "@/components/assessment/SummaryTab";
-import { AssessmentEngine } from "@/components/assessment/AssessmentEngine";
-import { FlashcardEngine } from "@/components/assessment/FlashcardEngine";
-
 // Context & Hooks
 import { useAssessmentGuard } from "@/context/AssessmentContext";
 import { useUserContext } from "@/context/UserContext";
 import { useProgress } from "@/hooks/useProgress";
 import { calculateKitProgress } from "@/hooks/useProgressStats";
+import dynamic from "next/dynamic";
+
+const SummaryTab = dynamic(
+  () => import("@/components/assessment/SummaryTab").then((mod) => mod.SummaryTab),
+  { ssr: false }
+);
+const AssessmentEngine = dynamic(
+  () => import("@/components/assessment/AssessmentEngine").then((mod) => mod.AssessmentEngine),
+  { ssr: false }
+);
+const FlashcardEngine = dynamic(
+  () => import("@/components/assessment/FlashcardEngine").then((mod) => mod.FlashcardEngine),
+  { ssr: false }
+);
 
 export default function LessonView() {
   const router = useRouter();
@@ -159,9 +168,9 @@ export default function LessonView() {
           </p>
           <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/10">
             <motion.div
-              className="h-full bg-gradient-to-r from-omnave-primary/50 to-omnave-primary rounded-full relative"
-              initial={{ width: "0%" }}
-              animate={{ width: "100%" }}
+              className="h-full w-full bg-gradient-to-r from-omnave-primary/50 to-omnave-primary rounded-full relative origin-left transform-gpu"
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: 1 }}
               transition={{ duration: 18, ease: "linear" }}
             >
                <div className="absolute top-0 right-0 bottom-0 w-10 bg-white/20 blur-[5px] animate-pulse" />

@@ -98,9 +98,9 @@ export const LessonHeader = memo(function LessonHeader({
           </div>
           <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/5">
             <motion.div
-              className="bg-gradient-to-r from-omnave-primary/50 to-omnave-primary h-full rounded-full"
-              initial={{ width: 0 }}
-              animate={{ width: `${completionPercentage}%` }}
+              className="bg-gradient-to-r from-omnave-primary/50 to-omnave-primary h-full w-full rounded-full origin-left transform-gpu"
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: completionPercentage / 100 }}
               transition={{ duration: 0.3, ease: "easeOut" }}
             />
           </div>

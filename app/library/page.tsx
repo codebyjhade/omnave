@@ -7,12 +7,17 @@ import { LibrarySearch } from "@/components/library/LibrarySearch";
 import { FilterChips, FilterId } from "@/components/library/FilterChips";
 import { ContinueLearning } from "@/components/library/ContinueLearning";
 import { LessonCard } from "@/components/library/LessonCard";
-import { DeleteLessonDialog } from "@/components/library/DeleteLessonDialog";
 import { EmptyLibrary } from "@/components/library/EmptyLibrary";
 import { LoadingSkeleton } from "@/components/library/LoadingSkeleton";
 import { useLessons } from "@/hooks/useLessons";
 import { useProgress } from "@/hooks/useProgress";
 import { calculateKitProgress } from "@/hooks/useProgressStats";
+import dynamic from "next/dynamic";
+
+const DeleteLessonDialog = dynamic(
+  () => import("@/components/library/DeleteLessonDialog").then((mod) => mod.DeleteLessonDialog),
+  { ssr: false }
+);
 
 export default function LibraryPage() {
   const { lessons: notes, loading, refreshLessons } = useLessons();

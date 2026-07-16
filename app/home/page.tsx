@@ -1,12 +1,14 @@
 'use client';
 
 import Header from "@/components/Header";
-import CurrentLessonCard from "@/components/CurrentLessonCard";
 import ProgressOverview from "@/components/ProgressOverview";
 import Checklist from "@/components/Checklist";
 import AIRecommendation from "@/components/AIRecommendation";
 import { useLessons } from "@/hooks/useLessons";
-import CinematicLaunchpad from "@/components/CinematicLaunchpad";
+import dynamic from "next/dynamic";
+
+const CurrentLessonCard = dynamic(() => import("@/components/CurrentLessonCard"), { ssr: false });
+const CinematicLaunchpad = dynamic(() => import("@/components/CinematicLaunchpad"), { ssr: false });
 
 export default function HomePage() {
   const { lessons, loading } = useLessons();

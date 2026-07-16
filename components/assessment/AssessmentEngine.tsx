@@ -368,7 +368,7 @@ export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
                 {/* Progress bar */}
                 <div className="w-full bg-white/5 rounded-2xl p-3 flex items-center gap-3">
                   <div className="flex-1 bg-white/5 h-2 rounded-full overflow-hidden">
-                    <div className="bg-omnave-primary h-full rounded-full transition-all duration-300" style={{ width: `${((currentIdx + 1) / questions.length) * 100}%` }} />
+                    <div className="bg-omnave-primary h-full w-full rounded-full transition-transform duration-300 transform-gpu origin-left" style={{ transform: `scaleX(${(currentIdx + 1) / questions.length})` }} />
                   </div>
                   <span className="text-[10px] font-black text-white/50">Q{currentIdx + 1}/{questions.length}</span>
                 </div>
@@ -681,8 +681,8 @@ export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
         <div className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 py-4 bg-[#0A0710]/95 backdrop-blur-xl border-b border-white/5 flex items-center justify-between">
            {/* 2px Absolute Top Progress Bar */}
            <div 
-             className="absolute top-0 left-0 h-[2px] bg-omnave-primary transition-all duration-300" 
-             style={{ width: `${((currentIdx + 1) / questions.length) * 100}%` }}
+             className="absolute top-0 left-0 w-full h-[2px] bg-omnave-primary transition-transform duration-300 transform-gpu origin-left" 
+             style={{ transform: `scaleX(${(currentIdx + 1) / questions.length})` }}
            />
 
            {/* Left: Leave / Abort Action */}

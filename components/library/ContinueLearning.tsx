@@ -83,8 +83,8 @@ export function ContinueLearning({
         {/* Edge-to-Edge Progress Bar */}
         <div className="absolute bottom-0 left-0 right-0 h-[4px] bg-white/5 pointer-events-none">
           <div 
-            className="h-full bg-gradient-to-r from-purple-600 to-omnave-primary relative shadow-[0_0_10px_rgba(127,34,254,0.8)] transition-all duration-500" 
-            style={{ width: `${progress}%` }}
+            className="h-full w-full bg-gradient-to-r from-purple-600 to-omnave-primary relative shadow-[0_0_10px_rgba(127,34,254,0.8)] transition-transform duration-500 transform-gpu origin-left" 
+            style={{ transform: `scaleX(${progress / 100})` }}
           >
             <div className="absolute right-0 top-0 bottom-0 w-6 bg-white/40 blur-[3px]" />
           </div>
