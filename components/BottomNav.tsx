@@ -77,8 +77,8 @@ export default function BottomNav() {
 
 function NavItem({ icon, href, active = false }: { icon: React.ReactNode, href: string, active?: boolean }) {
   return (
-    <Link className="relative flex items-center justify-center p-3 group" href={href}>
-      <div className={`${active ? 'text-white' : 'text-white/40 group-hover:text-white/70'} transition-all duration-300 group-hover:-translate-y-1`}>
+    <Link className="relative flex items-center justify-center p-3 group transition-all duration-200 active:scale-[0.97]" href={href} prefetch={true}>
+      <div className={`${active ? 'text-white scale-110' : 'text-white/40 group-hover:text-white/70'} transition-all duration-300 group-hover:-translate-y-1`}>
         {icon}
       </div>
       {active && (

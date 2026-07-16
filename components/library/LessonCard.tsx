@@ -87,7 +87,7 @@ export function LessonCard({
 
   const cardClasses = isGhostLesson
     ? "relative flex flex-col p-4 pb-5 bg-[#130E24]/30 border border-dashed border-white/10 backdrop-blur-sm rounded-2xl overflow-hidden opacity-70 w-full select-none min-h-[140px]"
-    : "relative flex flex-col p-4 pb-5 bg-[#130E24]/60 backdrop-blur-sm border border-white/5 rounded-2xl overflow-hidden hover:bg-white/[0.02] transition-colors cursor-pointer select-none group w-full min-h-[140px]";
+    : "relative flex flex-col p-4 pb-5 bg-[#130E24]/60 backdrop-blur-sm border border-white/5 rounded-2xl overflow-hidden hover:bg-white/[0.02] transition-all duration-200 active:scale-[0.97] cursor-pointer select-none group w-full min-h-[140px]";
 
   const displayTitle = ai_title || (isGhostLesson ? "Analyzing topic..." : getCleanTitle(filename));
 
