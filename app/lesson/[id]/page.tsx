@@ -218,7 +218,7 @@ export default function LessonView() {
         <header id="global-lesson-header" className="w-full flex items-center justify-between px-6 py-4 bg-[#0A0710]/40 backdrop-blur-md border-b border-white/5 sticky top-0 z-50 select-none">
           {viewMode === "hub" ? (
             <button
-              onClick={() => router.back()}
+              onClick={() => router.push('/library')}
               className="flex items-center gap-2 px-3 py-1.5 -ml-3 text-white/70 hover:text-white hover:bg-white/5 rounded-lg active:scale-95 transition-all duration-200 select-none cursor-pointer"
               aria-label="Go back to Library"
             >
