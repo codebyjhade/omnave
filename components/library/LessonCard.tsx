@@ -6,13 +6,12 @@ import { FileText, MoreVertical, Trash2, Clock, Star, Edit3, Share2, BrainCircui
 
 interface LessonCardProps {
   id: string;
-  filePath: string;
-  summary: string;
+  filename: string;
+  ai_title?: string | null;
   createdAt: string;
   flashcardsCount: number;
   quizzesCount: number;
   progress: number;
-  studyTime: string;
   onDeleteClick: (id: string) => void;
   highlightText?: string;
   isProcessed?: boolean;
@@ -20,10 +19,12 @@ interface LessonCardProps {
 
 export function LessonCard({
   id,
-  filePath,
+  filename,
+  ai_title,
   createdAt,
+  flashcardsCount,
+  quizzesCount,
   progress,
-  studyTime,
   onDeleteClick,
   highlightText = "",
   isProcessed = true,
@@ -32,9 +33,13 @@ export function LessonCard({
   const menuRef = useRef<HTMLDivElement>(null);
   const isGhostLesson = !isProcessed;
 
-  const getCleanTitle = (path: string) => {
-    const parts = path.split("_");
-    return parts.slice(1).join("_").replace(".pdf", "") || "Study Material";
+  const getCleanTitle = (name: string) => {
+    // Strip timestamp or leading index if present (e.g. 1715202600_Lesson_9 -> Lesson_9)
+    const parts = name.split("_");
+    if (parts.length > 1 && /^\d+$/.test(parts[0])) {
+      return parts.slice(1).join("_").replace(".pdf", "") || "Study Material";
+    }
+    return name.replace(".pdf", "") || "Study Material";
   };
 
   const formatDate = (dateStr: string) => {
@@ -81,48 +86,40 @@ export function LessonCard({
   }, [showMenu]);
 
   const cardClasses = isGhostLesson
-    ? "bg-black/[0.25] border border-dashed border-white/10 backdrop-blur-2xl rounded-2xl p-5 pb-8 relative shadow-xl opacity-70 flex flex-col justify-between h-[200px] w-full select-none"
-    : "bg-black/[0.4] border border-white/[0.1] backdrop-blur-2xl rounded-2xl p-5 pb-8 relative shadow-xl transition-all hover:bg-black/[0.6] active:scale-[0.98] cursor-pointer focus-visible:ring-2 focus-visible:ring-omnave-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A] outline-none flex flex-col justify-between h-[200px] w-full select-none";
+    ? "relative flex flex-col p-4 pb-5 bg-[#130E24]/30 border border-dashed border-white/10 backdrop-blur-sm rounded-2xl overflow-hidden opacity-70 w-full select-none min-h-[140px]"
+    : "relative flex flex-col p-4 pb-5 bg-[#130E24]/60 backdrop-blur-sm border border-white/5 rounded-2xl overflow-hidden hover:bg-white/[0.02] transition-colors cursor-pointer select-none group w-full min-h-[140px]";
+
+  const displayTitle = ai_title || (isGhostLesson ? "Analyzing topic..." : getCleanTitle(filename));
 
   const cardContent = (
     <>
-      {/* Top Section: PDF Icon, Title, and Context Menu */}
-      <div className="flex items-start justify-between gap-3 w-full">
-        <div className="flex items-center gap-3 min-w-0">
-          {/* PDF Icon container */}
-          <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center shrink-0">
-            <FileText size={18} />
-          </div>
-          <div className="min-w-0 flex flex-col leading-tight">
-            <span className="text-[10px] font-semibold text-white/40">
-              {formatDate(createdAt)}
-            </span>
-            <h3 
-              className={`text-xs sm:text-sm font-bold truncate mt-0.5 ${isGhostLesson ? "text-white/60" : "text-white group-hover:text-omnave-primary transition-colors"}`}
-              title={getCleanTitle(filePath)}
-            >
-              {renderHighlightedTitle(getCleanTitle(filePath), highlightText)}
-            </h3>
-          </div>
+      {/* Top Row: Icon & Action Menu */}
+      <div className="flex justify-between items-start w-full mb-3">
+        <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-omnave-primary/10 border border-omnave-primary/20 text-omnave-primary flex items-center justify-center">
+          <FileText className="w-5 h-5" />
         </div>
+        <div className="relative shrink-0 flex items-center" ref={menuRef}>
+          {isGhostLesson ? (
+            <span className="text-[9px] font-bold uppercase tracking-wider text-white/40 bg-white/5 px-2.5 py-1 rounded-md border border-white/10 shrink-0">
+              Processing
+            </span>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowMenu(!showMenu);
+              }}
+              className="text-white/40 hover:text-white transition-colors -mt-1 -mr-2 p-2 focus:outline-none"
+              aria-label="More study options"
+              aria-expanded={showMenu}
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+          )}
 
-        {/* Options Dropdown Menu */}
-        <div className="relative shrink-0" ref={menuRef}>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setShowMenu(!showMenu);
-            }}
-            className="w-11 h-11 rounded-xl text-white/40 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center focus:outline-none"
-            aria-label="More study options"
-            aria-expanded={showMenu}
-          >
-            <MoreVertical className="w-4 h-4" />
-          </button>
- 
           {showMenu && (
-            <div className="absolute right-0 mt-1 w-40 bg-[#121212]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl py-1 z-20 animate-in fade-in slide-in-from-top-1 duration-150">
+            <div className="absolute right-0 top-10 w-40 bg-[#121212]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl py-1 z-20 animate-in fade-in slide-in-from-top-1 duration-150">
               {/* Rename */}
               <button
                 disabled
@@ -155,7 +152,7 @@ export function LessonCard({
 
               <div className="border-t border-white/5 my-1" />
 
-              {/* Delete Button (Now safely tucked inside the menu) */}
+              {/* Delete Button */}
               <button
                 onClick={(e) => {
                   e.preventDefault();
@@ -174,37 +171,39 @@ export function LessonCard({
         </div>
       </div>
 
-      {/* Bottom Section: Study Time Metadata */}
-      <div className="flex items-center justify-between gap-2">
-        {isGhostLesson ? (
-          <div className="flex items-center gap-2 text-xs text-white/40 font-semibold animate-pulse">
-            <BrainCircuit className="w-3.5 h-3.5" />
-            <span>AI is generating lesson...</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1 text-xs text-white/50 font-semibold">
-            <Clock className="w-3.5 h-3.5 text-white/40" />
-            <span>{studyTime}</span>
-            <span className="text-white/20 mx-1">·</span>
-            <span className="text-white/40">{progress}%</span>
-          </div>
-        )}
-        
-        <div className="flex items-center gap-2">
-          {isGhostLesson && (
-            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45 bg-white/5 px-2.5 py-1.5 rounded-full border border-white/10">
-              Processing
-            </span>
-          )}
-        </div>
+      {/* Text Group (Pushes bottom content down) */}
+      <div className="flex flex-col flex-1 mt-3 mb-4 min-w-0">
+        <h3 
+          className={`text-[14px] font-bold text-white leading-snug line-clamp-2 text-left ${isGhostLesson ? "text-white/60" : "text-white group-hover:text-omnave-primary transition-colors"}`} 
+          title={displayTitle}
+        >
+          {renderHighlightedTitle(displayTitle, highlightText)}
+        </h3>
+        <p className="text-[12px] text-white/40 truncate mt-1 flex items-center gap-1.5 text-left" title={filename}>
+          <FileText className="w-3.5 h-3.5 shrink-0 text-white/40" /> 
+          {filename}
+        </p>
       </div>
 
-      {/* Absolute Bottom-Edge Progress Bar (Hide if generating) */}
+      {/* Meta Row (Anchored at bottom) */}
+      <div className="mt-auto pb-1 text-left">
+        {isGhostLesson ? (
+          <p className="text-[11px] text-white/40 font-medium tracking-wide animate-pulse">
+            Generating study kit...
+          </p>
+        ) : (
+          <p className="text-[11px] text-white/40 font-medium tracking-wide">
+            {flashcardsCount} {flashcardsCount === 1 ? "Card" : "Cards"} • {quizzesCount} {quizzesCount === 1 ? "Quiz" : "Quizzes"}
+          </p>
+        )}
+      </div>
+
+      {/* Progress Bar (Absolute to OUTER container) */}
       {!isGhostLesson && (
-        <div className="absolute bottom-0 left-0 w-full h-[2px] bg-white/5" role="progressbar">
+        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/5 pointer-events-none">
           <div 
-            className="h-full bg-omnave-primary rounded-r-full transition-all duration-500"
-            style={{ width: `${progress}%` }} 
+            className="h-full bg-gradient-to-r from-purple-600 to-omnave-primary transition-all duration-500" 
+            style={{ width: `${progress}%` }}
           />
         </div>
       )}
@@ -213,7 +212,7 @@ export function LessonCard({
 
   if (isGhostLesson) {
     return (
-      <div className={cardClasses} aria-label={`Processing study kit: ${getCleanTitle(filePath)}`} aria-disabled="true">
+      <div className={cardClasses} aria-label={`Processing study kit: ${getCleanTitle(filename)}`} aria-disabled="true">
         {cardContent}
       </div>
     );
@@ -223,7 +222,7 @@ export function LessonCard({
     <Link
       href={`/lesson/${id}`}
       className={cardClasses}
-      aria-label={`Open study kit: ${getCleanTitle(filePath)}`}
+      aria-label={`Open study kit: ${getCleanTitle(filename)}`}
     >
       {cardContent}
     </Link>

@@ -111,11 +111,11 @@ export function SummaryTab({ summary }: SummaryTabProps) {
           <span>Explain Like I'm 5</span>
         </button>
  
-        <div className="bg-black/[0.4] border border-white/[0.1] backdrop-blur-2xl p-6 md:p-8 rounded-[24px] shadow-premium-glass transition-colors duration-150 relative group">
+        <div className="bg-[#130E24]/60 backdrop-blur-xl border border-white/5 p-6 md:p-8 rounded-[24px] shadow-premium-glass transition-colors duration-150 relative group">
           <div className="absolute top-4 right-4 bg-white/5 border border-white/10 px-3 py-1 rounded-full text-[9px] font-bold text-white/40 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none">
             Highlight text to ask tutor
           </div>
-          <div className="select-text prose prose-invert max-w-none" id="summary-text">
+          <div className="select-text prose prose-invert max-w-none prose-p:text-white/70 prose-p:leading-relaxed prose-headings:text-white prose-headings:font-bold prose-li:text-white/70 marker:text-omnave-primary" id="summary-text">
             <MarkdownRenderer text={summary || "No summary content."} variant="summary" />
           </div>
         </div>

@@ -8,6 +8,7 @@ export interface GenerateNotesParams {
 }
 
 export interface StudyKitResponse {
+  ai_title?: string;
   summary: string;
   flashcards: Array<{ front: string; back: string }>;
   quizzes: Array<{

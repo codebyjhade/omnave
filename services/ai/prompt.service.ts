@@ -55,7 +55,7 @@ export class PromptService {
       `;
     }
 
-    // THE MAIN BATCH PROMPT (Returns Summary, 15 Flashcards, and 20 Baseline Quizzes)
+    // THE MAIN BATCH PROMPT (Returns ai_title, Summary, 15 Flashcards, and 20 Baseline Quizzes)
     return `
       You are an expert university professor. Read the attached document and extract the core concepts. 
       
@@ -63,6 +63,7 @@ export class PromptService {
 
       Return ONLY a valid JSON object matching this exact structure:
       {
+        "ai_title": "A short, catchy, human-readable semantic academic topic or title for this study kit (e.g. 'Advanced Cell Biology', 'Introduction to Data Structures'). Limit to 4-6 words maximum.",
         "summary": "A beautifully formatted summary in Markdown. Start with a '### 📌 TL;DR' section (2-3 sentences summarizing the absolute core message). Next, add a '### 💡 Key Takeaways' section with bullet points of important concepts using bold words for crucial terms. Finally, write a '### 📖 Detailed Analysis' section summarizing details in 2 paragraphs. The summary must be exhaustive but extremely easy to understand, using basic analogies.",
         "flashcards": [
           { "front": "Key Term or Concept", "back": "Detailed definition or explanation" }
@@ -80,11 +81,12 @@ export class PromptService {
       }
       
       STRICT REQUIREMENTS:
-      1. Generate exactly 15 flashcards in the "flashcards" array. Keep definitions under 15 words.
-      2. Generate exactly 20 questions in the "quizzes" array.
-      3. The "explanation" for each question MUST BE EXTREMELY SHORT (Maximum 10 words).
-      4. The questions MUST be a randomized mix of "multiple-choice", "true-false", and "identification" types.
-      5. CRITICAL JSON SAFETY: Do NOT use unescaped quotation marks inside your strings. Use single quotes (') instead.
+      1. Generate a high-quality "ai_title" summarizing the primary subject topic.
+      2. Generate exactly 15 flashcards in the "flashcards" array. Keep definitions under 15 words.
+      3. Generate exactly 20 questions in the "quizzes" array.
+      4. The "explanation" for each question MUST BE EXTREMELY SHORT (Maximum 10 words).
+      5. The questions MUST be a randomized mix of "multiple-choice", "true-false", and "identification" types.
+      6. CRITICAL JSON SAFETY: Do NOT use unescaped quotation marks inside your strings. Use single quotes (') instead.
     `;
   }
 }

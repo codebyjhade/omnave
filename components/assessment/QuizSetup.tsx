@@ -29,7 +29,7 @@ export function QuizSetup({ onStartQuiz }: QuizSetupProps) {
     <div className="w-full max-w-3xl mx-auto mt-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="mb-8 text-left">
         <h2 className="text-[10px] font-extrabold tracking-[0.2em] text-neutral-500 uppercase mb-2">Formative Assessment</h2>
-        <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-white mb-3">Custom Practice Quiz</h1>
+        <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-white/70 tracking-tight mb-3">Custom Practice Quiz</h1>
         <p className="text-sm text-white/50 max-w-xl">Configure your ideal study session. Select your preferred formats and let the AI pull from the massive master question bank.</p>
       </div>
  

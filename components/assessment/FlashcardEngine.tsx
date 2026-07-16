@@ -183,11 +183,14 @@ export function FlashcardEngine({ lessonId, flashcards, onNavigateToQuiz, onNavi
         <div className={`relative w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${isFlipped ? '[transform:rotateY(180deg)]' : ''}`}>
 
           {/* 3. THE FRONT FACE (Displays the Term) */}
-          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] bg-gradient-to-br from-omnave-primary to-[#4F46E5] rounded-3xl p-6 flex flex-col items-center justify-center shadow-lg">
+          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] bg-[#130E24]/80 backdrop-blur-xl border border-omnave-primary/40 rounded-3xl shadow-[0_0_40px_rgba(127,34,254,0.15)] flex flex-col items-center justify-center p-8 overflow-hidden transition-transform duration-300">
+            {/* Ambient Radial Glow */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(127,34,254,0.15)_0%,transparent_70%)] pointer-events-none" aria-hidden="true" />
+            
             <span className="absolute top-6 right-6 text-[10px] font-extrabold tracking-widest text-white/50 uppercase">Concept Card</span>
             
             {/* RENDER THE TERM HERE */}
-            <h3 className="text-white text-2xl md:text-3xl font-bold text-center leading-tight">
+            <h3 className="text-3xl font-bold text-white drop-shadow-md text-center leading-tight">
               {flashcards[currentSlide].front}
             </h3>
             
@@ -195,13 +198,18 @@ export function FlashcardEngine({ lessonId, flashcards, onNavigateToQuiz, onNavi
           </div>
 
           {/* 4. THE BACK FACE (Displays the Explanation - MUST HAVE rotateY(180deg)) */}
-          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] bg-[#121212] border border-white/10 rounded-3xl p-6 flex flex-col items-center justify-center shadow-lg overflow-y-auto">
+          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] bg-[#130E24]/80 backdrop-blur-xl border border-omnave-primary/40 rounded-3xl shadow-[0_0_40px_rgba(127,34,254,0.15)] flex flex-col items-center justify-center p-8 overflow-hidden transition-transform duration-300">
+            {/* Ambient Radial Glow */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(127,34,254,0.15)_0%,transparent_70%)] pointer-events-none" aria-hidden="true" />
+
             <span className="absolute top-6 right-6 text-[10px] font-extrabold tracking-widest text-white/50 uppercase">Explanation</span>
             
             {/* RENDER THE EXPLANATION HERE */}
-            <p className="text-white/90 text-lg md:text-xl text-center leading-relaxed whitespace-pre-line px-4">
-              {flashcards[currentSlide].back} 
-            </p>
+            <div className="w-full max-h-full overflow-y-auto px-4 py-8 flex items-center justify-center">
+              <p className="text-2xl sm:text-3xl font-bold text-white drop-shadow-md text-center leading-normal whitespace-pre-line">
+                {flashcards[currentSlide].back} 
+              </p>
+            </div>
           </div>
 
         </div>

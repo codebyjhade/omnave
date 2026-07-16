@@ -38,6 +38,7 @@ export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
     isAssessmentActive, 
     setIsAssessmentActive, 
     setSaveAndExitHandler,
+    abandonHandler,
     setAbandonHandler,
     triggerNavAttempt 
   } = useAssessmentGuard();
@@ -58,6 +59,7 @@ export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
 
   // Restore State Banner
   const [hasSavedSession, setHasSavedSession] = useState(false);
+  const [showAbortModal, setShowAbortModal] = useState(false);
 
   // Results State
   const [completedTime, setCompletedTime] = useState(0);
@@ -85,12 +87,13 @@ export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
 
   useEffect(() => {
     if (gameState === "playing" || gameState === "review-screen") {
-      setSaveAndExitHandler(() => {
+      setSaveAndExitHandler(() => () => {
         setIsAssessmentActive(false);
       });
-      setAbandonHandler(() => {
+      setAbandonHandler(() => () => {
         clearSavedSession();
         setIsAssessmentActive(false);
+        setGameState("setup");
       });
     } else {
       setSaveAndExitHandler(null);
@@ -312,7 +315,7 @@ export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
   // RENDER WORKSPACE JSX VARIABLE (Fixes the UI Reset Bug!)
   // =============================================================================
   const workspaceContent = (
-    <div className={`w-full max-w-4xl mx-auto space-y-6 select-none text-left ${isZenMode ? "mt-24 pb-24" : ""}`}>
+    <div className={`w-full max-w-4xl mx-auto space-y-6 select-none text-left relative ${isZenMode ? "mt-24 pb-24" : ""}`}>
       
       {/* 1. SETUP SCREENS */}
       {gameState === "setup" && activeTab === "quiz" && (
@@ -342,34 +345,147 @@ export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
             </button>
           </div>
         </div>
-      )}
-
-      {/* 2. PLAYING WORKSPACE */}
+      )}      {/* 2. PLAYING WORKSPACE */}
       {gameState === "playing" && questions[currentIdx] && (
-        <motion.div key="playing" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-          
-          <div className="bg-black/[0.4] border border-white/[0.1] backdrop-blur-2xl rounded-[24px] p-5 md:p-8 shadow-premium-glass space-y-6 relative">
-            
-            {mode === "quiz" && (
-              <div className="w-full bg-white/5 rounded-2xl p-3 flex items-center gap-3">
-                <div className="flex-1 bg-white/5 h-2 rounded-full overflow-hidden">
-                  <div className="bg-omnave-primary h-full rounded-full transition-all duration-300" style={{ width: `${((currentIdx + 1) / questions.length) * 100}%` }} />
+        mode === "quiz" ? (
+          <div className="fixed inset-0 z-[100] bg-[#0A0710] overflow-y-auto flex flex-col min-h-[100dvh] w-full select-none text-left">
+            {/* THE SAFE-AREA ESCAPE HATCH */}
+            <div className="absolute top-0 left-0 w-full p-4 sm:p-8 pt-[max(1rem,env(safe-area-inset-top))] z-50 pointer-events-none">
+              <button 
+                onClick={() => {
+                  if (abandonHandler) abandonHandler();
+                }}
+                className="pointer-events-auto inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white/60 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 transition-all active:scale-95 cursor-pointer"
+              >
+                <span className="text-[11px] font-bold tracking-widest uppercase">✖ End Session</span>
+              </button>
+            </div>
+
+            {/* PERFECTLY CENTERED CARD CONTAINER */}
+            <div className="flex-1 flex items-center justify-center w-full p-4 pt-20 pb-[env(safe-area-inset-bottom)]">
+              <div className="w-full max-w-2xl bg-black/[0.4] border border-white/[0.1] backdrop-blur-2xl rounded-[24px] p-5 md:p-8 shadow-premium-glass space-y-6 relative">
+                
+                {/* Progress bar */}
+                <div className="w-full bg-white/5 rounded-2xl p-3 flex items-center gap-3">
+                  <div className="flex-1 bg-white/5 h-2 rounded-full overflow-hidden">
+                    <div className="bg-omnave-primary h-full rounded-full transition-all duration-300" style={{ width: `${((currentIdx + 1) / questions.length) * 100}%` }} />
+                  </div>
+                  <span className="text-[10px] font-black text-white/50">Q{currentIdx + 1}/{questions.length}</span>
                 </div>
-                <span className="text-[10px] font-black text-white/50">Q{currentIdx + 1}/{questions.length}</span>
-              </div>
-            )}
 
-            <div className="flex justify-between items-start gap-4">
-              <div className="space-y-2">
-                <span className="px-2.5 py-0.5 bg-white/5 border border-white/10 rounded-full text-[9px] font-black text-white/50 uppercase tracking-wider">
-                  {questions[currentIdx].type?.replace("-", " ") || "Question"}
-                </span>
-                <h3 className="text-base sm:text-lg font-black text-white leading-normal pt-1.5 select-text">
-                  {questions[currentIdx].question}
-                </h3>
-              </div>
+                <div className="flex justify-between items-start gap-4">
+                  <div className="space-y-2">
+                    <span className="px-2.5 py-0.5 bg-white/5 border border-white/10 rounded-full text-[9px] font-black text-white/50 uppercase tracking-wider">
+                      {questions[currentIdx].type?.replace("-", " ") || "Question"}
+                    </span>
+                    <h3 className="text-base sm:text-lg font-black text-white leading-normal pt-1.5 select-text">
+                      {questions[currentIdx].question}
+                    </h3>
+                  </div>
+                </div>
 
-              {mode === "mock" && (
+                <div className="space-y-3.5 pt-2">
+                  {(questions[currentIdx].type === "multiple-choice" || questions[currentIdx].type?.toLowerCase() === "true-false") && 
+                   (questions[currentIdx].type?.toLowerCase() === "true-false" ? ["True", "False"] : (questions[currentIdx].options || [])).map((opt, i) => {
+                     const isSel = userAnswers[currentIdx] === opt;
+                     const isQuizRevealed = quizChecked[currentIdx] === true;
+                     const isCor = opt === questions[currentIdx].correctAnswer;
+
+                     let btnStyle = "border-white/10 bg-white/5 hover:bg-white/10 text-white/70";
+                     if (isSel) btnStyle = "border-omnave-primary bg-omnave-primary/10 text-white font-black ring-1 ring-omnave-primary/20";
+                     if (isQuizRevealed) {
+                       if (isCor) btnStyle = "border-emerald-500 bg-emerald-500/10 text-emerald-400 font-black";
+                       else if (isSel) btnStyle = "border-red-500 bg-red-500/10 text-red-400 font-bold";
+                       else btnStyle = "border-white/5 opacity-40 text-white/40";
+                     }
+
+                     return (
+                       <button
+                         key={i}
+                         disabled={isQuizRevealed}
+                         onClick={() => handleSelectAnswer(opt)}
+                         className={`w-full p-4 border rounded-2xl text-xs sm:text-sm font-bold text-left transition-all cursor-pointer flex items-center justify-between ${btnStyle}`}
+                       >
+                         <span>{opt}</span>
+                         {isSel && <CheckCircle2 size={16} className={isQuizRevealed && !isCor ? "text-red-400" : "text-omnave-primary"} />}
+                       </button>
+                     );
+                   })}
+
+                  {questions[currentIdx].type === "identification" && (
+                    <input
+                      type="text"
+                      disabled={quizChecked[currentIdx] === true}
+                      value={userAnswers[currentIdx] || ""}
+                      onChange={(e) => handleSelectAnswer(e.target.value)}
+                      placeholder="Type your answer here..."
+                      className="w-full h-14 px-5 bg-white/5 border border-white/10 rounded-2xl text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-omnave-primary/50 disabled:opacity-60"
+                    />
+                  )}
+                </div>
+
+                {quizChecked[currentIdx] && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                    className={`p-5 rounded-2xl border text-sm leading-relaxed mt-6 ${
+                      (userAnswers[currentIdx]?.trim().toLowerCase() === questions[currentIdx].correctAnswer.trim().toLowerCase())
+                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                        : "bg-red-500/10 border-red-500/30 text-red-400"
+                    }`}
+                  >
+                    <span className="font-black uppercase tracking-wider block mb-2">
+                      {(userAnswers[currentIdx]?.trim().toLowerCase() === questions[currentIdx].correctAnswer.trim().toLowerCase()) ? "✓ Correct" : "✕ Incorrect"}
+                    </span>
+                    <p className="font-medium text-white/80">{questions[currentIdx].explanation}</p>
+                  </motion.div>
+                )}
+
+                <div className="flex justify-between items-center pt-6 border-t border-white/5 mt-6">
+                  <button
+                    onClick={handlePrev} disabled={currentIdx === 0}
+                    className="h-12 px-6 border border-white/10 rounded-xl text-xs font-medium text-white/40 hover:text-white hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  >
+                    Previous
+                  </button>
+
+                  {!quizChecked[currentIdx] && (
+                    <button
+                      onClick={checkQuizAnswer} disabled={!userAnswers[currentIdx]}
+                      className="bg-omnave-primary/20 text-[#D8B4FE] hover:bg-omnave-primary/40 hover:text-white font-semibold transition-colors px-6 py-2.5 rounded-xl border border-omnave-primary/30 cursor-pointer disabled:opacity-30 text-xs"
+                    >
+                      Check Answer
+                    </button>
+                  )}
+
+                  {currentIdx === questions.length - 1 ? (
+                    <button
+                      onClick={triggerGrading}
+                      className="h-12 px-8 text-white text-xs font-black rounded-xl transition-all bg-emerald-500 hover:bg-emerald-600 cursor-pointer"
+                    >
+                      Finish Quiz
+                    </button>
+                  ) : (
+                    <button onClick={handleNext} className="h-12 px-6 border border-white/10 rounded-xl text-xs font-bold text-white hover:bg-white/5 transition-all cursor-pointer">
+                      Next
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <motion.div key="playing" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+            <div className="w-full max-w-2xl mx-auto mt-8 p-6 sm:p-8 bg-[#130E24]/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl space-y-6 relative">
+              <div className="flex justify-between items-start gap-4">
+                <div className="space-y-2">
+                  <span className="px-2.5 py-0.5 bg-white/5 border border-white/10 rounded-full text-[9px] font-black text-white/50 uppercase tracking-wider">
+                    {questions[currentIdx].type?.replace("-", " ") || "Question"}
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-bold text-white leading-snug mt-4 select-text">
+                    {questions[currentIdx].question}
+                  </h3>
+                </div>
+
                 <button
                   onClick={toggleFlag}
                   className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all cursor-pointer ${
@@ -378,96 +494,64 @@ export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
                 >
                   <Flag size={16} className={flaggedQuestions[currentIdx] ? "fill-amber-500" : ""} />
                 </button>
-              )}
-            </div>
+              </div>
 
-            <div className="space-y-3.5 pt-2">
-              {(questions[currentIdx].type === "multiple-choice" || questions[currentIdx].type === "true-false") && (questions[currentIdx].options || ["True", "False"]).map((opt, i) => {
-                const isSel = userAnswers[currentIdx] === opt;
-                const isQuizRevealed = quizChecked[currentIdx] === true;
-                const isCor = opt === questions[currentIdx].correctAnswer;
+              <div className="space-y-3.5 pt-2">
+                {(questions[currentIdx].type === "multiple-choice" || questions[currentIdx].type?.toLowerCase() === "true-false") && 
+                 (questions[currentIdx].type?.toLowerCase() === "true-false" ? ["True", "False"] : (questions[currentIdx].options || [])).map((opt, i) => {
+                   const isSel = userAnswers[currentIdx] === opt;
+                   const isCor = opt === questions[currentIdx].correctAnswer;
 
-                let btnStyle = "border-white/10 bg-white/5 hover:bg-white/10 text-white/70";
-                if (isSel) btnStyle = "border-omnave-primary bg-omnave-primary/10 text-white font-black ring-1 ring-omnave-primary/20";
-                if (mode === "quiz" && isQuizRevealed) {
-                  if (isCor) btnStyle = "border-emerald-500 bg-emerald-500/10 text-emerald-400 font-black";
-                  else if (isSel) btnStyle = "border-red-500 bg-red-500/10 text-red-400 font-bold";
-                  else btnStyle = "border-white/5 opacity-40 text-white/40";
-                }
+                   let btnStyle = "border-white/10 bg-white/5 hover:bg-white/10 text-white/70";
+                   if (isSel) btnStyle = "border-omnave-primary bg-omnave-primary/10 text-white font-black ring-1 ring-omnave-primary/20";
 
-                return (
+                   return (
+                     <button
+                       key={i}
+                       onClick={() => handleSelectAnswer(opt)}
+                       className={`w-full p-4 border rounded-2xl text-xs sm:text-sm font-bold text-left transition-all cursor-pointer flex items-center justify-between ${btnStyle}`}
+                     >
+                       <span>{opt}</span>
+                       {isSel && <CheckCircle2 size={16} className="text-omnave-primary" />}
+                     </button>
+                   );
+                 })}
+
+                {questions[currentIdx].type === "identification" && (
+                  <input
+                    type="text"
+                    value={userAnswers[currentIdx] || ""}
+                    onChange={(e) => handleSelectAnswer(e.target.value)}
+                    placeholder="Type your answer here..."
+                    className="w-full bg-[#0A0710] border border-white/10 rounded-xl px-4 py-4 text-white placeholder:text-white/30 focus:outline-none focus:border-omnave-primary focus:ring-1 focus:ring-omnave-primary transition-all mt-6"
+                  />
+                )}
+              </div>
+
+              <div className="flex justify-between items-center pt-6 border-t border-white/5 mt-6">
+                <button
+                  onClick={handlePrev} disabled={currentIdx === 0}
+                  className="h-12 px-6 border border-white/10 rounded-xl text-xs font-medium text-white/40 hover:text-white hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                >
+                  Previous
+                </button>
+
+                {currentIdx === questions.length - 1 ? (
                   <button
-                    key={i}
-                    disabled={mode === "quiz" && isQuizRevealed}
-                    onClick={() => handleSelectAnswer(opt)}
-                    className={`w-full p-4 border rounded-2xl text-xs sm:text-sm font-bold text-left transition-all cursor-pointer flex items-center justify-between ${btnStyle}`}
+                    onClick={() => setGameState("review-screen")}
+                    className="h-12 px-8 text-white text-xs font-black rounded-xl transition-all bg-amber-500 text-black hover:bg-amber-600 cursor-pointer"
                   >
-                    <span>{opt}</span>
-                    {isSel && <CheckCircle2 size={16} className={mode === "quiz" && isQuizRevealed && !isCor ? "text-red-400" : "text-omnave-primary"} />}
+                    Review Exam
                   </button>
-                );
-              })}
-
-              {questions[currentIdx].type === "identification" && (
-                <input
-                  type="text"
-                  disabled={mode === "quiz" && quizChecked[currentIdx] === true}
-                  value={userAnswers[currentIdx] || ""}
-                  onChange={(e) => handleSelectAnswer(e.target.value)}
-                  placeholder="Type your answer here..."
-                  className="w-full h-14 px-5 bg-white/5 border border-white/10 rounded-2xl text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-omnave-primary/50 disabled:opacity-60"
-                />
-              )}
+                ) : (
+                  <button onClick={handleNext} className="h-12 px-6 border border-white/10 rounded-xl text-xs font-bold text-white hover:bg-white/5 transition-all cursor-pointer">
+                    Next
+                  </button>
+                )}
+              </div>
             </div>
-
-            {mode === "quiz" && quizChecked[currentIdx] && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                className={`p-5 rounded-2xl border text-sm leading-relaxed mt-6 ${
-                  (userAnswers[currentIdx]?.trim().toLowerCase() === questions[currentIdx].correctAnswer.trim().toLowerCase())
-                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                    : "bg-red-500/10 border-red-500/30 text-red-400"
-                }`}
-              >
-                <span className="font-black uppercase tracking-wider block mb-2">
-                  {(userAnswers[currentIdx]?.trim().toLowerCase() === questions[currentIdx].correctAnswer.trim().toLowerCase()) ? "✓ Correct" : "✕ Incorrect"}
-                </span>
-                <p className="font-medium text-white/80">{questions[currentIdx].explanation}</p>
-              </motion.div>
-            )}
-
-            <div className="flex justify-between items-center pt-6 border-t border-white/5 mt-6">
-              <button
-                onClick={handlePrev} disabled={currentIdx === 0}
-                className="h-12 px-6 border border-white/10 rounded-xl text-xs font-bold text-white/50 hover:bg-white/5 disabled:opacity-30 transition-all"
-              >
-                Previous
-              </button>
-
-              {mode === "quiz" && !quizChecked[currentIdx] && (
-                <button
-                  onClick={checkQuizAnswer} disabled={!userAnswers[currentIdx]}
-                  className="h-12 px-8 bg-omnave-primary hover:bg-omnave-primary/80 text-white text-xs font-black rounded-xl disabled:opacity-30 transition-all"
-                >
-                  Check Answer
-                </button>
-              )}
-
-              {currentIdx === questions.length - 1 ? (
-                <button
-                  onClick={() => mode === "quiz" ? triggerGrading() : setGameState("review-screen")}
-                  className={`h-12 px-8 text-white text-xs font-black rounded-xl transition-all ${mode === "quiz" ? "bg-emerald-500 hover:bg-emerald-600" : "bg-amber-500 text-black hover:bg-amber-600"}`}
-                >
-                  {mode === "quiz" ? "Finish Quiz" : "Review Exam"}
-                </button>
-              ) : (
-                <button onClick={handleNext} className="h-12 px-6 border border-white/10 rounded-xl text-xs font-bold text-white hover:bg-white/5 transition-all">
-                  Next
-                </button>
-              )}
-            </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        )
       )}
 
       {/* 3. REVIEW SCREEN */}
@@ -587,46 +671,82 @@ export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
   );
 
   if (isZenMode) {
-    const rawPath = lesson?.file_path || lesson?.content_url || "Exam_Assessment";
-    const titleParts = rawPath.split("_");
-    const displayName = titleParts.length > 1 
-      ? titleParts.slice(1).join("_").replace(".pdf", "") 
-      : rawPath.replace(".pdf", "");
-
     return (
-      <div className="fixed inset-0 z-[9999] bg-[#0A0A0A] overflow-y-auto overflow-x-hidden flex flex-col">
-        {/* Zen Mode Strict Header */}
-        <div className="sticky top-0 z-50 flex items-center justify-between px-6 md:px-10 h-20 bg-[#0A0A0A]/90 backdrop-blur-md border-b border-white/10 shadow-sm">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => triggerNavAttempt(`/library/${lesson.id}`)}
-              className="px-4 py-2 border border-red-500/30 text-red-500 text-xs font-bold rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer"
-            >
-              Abort Exam
-            </button>
-            <div className="hidden sm:block">
-              <span className="text-[10px] font-black text-white/30 uppercase tracking-widest block">Mock Examination</span>
-              <span className="text-sm font-bold text-white/70">{displayName}</span>
-            </div>
-          </div>
+      <div className="fixed inset-0 z-[100] bg-[#0A0710] overflow-y-auto flex flex-col">
+        {/* THE KILLSWITCH: This forces the parent header to vanish regardless of React state */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          #global-lesson-header { display: none !important; }
+        `}} />
+        {/* EXAM HUD HEADER */}
+        <div className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 py-4 bg-[#0A0710]/95 backdrop-blur-xl border-b border-white/5 flex items-center justify-between">
+           {/* 2px Absolute Top Progress Bar */}
+           <div 
+             className="absolute top-0 left-0 h-[2px] bg-omnave-primary transition-all duration-300" 
+             style={{ width: `${((currentIdx + 1) / questions.length) * 100}%` }}
+           />
 
-          {/* Center Timer */}
-          <div className={`flex items-center gap-2 px-5 py-2 rounded-xl border ${timeLeft < 300 ? "bg-red-500/10 border-red-500/30 text-red-500 animate-pulse" : "bg-white/5 border-white/10 text-white"}`}>
-            <Timer size={16} />
-            <span className="font-mono text-lg font-black tracking-wider">{formatTime(timeLeft)}</span>
-          </div>
+           {/* Left: Leave / Abort Action */}
+           <button 
+             onClick={() => setShowAbortModal(true)}
+             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors active:scale-95 cursor-pointer"
+             aria-label="Leave Exam"
+           >
+             <span className="text-sm font-bold tracking-wide">Leave Exam</span>
+           </button>
 
-          {/* Right Progress */}
-          <div className="text-right">
-            <span className="text-[10px] font-black text-white/30 uppercase tracking-widest block">Progress</span>
-            <span className="text-sm font-bold text-white/70">{answeredCount} of {questions.length} Answered</span>
-          </div>
+           {/* Center: Progress */}
+           <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center">
+              <span className="text-[10px] font-bold tracking-widest text-white/40 uppercase">
+                Question {currentIdx + 1} of {questions.length}
+              </span>
+           </div>
+
+           {/* Right: Timer */}
+           <div className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-sm font-mono font-medium text-white">
+              {formatTime(timeLeft)}
+           </div>
         </div>
 
         {/* Exam Workspace */}
-        <div className="flex-1 w-full relative">
+        <div className="flex-1 w-full relative px-4 md:px-8 mt-20">
           {workspaceContent}
         </div>
+
+        {/* Abort Confirmation Modal */}
+        <AnimatePresence>
+          {showAbortModal && (
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-[#130E24] border border-red-500/30 p-6 rounded-2xl max-w-md w-full shadow-2xl text-left"
+              >
+                <h3 className="text-lg font-black text-white mb-2">Abort Examination?</h3>
+                <p className="text-sm text-white/70 leading-relaxed mb-6">
+                  Leaving now will automatically submit your current progress, resulting in a score of 0 for unanswered questions.
+                </p>
+                <div className="flex justify-end gap-3">
+                  <button 
+                    onClick={() => setShowAbortModal(false)}
+                    className="px-4 py-2 text-sm font-bold text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setShowAbortModal(false);
+                      submitGrading();
+                    }}
+                    className="px-5 py-2 text-sm font-black text-white bg-red-600 hover:bg-red-500 rounded-xl transition-all shadow-[0_0_15px_rgba(220,38,38,0.3)] cursor-pointer"
+                  >
+                    Yes, Abort
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }

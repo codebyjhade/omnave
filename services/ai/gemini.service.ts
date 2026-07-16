@@ -69,6 +69,7 @@ export class GeminiServiceProvider implements AIServiceProvider {
     const mainSchema = {
       type: "OBJECT" as any,
       properties: {
+        ai_title: { type: "STRING" as any },
         summary: { type: "STRING" as any },
         flashcards: {
           type: "ARRAY" as any,
@@ -97,7 +98,7 @@ export class GeminiServiceProvider implements AIServiceProvider {
           }
         }
       },
-      required: ["summary", "flashcards", "quizzes"]
+      required: ["ai_title", "summary", "flashcards", "quizzes"]
     };
 
     // 2. Schema for the Supplemental Batches (JSON object with a "quizzes" key)

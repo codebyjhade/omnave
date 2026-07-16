@@ -65,6 +65,21 @@ export function getSubject(path: string): string {
   return name.split(/[\s\-_]+/)[0] || "General";
 }
 
+export function calculateKitProgress(
+  lesson: { id: string; is_processed?: boolean },
+  quizScores: { lesson_id: string; percentage: number }[]
+): number {
+  if (lesson.is_processed === false) return 0;
+
+  const lessonScores = quizScores.filter((score) => score.lesson_id === lesson.id);
+  if (lessonScores.length === 0) {
+    return 5;
+  }
+
+  const maxPercentage = Math.max(...lessonScores.map((s) => s.percentage));
+  return Math.max(5, Math.min(Math.floor(maxPercentage), 100));
+}
+
 function computeLongestStreak(dates: Date[]): number {
   if (dates.length === 0) return 0;
 

@@ -12,6 +12,7 @@ import { EmptyLibrary } from "@/components/library/EmptyLibrary";
 import { LoadingSkeleton } from "@/components/library/LoadingSkeleton";
 import { useLessons } from "@/hooks/useLessons";
 import { useProgress } from "@/hooks/useProgress";
+import { calculateKitProgress } from "@/hooks/useProgressStats";
 
 export default function LibraryPage() {
   const { lessons: notes, loading, refreshLessons } = useLessons();
@@ -22,24 +23,22 @@ export default function LibraryPage() {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const getNoteProgress = useCallback((note: any) => {
+    return calculateKitProgress(note, quizScores);
+  }, [quizScores]);
+
   const stats = useMemo(() => {
     const total = notes.length;
     const ready = notes.filter((note) => note.is_processed !== false).length;
     let avgProgress = 0;
     if (total > 0) {
       const totalProgress = notes.reduce((acc, note) => {
-        const hasQuizScore = quizScores.some((score) => score.lesson_id === note.id);
-        return acc + (hasQuizScore ? 100 : 35);
+        return acc + getNoteProgress(note);
       }, 0);
       avgProgress = Math.round(totalProgress / total);
     }
     return { total, ready, avgProgress };
-  }, [notes, quizScores]);
-
-  const getNoteProgress = useCallback((noteId: string) => {
-    const hasQuizScore = quizScores.some((score) => score.lesson_id === noteId);
-    return hasQuizScore ? 100 : 35;
-  }, [quizScores]);
+  }, [notes, getNoteProgress]);
 
   const getNoteStudyTime = useCallback((summaryText: string) => {
     if (!summaryText) return "5 mins";
@@ -93,6 +92,11 @@ export default function LibraryPage() {
     return parts.slice(1).join("_").replace(".pdf", "") || "Study Material";
   };
 
+  const getNoteRawFilename = (path: string) => {
+    const base = path.split("/").pop() || "";
+    return base.replace(/^\d+_/, "") || "document.pdf";
+  };
+
   const filteredNotes = useMemo(() => {
     return notes.filter((note) => {
       const cleanTitle = getCleanTitle(note.file_path).toLowerCase();
@@ -100,7 +104,7 @@ export default function LibraryPage() {
       const matchesSearch = cleanTitle.includes(searchTerm.toLowerCase()) || subject.toLowerCase().includes(searchTerm.toLowerCase());
       if (!matchesSearch) return false;
 
-      const progress = getNoteProgress(note.id);
+      const progress = getNoteProgress(note);
       switch (activeFilter) {
         case "recent": return true;
         case "ready": return true;
@@ -148,7 +152,7 @@ export default function LibraryPage() {
               </div>
 
               {continueLearningNote && activeFilter === "all" && !searchTerm && (
-                <ContinueLearning noteId={continueLearningNote.id} filePath={continueLearningNote.file_path} progress={getNoteProgress(continueLearningNote.id)} studyTimeRemaining="12 mins left" />
+                <ContinueLearning noteId={continueLearningNote.id} filename={getNoteRawFilename(continueLearningNote.file_path)} ai_title={continueLearningNote.is_processed ? continueLearningNote.title : null} progress={getNoteProgress(continueLearningNote)} studyTimeRemaining="12 mins left" />
               )}
 
               {filteredNotes.length > 0 && (
@@ -164,9 +168,9 @@ export default function LibraryPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+              <div className="grid grid-cols-2 gap-3 w-full">
                 {filteredNotes.map((note) => (
-                  <LessonCard key={note.id} id={note.id} filePath={note.file_path} summary={note.summary || ""} createdAt={note.created_at || new Date().toISOString()} flashcardsCount={Array.isArray(note.flashcards) ? note.flashcards.length : 0} quizzesCount={Array.isArray(note.quizzes) ? note.quizzes.length : 0} progress={getNoteProgress(note.id)} studyTime={getNoteStudyTime(note.summary || "")} onDeleteClick={setDeleteTargetId} highlightText={searchTerm} isProcessed={note.is_processed !== false} />
+                  <LessonCard key={note.id} id={note.id} filename={getNoteRawFilename(note.file_path)} ai_title={note.is_processed ? note.title : null} createdAt={note.created_at || new Date().toISOString()} flashcardsCount={Array.isArray(note.flashcards) ? note.flashcards.length : 0} quizzesCount={Array.isArray(note.quizzes) ? note.quizzes.length : 0} progress={getNoteProgress(note)} onDeleteClick={setDeleteTargetId} highlightText={searchTerm} isProcessed={note.is_processed !== false} />
                 ))}
               </div>
             </>

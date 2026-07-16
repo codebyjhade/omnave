@@ -1,8 +1,9 @@
 "use client";
 
 import { memo } from "react";
-import { BookOpen, BrainCircuit, Presentation, FileQuestion } from "lucide-react";
+import { BookOpen, BrainCircuit, Presentation, FileQuestion, X } from "lucide-react";
 import type { TabId } from "./LessonNav";
+import { useAssessmentGuard } from "@/context/AssessmentContext";
 
 interface StudySessionBannerProps {
   activeTab: TabId;
@@ -29,34 +30,42 @@ function formatDuration(seconds: number): string {
 
 export const StudySessionBanner = memo(function StudySessionBanner({
   activeTab,
-  flashcardCount,
-  quizCount,
   studyDuration,
 }: StudySessionBannerProps) {
   const config = tabConfig[activeTab];
+  const { abandonHandler } = useAssessmentGuard();
 
   return (
-    <div className="flex items-center justify-between py-3 select-none bg-white/5 border border-white/10 rounded-2xl px-4 mb-4 w-full">
+    <div className="flex items-center justify-between w-full px-4 py-2.5 bg-[#130E24]/80 backdrop-blur-md border border-white/5 rounded-full shadow-sm mt-4 select-none antialiased mb-4">
+      {/* Left: Status Dot & Title */}
       <div className="flex items-center gap-2.5">
-        <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-        </span>
-        <span className="flex items-center gap-1.5 text-[11px] font-bold text-white/80">
-          {config.icon}
+        <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse" />
+        <span className="text-[13px] font-semibold text-white/90">
           {config.label}
         </span>
       </div>
-      <div className="flex items-center gap-3 text-[11px] font-semibold text-white/60">
+
+      {/* Right: Timer & Exit Button */}
+      <div className="flex items-center gap-3">
+        {/* Timer */}
         {studyDuration !== undefined && studyDuration > 0 && (
+          <span className="text-[13px] font-mono font-medium text-omnave-primary">
+            {formatDuration(studyDuration)}
+          </span>
+        )}
+        
+        {/* End Button */}
+        {abandonHandler && (
           <>
-            <span>{formatDuration(studyDuration)}</span>
-            <span className="w-1 h-1 rounded-full bg-white/20" />
+            <div className="w-px h-4 bg-white/10" />
+            <button 
+              onClick={() => abandonHandler()}
+              className="text-white/40 hover:text-red-400 hover:bg-red-500/10 px-2 py-1 rounded-md transition-colors text-[12px] font-bold tracking-wide uppercase flex items-center gap-1 active:scale-95 cursor-pointer"
+            >
+              <X size={12} /> End
+            </button>
           </>
         )}
-        <span>{flashcardCount} cards</span>
-        <span className="w-1 h-1 rounded-full bg-white/20" />
-        <span>{quizCount} questions</span>
       </div>
     </div>
   );

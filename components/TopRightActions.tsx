@@ -7,8 +7,8 @@ import Link from "next/link";
 export default function TopRightActions() {
   const pathname = usePathname();
 
-  // Hide on landing/welcome screen
-  if (pathname === '/' || pathname === '/welcome') return null;
+  // Hide on landing/welcome/lesson focus screen
+  if (pathname === '/' || pathname === '/welcome' || pathname?.startsWith('/lesson/')) return null;
 
   return (
     <header className="w-full max-w-[1200px] mx-auto flex items-center px-6 md:px-10 lg:px-12 pt-4 pb-2 bg-transparent border-none shadow-none z-50 select-none pointer-events-auto">

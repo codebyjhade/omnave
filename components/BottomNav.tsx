@@ -19,8 +19,8 @@ export default function BottomNav() {
 
   if (!mounted) return null;
   
-  // Hide the global dock on the landing page
-  if (pathname === '/' || pathname === '/welcome') return null;
+  // Hide the global dock on the landing page and lesson focus hub
+  if (pathname === '/' || pathname === '/welcome' || pathname?.startsWith('/lesson/')) return null;
 
   const navContent = (
     <>

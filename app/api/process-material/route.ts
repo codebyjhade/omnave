@@ -66,6 +66,7 @@ export async function POST(req: Request) {
       .from('materials')
       .update({
         is_processed: true,
+        title: studyData.ai_title || undefined,
         summary: studyData.summary,
         flashcards: studyData.flashcards,
         quizzes: studyData.quizzes
