@@ -7,6 +7,7 @@ import { AssessmentProvider } from "@/context/AssessmentContext";
 import { UploadProvider } from "@/context/UploadContext";
 import OnboardingGuard from "@/components/OnboardingGuard";
 import { PWAProvider } from "@/components/PWAProvider";
+import { ToastProvider } from "@/components/ToastProvider";
 
 export const metadata: Metadata = {
   title: "Omnave",
@@ -50,24 +51,26 @@ export default function RootLayout({
         </div>
 
         <PWAProvider>
-          <UserProvider>
-            <OnboardingGuard>
-              <UploadProvider>
-                <AssessmentProvider>
-                  {/* PAGE CONTENT */}
-                  <div className="relative z-10 w-full min-h-screen flex flex-col">
-                    <TopRightActions/>
-                    <div className="flex-1 w-full">
-                      {children}
+          <ToastProvider>
+            <UserProvider>
+              <OnboardingGuard>
+                <UploadProvider>
+                  <AssessmentProvider>
+                    {/* PAGE CONTENT */}
+                    <div className="relative z-10 w-full min-h-screen flex flex-col">
+                      <TopRightActions/>
+                      <div className="flex-1 w-full">
+                        {children}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* GLOBAL HUDS - Restored to fix the missing header */}
-                  <BottomNav/>
-                </AssessmentProvider>
-              </UploadProvider>
-            </OnboardingGuard>
-          </UserProvider>
+                    {/* GLOBAL HUDS - Restored to fix the missing header */}
+                    <BottomNav/>
+                  </AssessmentProvider>
+                </UploadProvider>
+              </OnboardingGuard>
+            </UserProvider>
+          </ToastProvider>
         </PWAProvider>
       </body>
     </html>

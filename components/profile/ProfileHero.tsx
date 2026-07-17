@@ -14,9 +14,10 @@ interface ProfileHeroProps {
   userTags: string[];
   xp: number;
   streak: number;
+  onEditProfile: () => void;
 }
 
-export const ProfileHero = memo(function ProfileHero({ profileName, email, initial, joinDate, userTags, xp, streak }: ProfileHeroProps) {
+export const ProfileHero = memo(function ProfileHero({ profileName, email, initial, joinDate, userTags, xp, streak, onEditProfile }: ProfileHeroProps) {
   const levelInfo = calculateLevel(xp);
   const level = levelInfo.level;
   const xpInCurrentLevel = levelInfo.xpInLevel;
@@ -91,7 +92,10 @@ export const ProfileHero = memo(function ProfileHero({ profileName, email, initi
               })}
             </div>
 
-            <button className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold text-white transition-colors">
+            <button 
+              onClick={onEditProfile}
+              className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold text-white transition-colors cursor-pointer"
+            >
               Edit Profile
             </button>
           </div>

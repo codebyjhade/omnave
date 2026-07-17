@@ -2,9 +2,37 @@
 
 import { useUserContext } from "@/context/UserContext";
 import { Skeleton } from "@/components/Skeleton";
+import { useMemo } from "react";
 
 export default function Checklist() {
-  const { tasks, lessons, loading } = useUserContext();
+  const { lessons, quizScores, streak, loading } = useUserContext();
+  const isZeroState = lessons.length === 0;
+
+  const goals = useMemo(() => {
+    return [
+      {
+        id: "daily-upload",
+        title: "Upload a PDF",
+        description: "Import a new study document.",
+        rewardXp: 15,
+        completed: lessons.length > 0,
+      },
+      {
+        id: "daily-quiz",
+        title: "Complete a Quiz",
+        description: "Complete one practice quiz on any lesson.",
+        rewardXp: 20,
+        completed: quizScores.length > 0,
+      },
+      {
+        id: "daily-streak",
+        title: "Maintain Streak",
+        description: "Keep your daily study momentum going.",
+        rewardXp: 10,
+        completed: streak > 1,
+      }
+    ];
+  }, [lessons.length, quizScores.length, streak]);
 
   if (loading) {
     return (
@@ -17,13 +45,10 @@ export default function Checklist() {
     );
   }
 
-  const goals = tasks.dailyGoals;
-  const isZeroState = lessons.length === 0;
-
   return (
     <div className="w-full flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between pl-2 mb-1">
+      <div className="flex items-center justify-between pl-2 mb-1 select-none">
         <span className="text-[10px] font-extrabold tracking-[0.2em] text-neutral-500 uppercase">Upcoming Goals</span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/40"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
       </div>
@@ -38,7 +63,7 @@ export default function Checklist() {
         <div className="absolute -bottom-[20%] -left-[10%] w-[250px] h-[250px] bg-omnave-primary/15 blur-[90px] rounded-full pointer-events-none" aria-hidden="true" />
         
         {goals.map((goal, idx) => (
-          <div key={goal.id || idx} className={`flex gap-4 items-start ${goal.completed ? "opacity-50" : "group cursor-pointer"} ${isZeroState ? "opacity-40" : ""}`}>
+          <div key={goal.id || idx} className={`flex gap-4 items-start ${goal.completed ? "opacity-50" : "group cursor-pointer"} ${isZeroState && goal.id !== "daily-upload" ? "opacity-40" : ""}`}>
             {goal.completed ? (
               <div className="mt-1 flex items-center justify-center size-5 rounded-full bg-[#1db954]/20 text-[#1db954] border border-[#1db954]/50 shrink-0">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -46,7 +71,7 @@ export default function Checklist() {
             ) : (
               <div className="mt-1 size-5 rounded-full border-2 border-white/20 group-hover:border-omnave-primary transition-colors shrink-0" />
             )}
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col gap-0.5 text-left">
               <span className={`text-sm font-bold text-white ${goal.completed ? "line-through" : "group-hover:text-omnave-primary transition-colors"}`}>
                 {goal.title}
               </span>
@@ -58,7 +83,7 @@ export default function Checklist() {
         ))}
 
         {isZeroState && (
-          <p className="text-[10px] text-white/40 font-bold mt-2 pt-3 border-t border-white/5 tracking-wider uppercase">
+          <p className="text-[10px] text-white/40 font-bold mt-2 pt-3 border-t border-white/5 tracking-wider uppercase text-left select-none">
             Waiting for activity data to track daily goals.
           </p>
         )}
