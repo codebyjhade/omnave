@@ -9,7 +9,7 @@ interface ExamSetupProps {
   onStartExam: (config: { count: number; timeLimit: number; difficulty: string }) => void;
 }
 
-export function ExamSetup({ maxQuestions, onStartExam }: ExamSetupProps) {
+export const ExamSetup = React.memo(function ExamSetup({ maxQuestions, onStartExam }: ExamSetupProps) {
   // Hardcore scaling: 50 to 80 questions.
   const safeMax = Math.max(1, maxQuestions);
   const countOptions = Array.from(new Set([50, 60, 70, 80].map(n => Math.min(n, safeMax))));
@@ -145,4 +145,6 @@ export function ExamSetup({ maxQuestions, onStartExam }: ExamSetupProps) {
       </div>
     </div>
   );
-}
+});
+
+ExamSetup.displayName = "ExamSetup";

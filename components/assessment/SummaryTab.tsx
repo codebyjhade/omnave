@@ -8,7 +8,7 @@ interface SummaryTabProps {
   summary: string;
 }
 
-export function SummaryTab({ summary }: SummaryTabProps) {
+export const SummaryTab = React.memo(function SummaryTab({ summary }: SummaryTabProps) {
   // Highlight Selection State
   const [selectedText, setSelectedText] = useState("");
   
@@ -136,4 +136,6 @@ export function SummaryTab({ summary }: SummaryTabProps) {
       
     </div>
   );
-}
+});
+
+SummaryTab.displayName = "SummaryTab";

@@ -11,7 +11,7 @@ interface FlashcardEngineProps {
   onNavigateToSummary: () => void;
 }
 
-export function FlashcardEngine({ lessonId, flashcards, onNavigateToQuiz, onNavigateToSummary }: FlashcardEngineProps) {
+export const FlashcardEngine = React.memo(function FlashcardEngine({ lessonId, flashcards, onNavigateToQuiz, onNavigateToSummary }: FlashcardEngineProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isSessionCompleted, setIsSessionCompleted] = useState(false);
@@ -254,4 +254,6 @@ export function FlashcardEngine({ lessonId, flashcards, onNavigateToQuiz, onNavi
       </div>
     </div>
   );
-}
+});
+
+FlashcardEngine.displayName = "FlashcardEngine";

@@ -97,7 +97,7 @@ const prepareScrambledAssessment = (generated: GeneratedQuestion[]) => {
   return scrambledQuestions;
 };
 
-export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
+export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
   const { user, updateStatsAfterQuiz } = useUserContext();
   const { 
     isAssessmentActive, 
@@ -809,4 +809,6 @@ export function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
   }
 
   return workspaceContent;
-}
+});
+
+AssessmentEngine.displayName = "AssessmentEngine";

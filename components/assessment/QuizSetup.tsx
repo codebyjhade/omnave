@@ -8,7 +8,7 @@ interface QuizSetupProps {
   onStartQuiz: (config: { count: number; focus: "random" | "weakness"; types: string[] }) => void;
 }
 
-export function QuizSetup({ onStartQuiz }: QuizSetupProps) {
+export const QuizSetup = React.memo(function QuizSetup({ onStartQuiz }: QuizSetupProps) {
   const [questionCount, setQuestionCount] = useState<number>(15);
   const [focusMode, setFocusMode] = useState<"random" | "weakness">("random");
   
@@ -142,4 +142,6 @@ export function QuizSetup({ onStartQuiz }: QuizSetupProps) {
       </div>
     </div>
   );
-}
+});
+
+QuizSetup.displayName = "QuizSetup";

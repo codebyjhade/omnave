@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { BrainCircuit, ArrowLeft, MoreHorizontal, FileText, Play, Layers, Target, Sparkles, Edit3, RefreshCw, Trash2 } from "lucide-react";
@@ -72,6 +72,18 @@ export default function LessonView() {
   const [isActionLoading, setIsActionLoading] = useState(false);
   const headerMenuRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  const handleNavigateToQuiz = useCallback(() => {
+    setActiveTab("quiz");
+  }, []);
+
+  const handleNavigateToSummary = useCallback(() => {
+    setActiveTab("summary");
+  }, []);
+
+  const memoizedFlashcards = useMemo(() => {
+    return data?.flashcards || [];
+  }, [data?.flashcards]);
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -546,9 +558,9 @@ export default function LessonView() {
                     <div className="pt-4 flex flex-col max-w-2xl mx-auto w-full pb-28 md:pb-16">
                       <FlashcardEngine 
                         lessonId={id as string} 
-                        flashcards={data.flashcards || []} 
-                        onNavigateToQuiz={() => setActiveTab("quiz")}
-                        onNavigateToSummary={() => setActiveTab("summary")}
+                        flashcards={memoizedFlashcards} 
+                        onNavigateToQuiz={handleNavigateToQuiz} 
+                        onNavigateToSummary={handleNavigateToSummary}
                       />
                     </div>
                   )}

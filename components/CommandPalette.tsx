@@ -17,13 +17,15 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    let timer: NodeJS.Timeout;
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+      timer = setTimeout(() => inputRef.current?.focus(), 100);
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
     }
     return () => {
+      if (timer) clearTimeout(timer);
       document.body.style.overflow = "";
     };
   }, [isOpen]);
