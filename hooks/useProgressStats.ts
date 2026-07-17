@@ -73,11 +73,11 @@ export function calculateKitProgress(
 
   const lessonScores = quizScores.filter((score) => score.lesson_id === lesson.id);
   if (lessonScores.length === 0) {
-    return 5;
+    return 0;
   }
 
   const maxPercentage = Math.max(...lessonScores.map((s) => s.percentage));
-  return Math.max(5, Math.min(Math.floor(maxPercentage), 100));
+  return Math.min(Math.floor(maxPercentage), 100);
 }
 
 function computeLongestStreak(dates: Date[]): number {

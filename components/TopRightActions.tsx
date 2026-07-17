@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { usePathname } from "next/navigation";
-import { Bell, Search, Menu, X } from "lucide-react";
+import { Bell, Search, Settings, X } from "lucide-react";
 import Link from "next/link";
 import { useUserContext } from "@/context/UserContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -134,7 +134,7 @@ export default function TopRightActions() {
             className="w-11 h-11 flex items-center justify-center rounded-full bg-white/5 text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A]"
             aria-label="Open settings menu"
           >
-            <Menu size={20}/>
+            <Settings size={20}/>
           </button>
         ) : (
           <button 

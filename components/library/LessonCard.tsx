@@ -86,8 +86,8 @@ export const LessonCard = memo(function LessonCard({
   }, [showMenu]);
 
   const cardClasses = isGhostLesson
-    ? "relative flex flex-col p-4 pb-5 bg-[#130E24]/30 border border-dashed border-white/10 backdrop-blur-sm rounded-2xl overflow-hidden opacity-70 w-full select-none min-h-[140px]"
-    : "relative flex flex-col p-4 pb-5 bg-[#130E24]/60 backdrop-blur-sm border border-white/5 rounded-2xl overflow-hidden hover:bg-white/[0.02] transition-all duration-200 active:scale-[0.97] cursor-pointer select-none group w-full min-h-[140px]";
+    ? `relative flex flex-col p-4 pb-5 bg-[#130E24]/30 border border-dashed border-white/10 backdrop-blur-sm rounded-2xl opacity-70 w-full select-none min-h-[140px] ${showMenu ? 'z-50' : 'z-10'}`
+    : `relative flex flex-col p-4 pb-5 bg-[#130E24]/60 backdrop-blur-sm border border-white/5 rounded-2xl hover:bg-white/[0.02] transition-all duration-200 active:scale-[0.97] cursor-pointer select-none group w-full min-h-[140px] ${showMenu ? 'z-50' : 'z-10'}`;
 
   const displayTitle = ai_title || (isGhostLesson ? "Analyzing topic..." : getCleanTitle(filename));
 
@@ -119,7 +119,7 @@ export const LessonCard = memo(function LessonCard({
           )}
 
           {showMenu && (
-            <div className="absolute right-0 top-10 w-40 bg-[#121212]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl py-1 z-20 animate-in fade-in slide-in-from-top-1 duration-150">
+            <div className="absolute right-0 top-10 w-40 bg-[#1A1528] border border-white/10 rounded-xl shadow-xl py-1 z-20 backdrop-blur-xl animate-in fade-in slide-in-from-top-1 duration-150">
               {/* Rename */}
               <button
                 disabled
@@ -160,7 +160,7 @@ export const LessonCard = memo(function LessonCard({
                   setShowMenu(false);
                   onDeleteClick(id);
                 }}
-                className="w-full text-left px-3 py-3 text-xs font-bold text-red-500 hover:bg-red-500/10 flex items-center gap-2 transition-colors min-h-[44px]"
+                className="w-full text-left px-3 py-3 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center gap-2 transition-colors min-h-[44px]"
                 aria-label="Delete this study kit"
               >
                 <Trash2 className="w-3.5 h-3.5" />

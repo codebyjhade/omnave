@@ -3,9 +3,10 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
-import { BrainCircuit, ArrowLeft, MoreHorizontal, FileText, Play, Layers, Target, Sparkles } from "lucide-react";
+import { BrainCircuit, ArrowLeft, MoreHorizontal, FileText, Play, Layers, Target, Sparkles, Edit3, RefreshCw, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { useToast } from "@/components/ToastProvider";
 
 // UI Components
 import { Skeleton } from "@/components/Skeleton";
@@ -38,7 +39,7 @@ export default function LessonView() {
   const tabParam = searchParams.get("tab");
   const { isAssessmentActive, triggerNavAttempt } = useAssessmentGuard();
   const { loading: contextLoading } = useUserContext();
-  const { quizScores } = useProgress();
+  const { quizScores, refreshProgress } = useProgress();
 
   // Data State
   const [data, setData] = useState<any>(null);
@@ -63,6 +64,106 @@ export default function LessonView() {
   const [studyDuration, setStudyDuration] = useState(0);
   const studyIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [xpReward, setXpReward] = useState<{ xp: number, streakBonus: boolean } | null>(null);
+
+  // Header menu and actions state
+  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [tempTitle, setTempTitle] = useState("");
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const headerMenuRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (headerMenuRef.current && !headerMenuRef.current.contains(e.target as Node)) {
+        setShowHeaderMenu(false);
+      }
+    };
+    if (showHeaderMenu) {
+      document.addEventListener("mousedown", handleOutsideClick);
+    }
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [showHeaderMenu]);
+
+  const handleResetMastery = async () => {
+    const confirmReset = window.confirm("Are you sure you want to reset your mastery progress for this kit? This will delete all quiz scores.");
+    if (!confirmReset) return;
+
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
+      const { error } = await supabase
+        .from('quiz_scores')
+        .delete()
+        .eq('lesson_id', id);
+
+      if (error) throw error;
+
+      toast("Mastery progress reset to 0%", "success");
+      refreshProgress();
+    } catch (err) {
+      toast("Failed to reset progress", "error");
+    }
+  };
+
+  const handleRename = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tempTitle.trim()) return;
+
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
+      const { error } = await supabase
+        .from('materials')
+        .update({ title: tempTitle.trim() })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setData((prev: any) => prev ? { ...prev, title: tempTitle.trim() } : null);
+      toast("Study kit renamed successfully", "success");
+      setShowEditModal(false);
+    } catch (err) {
+      toast("Failed to rename study kit", "error");
+    }
+  };
+
+  const handleDeleteKit = async () => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this study kit? This action cannot be undone.");
+    if (!confirmDelete) return;
+
+    setIsActionLoading(true);
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
+      if (data.content_url) {
+        await supabase.storage.from("study_materials").remove([data.content_url]);
+      }
+
+      const { error } = await supabase
+        .from('materials')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast("Study kit deleted successfully", "success");
+      router.push("/library");
+    } catch (err) {
+      toast("Failed to delete study kit", "error");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
 
   // Tab Navigation Guard
   const handleTabChange = (tab: TabId) => {
@@ -240,9 +341,46 @@ export default function LessonView() {
             {viewMode === "hub" ? "Focus Mode" : "Active Session"}
           </div>
           
-          <button className="p-2 text-white/40 hover:text-white transition-colors rounded-full hover:bg-white/5 cursor-pointer">
-            <MoreHorizontal className="w-5 h-5" />
-          </button>
+          <div className="relative shrink-0 flex items-center" ref={headerMenuRef}>
+            <button 
+              onClick={() => setShowHeaderMenu(!showHeaderMenu)}
+              className="p-2 text-white/40 hover:text-white transition-colors rounded-full hover:bg-white/5 cursor-pointer"
+              aria-label="More options"
+              aria-expanded={showHeaderMenu}
+            >
+              <MoreHorizontal className="w-5 h-5" />
+            </button>
+
+            {showHeaderMenu && (
+              <div className="absolute right-0 top-10 w-44 bg-[#1A1528] border border-white/10 rounded-xl shadow-xl py-1 z-20 backdrop-blur-xl animate-in fade-in slide-in-from-top-1 duration-150">
+                <button
+                  onClick={() => {
+                    setShowHeaderMenu(false);
+                    setTempTitle(displayTitle);
+                    setShowEditModal(true);
+                  }}
+                  className="w-full text-left px-3 py-3 text-xs font-semibold text-white/80 hover:bg-white/[0.05] transition-colors flex items-center gap-2 min-h-[44px] cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-white/60" />
+                  Edit Details
+                </button>
+
+                <div className="border-t border-white/5 my-1" />
+
+                <button
+                  disabled={isActionLoading}
+                  onClick={() => {
+                    setShowHeaderMenu(false);
+                    handleDeleteKit();
+                  }}
+                  className="w-full text-left px-3 py-3 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center gap-2 transition-colors min-h-[44px] cursor-pointer disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete Study Kit
+                </button>
+              </div>
+            )}
+          </div>
         </header>
       )}
 
@@ -432,6 +570,60 @@ export default function LessonView() {
           <GamificationToast xpReward={xpReward} />
         </div>
       </main>
+
+      {/* Rename Modal */}
+      <AnimatePresence>
+        {showEditModal && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowEditModal(false)}
+              className="absolute inset-0 bg-[#0A0710]/80 backdrop-blur-sm cursor-pointer"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+              className="relative w-full max-w-md bg-[#120F20]/96 border border-white/10 rounded-2xl p-6 shadow-2xl z-10"
+            >
+              <h3 className="text-lg font-bold text-white mb-4">Edit Details</h3>
+              <form onSubmit={handleRename} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider">
+                    Study Kit Title
+                  </label>
+                  <input
+                    type="text"
+                    value={tempTitle}
+                    onChange={(e) => setTempTitle(e.target.value)}
+                    placeholder="Enter study kit title"
+                    className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-omnave-primary/40 transition-colors"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex justify-end gap-2.5 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-white/60 hover:text-white bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-omnave-primary hover:bg-omnave-primaryHover transition-colors shadow-lg"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
