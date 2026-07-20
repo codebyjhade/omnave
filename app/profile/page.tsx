@@ -124,7 +124,7 @@ export default function ProfilePage() {
             </h1>
           </header>
 
-          <div className="flex flex-col w-full animate-in fade-in duration-500 space-y-8 pb-16 px-6 md:px-10 lg:px-0">
+          <div className="flex flex-col w-full space-y-8 pb-16 px-6 md:px-10 lg:px-0">
             {/* 1. Profile Hero */}
             <ProfileHero
               profileName={profileName}

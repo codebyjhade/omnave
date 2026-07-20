@@ -48,6 +48,7 @@ export default function LessonView() {
   // Layout State
   const [activeTab, setActiveTab] = useState<TabId>("summary");
   const [viewMode, setViewMode] = useState<"hub" | "study">("hub");
+  const [isExiting, setIsExiting] = useState(false);
 
   // Sync active tab from query params
   useEffect(() => {
@@ -323,7 +324,13 @@ export default function LessonView() {
     : "#";
 
   return (
-    <div className="relative min-h-screen bg-[#0A0710] pb-32 overflow-hidden flex flex-col items-center w-full">
+    <motion.div
+      initial={{ x: "100%" }}
+      animate={{ x: isExiting ? "100%" : 0 }}
+      transition={{ duration: 0.15, ease: [0.32, 0.94, 0.6, 1] }}
+      style={{ willChange: "transform" }}
+      className="relative min-h-screen bg-[#0A0710] pb-32 overflow-hidden flex flex-col items-center w-full"
+    >
       {/* Ambient Spotlight Glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-omnave-primary/10 rounded-full blur-[120px] pointer-events-none -z-10" aria-hidden="true" />
       {/* Dynamic Focus Header */}
@@ -331,8 +338,13 @@ export default function LessonView() {
         <header id="global-lesson-header" className="w-full flex items-center justify-between px-6 py-4 bg-[#0A0710]/40 backdrop-blur-md border-b border-white/5 sticky top-0 z-50 select-none">
           {viewMode === "hub" ? (
             <button
-              onClick={() => router.push('/library')}
-              className="flex items-center gap-2 px-3 py-1.5 -ml-3 text-white/70 hover:text-white hover:bg-white/5 rounded-lg active:scale-95 transition-all duration-200 select-none cursor-pointer"
+              onClick={() => {
+                setIsExiting(true);
+                setTimeout(() => {
+                  router.push('/library');
+                }, 150);
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 -ml-3 text-white/70 hover:text-white hover:bg-white/5 rounded-lg active:scale-[0.97] active:opacity-80 transition-[background-color,opacity] duration-150 select-none cursor-pointer"
               aria-label="Go back to Library"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -341,7 +353,7 @@ export default function LessonView() {
           ) : (
             <button 
               onClick={() => setViewMode("hub")} 
-              className="flex items-center gap-2 px-3 py-1.5 -ml-3 text-white/70 hover:text-white hover:bg-white/5 rounded-lg active:scale-95 transition-all duration-200 select-none cursor-pointer"
+              className="flex items-center gap-2 px-3 py-1.5 -ml-3 text-white/70 hover:text-white hover:bg-white/5 rounded-lg active:scale-[0.97] active:opacity-80 transition-[background-color,opacity] duration-150 select-none cursor-pointer"
               aria-label="Go back to Lesson Hub"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -437,7 +449,7 @@ export default function LessonView() {
                         setViewMode("study");
                         setActiveTab("slides");
                       }}
-                      className="w-full py-4 rounded-2xl bg-omnave-primary hover:bg-omnave-primary/95 text-white font-bold text-base transition-all duration-300 shadow-[0_0_25px_rgba(127,34,254,0.3)] hover:shadow-[0_0_35px_rgba(127,34,254,0.5)] active:scale-[0.99] flex items-center justify-center gap-2 hover:scale-[1.01] cursor-pointer"
+                      className="w-full py-4 rounded-2xl bg-omnave-primary hover:bg-omnave-primary/95 text-white font-bold text-base active:scale-[0.97] active:opacity-80 transition-[background-color,opacity,box-shadow] duration-100 shadow-[0_0_25px_rgba(127,34,254,0.3)] hover:shadow-[0_0_35px_rgba(127,34,254,0.5)] flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Play className="w-4 h-4 fill-white text-white" />
                       Resume Study Session
@@ -463,7 +475,7 @@ export default function LessonView() {
                       setViewMode("study");
                       setActiveTab("slides");
                     }}
-                    className="flex flex-col p-5 bg-[#130E24]/60 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden hover:bg-white/[0.02] hover:border-omnave-primary/20 transition-all text-left min-h-[140px] cursor-pointer group"
+                    className="flex flex-col p-5 bg-[#130E24]/60 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden hover:bg-white/[0.02] hover:border-omnave-primary/20 active:scale-[0.97] active:opacity-80 transition-[background-color,border-color,opacity] duration-100 text-left min-h-[140px] cursor-pointer group"
                   >
                     <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-omnave-primary mb-4 group-hover:border-omnave-primary/50 group-hover:shadow-[0_0_15px_rgba(127,34,254,0.3)] transition-all flex items-center justify-center">
                       <Layers className="w-5 h-5 text-omnave-primary brightness-125" />
@@ -480,7 +492,7 @@ export default function LessonView() {
                       setViewMode("study");
                       setActiveTab("quiz");
                     }}
-                    className="flex flex-col p-5 bg-[#130E24]/60 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden hover:bg-white/[0.02] hover:border-omnave-primary/20 transition-all text-left min-h-[140px] cursor-pointer group"
+                    className="flex flex-col p-5 bg-[#130E24]/60 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden hover:bg-white/[0.02] hover:border-omnave-primary/20 active:scale-[0.97] active:opacity-80 transition-[background-color,border-color,opacity] duration-100 text-left min-h-[140px] cursor-pointer group"
                   >
                     <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-yellow-500 mb-4 group-hover:border-omnave-primary/50 group-hover:shadow-[0_0_15px_rgba(127,34,254,0.3)] transition-all flex items-center justify-center">
                       <Target className="w-5 h-5 text-yellow-500 brightness-125" />
@@ -496,7 +508,7 @@ export default function LessonView() {
                     href={pdfUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex flex-col p-5 bg-[#130E24]/60 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden hover:bg-white/[0.02] hover:border-omnave-primary/20 transition-all text-left min-h-[140px] block cursor-pointer group"
+                    className="flex flex-col p-5 bg-[#130E24]/60 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden hover:bg-white/[0.02] hover:border-omnave-primary/20 active:scale-[0.97] active:opacity-80 transition-[background-color,border-color,opacity] duration-100 text-left min-h-[140px] block cursor-pointer group"
                   >
                     <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-blue-500 mb-4 group-hover:border-omnave-primary/50 group-hover:shadow-[0_0_15px_rgba(127,34,254,0.3)] transition-all flex items-center justify-center">
                       <FileText className="w-5 h-5 text-blue-500 brightness-125" />
@@ -513,7 +525,7 @@ export default function LessonView() {
                       setViewMode("study");
                       setActiveTab("summary");
                     }}
-                    className="flex flex-col p-5 bg-[#130E24]/60 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden hover:bg-white/[0.02] hover:border-omnave-primary/20 transition-all text-left min-h-[140px] cursor-pointer group"
+                    className="flex flex-col p-5 bg-[#130E24]/60 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden hover:bg-white/[0.02] hover:border-omnave-primary/20 active:scale-[0.97] active:opacity-80 transition-[background-color,border-color,opacity] duration-100 text-left min-h-[140px] cursor-pointer group"
                   >
                     <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-purple-500 mb-4 group-hover:border-omnave-primary/50 group-hover:shadow-[0_0_15px_rgba(127,34,254,0.3)] transition-all flex items-center justify-center">
                       <Sparkles className="w-5 h-5 text-purple-500 brightness-125" />
@@ -548,32 +560,61 @@ export default function LessonView() {
                 )}
 
                 <div className="mt-4 md:mt-6 min-h-[450px]">
-                  {/* 1. SUMMARY TAB */}
-                  {activeTab === "summary" && (
-                    <SummaryTab summary={data.summary || ""} />
-                  )}
+                  <AnimatePresence mode="wait">
+                    {/* 1. SUMMARY TAB */}
+                    {activeTab === "summary" && (
+                      <motion.div
+                        key="summary"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                        className="w-full h-full"
+                      >
+                        <SummaryTab summary={data.summary || ""} />
+                      </motion.div>
+                    )}
 
-                  {/* 2. FLASHCARDS TAB */}
-                  {activeTab === "slides" && (
-                    <div className="pt-4 flex flex-col max-w-2xl mx-auto w-full pb-28 md:pb-16">
-                      <FlashcardEngine 
-                        lessonId={id as string} 
-                        flashcards={memoizedFlashcards} 
-                        onNavigateToQuiz={handleNavigateToQuiz} 
-                        onNavigateToSummary={handleNavigateToSummary}
-                      />
-                    </div>
-                  )}
+                    {/* 2. FLASHCARDS TAB */}
+                    {activeTab === "slides" && (
+                      <motion.div
+                        key="slides"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                        className="w-full h-full"
+                      >
+                        <div className="pt-4 flex flex-col max-w-2xl mx-auto w-full pb-28 md:pb-16">
+                          <FlashcardEngine 
+                            lessonId={id as string} 
+                            flashcards={memoizedFlashcards} 
+                            onNavigateToQuiz={handleNavigateToQuiz} 
+                            onNavigateToSummary={handleNavigateToSummary}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
 
-                  {/* 3. QUIZ & EXAM TAB */}
-                  {(activeTab === "quiz" || activeTab === "exam") && (
-                    <div className="flex flex-col w-full pb-20 pt-4">
-                      <AssessmentEngine 
-                        lesson={data} 
-                        activeTab={activeTab as "quiz" | "exam"} 
-                      />
-                    </div>
-                  )}
+                    {/* 3. QUIZ & EXAM TAB */}
+                    {(activeTab === "quiz" || activeTab === "exam") && (
+                      <motion.div
+                        key="quiz"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                        className="w-full h-full"
+                      >
+                        <div className="flex flex-col w-full pb-20 pt-4">
+                          <AssessmentEngine 
+                            lesson={data} 
+                            activeTab={activeTab as "quiz" | "exam"} 
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </motion.div>
             )}
@@ -636,6 +677,6 @@ export default function LessonView() {
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }

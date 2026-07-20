@@ -48,7 +48,7 @@ export default function BottomNav() {
         {/* Center Action Button */}
         <button 
           onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-          className="relative -translate-y-3 w-14 h-14 rounded-full bg-gradient-to-tr from-[#7C3AED] via-[#9333EA] to-[#c084fc] flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-all shadow-[0_8px_25px_rgba(147,51,234,0.5)] border-[1.5px] border-white/20 z-50 overflow-hidden group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A]"
+          className="relative -translate-y-3 w-14 h-14 rounded-full bg-gradient-to-tr from-[#7C3AED] via-[#9333EA] to-[#c084fc] flex items-center justify-center text-white active:scale-[0.95] active:opacity-80 transition-[opacity,box-shadow] duration-100 shadow-[0_8px_25px_rgba(147,51,234,0.5)] border-[1.5px] border-white/20 z-50 overflow-hidden group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A]"
           aria-label="Open study menu"
         >
           {/* Inner glow effect */}
@@ -85,12 +85,12 @@ export default function BottomNav() {
 function NavItem({ icon, href, active = false, ariaLabel }: { icon: React.ReactNode, href: string, active?: boolean, ariaLabel: string }) {
   return (
     <Link 
-      className="relative flex items-center justify-center p-3 group transition-transform duration-200 active:scale-[0.97] transform-gpu focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A] rounded-xl" 
+      className="relative flex items-center justify-center p-3 group active:scale-[0.95] active:opacity-80 transform-gpu focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A] rounded-xl transition-[opacity] duration-100" 
       href={href} 
       prefetch={true}
       aria-label={ariaLabel}
     >
-      <div className={`${active ? 'text-white scale-110' : 'text-white/40 group-hover:text-white/70'} transition-[color,transform] duration-300 transform-gpu group-hover:-translate-y-1`}>
+      <div className={`${active ? 'text-white scale-110' : 'text-white/40 group-hover:text-white/70'} transform-gpu transition-transform duration-100 group-hover:-translate-y-1`}>
         {icon}
       </div>
       {active && (

@@ -1,7 +1,6 @@
 "use client";
 
 import { memo } from "react";
-import { motion } from "framer-motion";
 import { Flame, Calendar, Award, Settings } from "lucide-react";
 import Link from "next/link";
 import { calculateLevel } from "@/lib/gamification";
@@ -24,10 +23,7 @@ export const ProfileHero = memo(function ProfileHero({ profileName, email, initi
   const progressToNextLevel = levelInfo.progressPercentage;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
+    <div
       className="bg-[#0f0a1c]/80 border border-white/10 backdrop-blur-md shadow-2xl rounded-2xl p-5 flex flex-col gap-4 relative overflow-hidden"
     >
       {/* Ambient Inner Glow */}
@@ -94,7 +90,7 @@ export const ProfileHero = memo(function ProfileHero({ profileName, email, initi
 
             <button 
               onClick={onEditProfile}
-              className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold text-white transition-colors cursor-pointer"
+              className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold text-white cursor-pointer active:scale-[0.97] active:opacity-80 transition-[background-color,border-color,opacity] duration-100"
             >
               Edit Profile
             </button>
@@ -110,14 +106,12 @@ export const ProfileHero = memo(function ProfileHero({ profileName, email, initi
           <span>{xpInCurrentLevel} / 500 XP</span>
         </div>
         <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full w-full bg-omnave-primary rounded-full shadow-[0_0_10px_rgba(127,34,254,0.8)] origin-left transform-gpu"
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: progressToNextLevel / 100 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
+          <div
+            className="h-full bg-omnave-primary rounded-full shadow-[0_0_10px_rgba(127,34,254,0.8)] transform-gpu"
+            style={{ width: `${progressToNextLevel}%` }}
           />
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 });

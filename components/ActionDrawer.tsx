@@ -86,7 +86,7 @@ export default function ActionDrawer({ isOpen, onClose }: ActionDrawerProps) {
                       <h2 className="text-lg font-extrabold text-white tracking-tight">Create New</h2>
                       <button 
                         onClick={onClose} 
-                        className="w-11 h-11 flex items-center justify-center rounded-full bg-white/5 text-white/50 hover:bg-white/10 hover:text-white transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A]"
+                        className="w-11 h-11 flex items-center justify-center rounded-full bg-white/5 text-white/50 hover:bg-white/10 hover:text-white cursor-pointer active:scale-[0.97] active:opacity-80 transition-[background-color,color,opacity] duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A]"
                         aria-label="Close menu"
                       >
                         ✕
@@ -98,7 +98,7 @@ export default function ActionDrawer({ isOpen, onClose }: ActionDrawerProps) {
                           key={action.id}
                           onClick={() => handleActionClick(action.id)}
                           // TIER 1: Light Glass
-                          className="flex flex-col items-start justify-center p-4 bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] backdrop-blur-xl rounded-2xl transition-all shadow-lg active:scale-95 group relative overflow-hidden text-left cursor-pointer"
+                          className="flex flex-col items-start justify-center p-4 bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] backdrop-blur-xl rounded-2xl shadow-lg active:scale-[0.97] active:opacity-80 transition-[background-color,border-color,opacity] duration-100 group relative overflow-hidden text-left cursor-pointer"
                         >
                           {/* Subtle Hover Glow */}
                           <div className="absolute inset-0 bg-gradient-to-br from-omnave-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -124,7 +124,7 @@ export default function ActionDrawer({ isOpen, onClose }: ActionDrawerProps) {
                     <div className="flex items-center justify-between mb-4">
                       <button 
                         onClick={() => setView('main')} 
-                        className="text-white/60 hover:text-white flex items-center gap-1 text-sm font-medium transition-colors cursor-pointer"
+                        className="text-white/60 hover:text-white flex items-center gap-1 text-sm font-medium cursor-pointer active:scale-[0.97] active:opacity-80 transition-[color,opacity] duration-100"
                       >
                         ← Back
                       </button>
@@ -138,7 +138,7 @@ export default function ActionDrawer({ isOpen, onClose }: ActionDrawerProps) {
                           <button 
                             key={lesson.id}
                             onClick={() => handleLessonClick(lesson.id)}
-                            className="w-full text-left p-4 bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] rounded-xl transition-colors group flex items-center justify-between cursor-pointer"
+                            className="w-full text-left p-4 bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.05] rounded-xl group flex items-center justify-between cursor-pointer active:scale-[0.97] active:opacity-80 transition-[background-color,border-color,opacity] duration-100"
                           >
                             <span className="font-medium text-white truncate pr-4">{lesson.title}</span>
                             <span className="text-white/20 group-hover:text-omnave-primary transition-colors">→</span>
@@ -153,7 +153,7 @@ export default function ActionDrawer({ isOpen, onClose }: ActionDrawerProps) {
 
                     <button 
                       onClick={() => { router.push('/upload'); onClose(); }}
-                      className="w-full mt-4 py-3 rounded-xl bg-omnave-primary/20 text-omnave-primary font-bold text-sm border border-omnave-primary/30 hover:bg-omnave-primary/30 transition-colors cursor-pointer"
+                      className="w-full mt-4 py-3 rounded-xl bg-omnave-primary/20 text-omnave-primary font-bold text-sm border border-omnave-primary/30 hover:bg-omnave-primary/30 cursor-pointer active:scale-[0.97] active:opacity-80 transition-[background-color,border-color,opacity] duration-100"
                     >
                       + Import New Material
                     </button>

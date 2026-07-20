@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { UploadCloud, FileText, AlertCircle, X, Loader2 } from "lucide-react";
+import { UploadCloud, FileText, AlertCircle, X } from "lucide-react";
 import { useUploadContext } from "@/context/UploadContext";
 
 export default function FileUploadArea() {
@@ -13,6 +13,33 @@ export default function FileUploadArea() {
   const { processBackgroundUpload } = useUploadContext();
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [activeStep, setActiveStep] = useState(0);
+
+  const steps = [
+    "Reading and parsing PDF document...",
+    "Extracting core definitions and key concepts...",
+    "Generating customized learning flashcards...",
+    "Assembling practice assessments and quizzes...",
+    "Polishing study kit dashboard..."
+  ];
+
+  useEffect(() => {
+    if (!isProcessing) {
+      setActiveStep(0);
+      return;
+    }
+    
+    const interval = setInterval(() => {
+      setActiveStep((prev) => {
+        if (prev < steps.length - 1) {
+          return prev + 1;
+        }
+        return prev;
+      });
+    }, 2800);
+    
+    return () => clearInterval(interval);
+  }, [isProcessing]);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -67,26 +94,23 @@ export default function FileUploadArea() {
   return (
     <div className="w-full flex flex-col relative z-20">
       {error && (
-        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start space-x-3 text-red-400 backdrop-blur-md">
+        <div className="mb-6 p-4 bg-[#2e1819] border border-red-500/20 rounded-xl flex items-start space-x-3 text-red-400">
           <AlertCircle size={18} className="shrink-0 mt-0.5" />
-          <span className="text-sm font-medium leading-relaxed">{error}</span>
+          <span className="text-sm font-medium leading-relaxed text-left">{error}</span>
         </div>
       )}
 
       {!file ? (
         <>
-          {/* Ambient Environment Lighting */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-omnave-primary/10 blur-[100px] pointer-events-none rounded-full z-0" aria-hidden="true" />
-
-          {/* Elevated Dropzone Container (Glassmorphism & Drag States) */}
+          {/* Flat Dropzone Container (Minimal dashed design) */}
           <div
             onDragEnter={handleDrag}
             onDragOver={handleDrag}
             onDragLeave={handleDrag}
             onDrop={handleDrop}
-            className={`bg-[#0f0a1c]/60 backdrop-blur-md border-2 border-dashed border-white/10 hover:border-omnave-primary/50 hover:bg-omnave-primary/5 rounded-3xl transition-all duration-300 ease-in-out flex flex-col items-center justify-center p-10 text-center max-w-md mx-auto w-full group relative cursor-pointer z-10 ${
+            className={`bg-[#121214] border-2 border-dashed border-white/10 hover:border-white/20 rounded-2xl transition-colors duration-150 flex flex-col items-center justify-center p-10 text-center max-w-md mx-auto w-full group relative cursor-pointer z-10 ${
               isDragActive
-                ? "border-omnave-primary bg-omnave-primary/5 shadow-[0_0_30px_rgba(127,34,254,0.2)] scale-[1.02]"
+                ? "border-white/40 bg-white/[0.02]"
                 : ""
             }`}
           >
@@ -96,61 +120,76 @@ export default function FileUploadArea() {
               onChange={handleFileChange}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
             />
-            {/* Polished Upload Icon */}
-            <div className="w-16 h-16 rounded-full bg-omnave-primary/10 flex items-center justify-center mb-6 ring-1 ring-omnave-primary/30 shadow-[0_0_15px_rgba(127,34,254,0.2)] group-hover:scale-110 group-hover:bg-omnave-primary/20 group-hover:ring-omnave-primary/50 transition-all duration-300">
-              <UploadCloud size={28} className="text-omnave-primary" />
+            {/* Clean Upload Icon */}
+            <div className="w-16 h-16 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-6">
+              <UploadCloud size={28} className="text-white/60" />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">
-              {isDragActive ? "Drop your PDF file here!" : "Tap or Drag a PDF"}
+            <h3 className="text-base font-bold text-white mb-1.5">
+              {isDragActive ? "Drop PDF document here" : "Select PDF Document"}
             </h3>
-            <p className="text-sm text-white/40 font-medium max-w-[200px] leading-relaxed">
-              Max file size 10MB. We'll handle the rest.
+            <p className="text-xs text-white/45 font-medium max-w-[220px] leading-normal">
+              Drag & drop or browse. Max file size 10MB.
             </p>
           </div>
         </>
       ) : (
-        <div className="bg-black/[0.4] border border-white/[0.1] backdrop-blur-2xl rounded-[24px] p-6 md:p-8 shadow-premium-glass">
+        <div className="bg-[#121214] border border-white/10 rounded-2xl p-6 md:p-8">
           <div className="flex items-center space-x-4 mb-8">
-            <div className="w-14 h-14 bg-omnave-primary/20 border border-omnave-primary/30 rounded-2xl flex items-center justify-center text-omnave-primary shrink-0">
+            <div className="w-14 h-14 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-white/60 shrink-0">
               <FileText size={24} />
             </div>
-            <div className="flex flex-col flex-1 truncate">
-              <span className="font-bold text-white truncate">{file.name}</span>
-              <span className="text-xs font-medium text-white/40 mt-1">
-                {(file.size / 1024 / 1024).toFixed(2)} MB • PDF Document
+            <div className="flex flex-col flex-1 truncate text-left">
+              <span className="font-bold text-white text-sm truncate">{file.name}</span>
+              <span className="text-[11px] font-medium text-white/40 mt-1 uppercase tracking-wider">
+                {(file.size / 1024 / 1024).toFixed(2)} MB • PDF
               </span>
             </div>
             {!isProcessing && (
               <button
                 onClick={() => setFile(null)}
-                className="p-2 text-white/40 hover:text-red-400 hover:bg-red-400/10 rounded-full transition-colors cursor-pointer z-10"
+                className="p-2 text-white/45 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer z-10"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             )}
           </div>
 
           {isProcessing ? (
-            <div className="flex flex-col w-full py-2">
-              <div className="flex items-center justify-between mb-4 text-omnave-primary">
-                <div className="flex items-center space-x-3">
-                  <Loader2 className="animate-spin" size={18} />
-                  <span className="text-sm font-bold tracking-wide text-white/80">Preparing your study kit…</span>
-                </div>
+            <div className="flex flex-col w-full py-2 text-left space-y-5">
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-2">Analyzing Document</h3>
+              <div className="space-y-3.5">
+                {steps.map((stepText, idx) => {
+                  const isCompleted = idx < activeStep;
+                  const isActive = idx === activeStep;
+                  
+                  return (
+                    <div key={idx} className="flex items-center gap-3">
+                      {isCompleted ? (
+                        <span className="text-xs font-bold text-emerald-400 shrink-0 select-none">✓</span>
+                      ) : isActive ? (
+                        <span className="w-1.5 h-1.5 rounded-full bg-omnave-primary animate-pulse shrink-0" />
+                      ) : (
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/10 shrink-0" />
+                      )}
+                      <span className={`text-xs font-semibold ${isCompleted ? 'text-white/65' : isActive ? 'text-white font-bold animate-pulse' : 'text-white/20'}`}>
+                        {stepText}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
 
-              <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden relative border border-white/5">
-                <div className="absolute top-0 left-0 h-full bg-omnave-primary rounded-full transition-all duration-500 ease-out shadow-[0_0_15px_rgba(127,34,254,0.6)]" style={{ width: "100%" }} />
+              <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden relative border border-white/5 mt-4">
+                <div 
+                  className="absolute top-0 left-0 h-full bg-omnave-primary rounded-full transition-all duration-700 ease-out" 
+                  style={{ width: `${((activeStep + 1) / steps.length) * 100}%` }} 
+                />
               </div>
-
-              <p className="text-xs text-center text-white/40 mt-6 font-medium">
-                Please don't close this tab while the AI is thinking.
-              </p>
             </div>
           ) : (
             <button
               onClick={handleUpload}
-              className="w-full py-5 bg-omnave-primary text-white font-bold rounded-2xl shadow-[0_0_20px_rgba(127,34,254,0.3)] hover:shadow-[0_0_30px_rgba(127,34,254,0.5)] hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer z-10 relative"
+              className="w-full py-5 bg-omnave-primary text-white font-bold rounded-2xl shadow-[0_0_20px_rgba(127,34,254,0.3)] hover:shadow-[0_0_30px_rgba(127,34,254,0.5)] active:scale-[0.97] active:opacity-80 transition-[box-shadow,opacity] duration-100 cursor-pointer z-10 relative text-sm"
             >
               Generate Study Kit
             </button>

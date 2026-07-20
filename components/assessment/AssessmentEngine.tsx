@@ -416,7 +416,7 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                 onClick={() => {
                   if (abandonHandler) abandonHandler();
                 }}
-                className="pointer-events-auto inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white/60 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 transition-all active:scale-95 cursor-pointer"
+                className="pointer-events-auto inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white/60 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 transition-colors active:scale-[0.97] active:opacity-80 cursor-pointer"
               >
                 <span className="text-[11px] font-bold tracking-widest uppercase">✖ End Session</span>
               </button>
@@ -424,22 +424,22 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
 
             {/* PERFECTLY CENTERED CARD CONTAINER */}
             <div className="flex-1 flex items-center justify-center w-full p-4 pt-20 pb-[env(safe-area-inset-bottom)]">
-              <div className="w-full max-w-2xl bg-black/[0.4] border border-white/[0.1] backdrop-blur-2xl rounded-[24px] p-5 md:p-8 shadow-premium-glass space-y-6 relative">
+              <div className="w-full max-w-2xl bg-[#121214] border border-white/10 rounded-2xl p-6 md:p-8 space-y-6 relative">
                 
                 {/* Progress bar */}
-                <div className="w-full bg-white/5 rounded-2xl p-3 flex items-center gap-3">
-                  <div className="flex-1 bg-white/5 h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-white/[0.02] rounded-xl p-3 flex items-center gap-3">
+                  <div className="flex-1 bg-white/5 h-1.5 rounded-full overflow-hidden">
                     <div className="bg-omnave-primary h-full w-full rounded-full transition-transform duration-300 transform-gpu origin-left" style={{ transform: `scaleX(${(currentIdx + 1) / questions.length})` }} />
                   </div>
-                  <span className="text-[10px] font-black text-white/50">Q{currentIdx + 1}/{questions.length}</span>
+                  <span className="text-[10px] font-extrabold text-white/40">Q{currentIdx + 1}/{questions.length}</span>
                 </div>
 
                 <div className="flex justify-between items-start gap-4">
                   <div className="space-y-2">
-                    <span className="px-2.5 py-0.5 bg-white/5 border border-white/10 rounded-full text-[9px] font-black text-white/50 uppercase tracking-wider">
+                    <span className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-[9px] font-bold text-white/40 uppercase tracking-widest select-none">
                       {questions[currentIdx].type?.replace("-", " ") || "Question"}
                     </span>
-                    <h3 className="text-base sm:text-lg font-black text-white leading-normal pt-1.5 select-text">
+                    <h3 className="text-lg sm:text-xl font-bold text-white leading-snug pt-2 select-text text-left">
                       {questions[currentIdx].question}
                     </h3>
                   </div>
@@ -452,12 +452,12 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                      const isQuizRevealed = quizChecked[currentIdx] === true;
                      const isCor = opt === questions[currentIdx].correctAnswer;
 
-                     let btnStyle = "border-white/10 bg-white/5 hover:bg-white/10 text-white/70";
-                     if (isSel) btnStyle = "border-omnave-primary bg-omnave-primary/10 text-white font-black ring-1 ring-omnave-primary/20";
+                     let btnStyle = "border-white/10 bg-white/[0.01] hover:bg-white/5 text-white/70 hover:text-white";
+                     if (isSel) btnStyle = "border-omnave-primary bg-[#201B30] text-white font-semibold ring-1 ring-omnave-primary";
                      if (isQuizRevealed) {
-                       if (isCor) btnStyle = "border-emerald-500 bg-emerald-500/10 text-emerald-400 font-black";
-                       else if (isSel) btnStyle = "border-red-500 bg-red-500/10 text-red-400 font-bold";
-                       else btnStyle = "border-white/5 opacity-40 text-white/40";
+                       if (isCor) btnStyle = "border-emerald-500 bg-[#14291B] text-emerald-400 font-semibold";
+                       else if (isSel) btnStyle = "border-red-500 bg-[#2E1819] text-red-400 font-semibold";
+                       else btnStyle = "border-white/5 opacity-30 text-white/30";
                      }
 
                      return (
@@ -465,7 +465,7 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                          key={i}
                          disabled={isQuizRevealed}
                          onClick={() => handleSelectAnswer(opt)}
-                         className={`w-full p-4 border rounded-2xl text-xs sm:text-sm font-bold text-left transition-all cursor-pointer flex items-center justify-between ${btnStyle}`}
+                         className={`w-full p-4 border rounded-xl text-sm font-medium text-left cursor-pointer flex items-center justify-between active:scale-[0.98] transition-[background-color,border-color,opacity] duration-100 ${btnStyle}`}
                        >
                          <span>{opt}</span>
                          {isSel && <CheckCircle2 size={16} className={isQuizRevealed && !isCor ? "text-red-400" : "text-omnave-primary"} />}
@@ -478,7 +478,7 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                       disabled={quizChecked[currentIdx] === true}
                       value={userAnswers[currentIdx] || ""}
                       onChange={handleSelectAnswer}
-                      className="w-full h-14 px-5 bg-white/5 border border-white/10 rounded-2xl text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-omnave-primary/50 disabled:opacity-60 transform-gpu"
+                      className="w-full h-14 px-5 bg-white/[0.01] border border-white/10 rounded-xl text-sm font-semibold text-white focus:outline-none focus:border-omnave-primary focus:ring-1 focus:ring-omnave-primary disabled:opacity-50 transition-colors"
                     />
                   )}
                 </div>
@@ -486,23 +486,23 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                 {quizChecked[currentIdx] && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                    className={`p-5 rounded-2xl border text-sm leading-relaxed mt-6 ${
+                    className={`p-5 rounded-xl border text-xs leading-relaxed mt-6 text-left ${
                       (userAnswers[currentIdx]?.trim().toLowerCase() === questions[currentIdx].correctAnswer.trim().toLowerCase())
-                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                        : "bg-red-500/10 border-red-500/30 text-red-400"
+                        ? "bg-[#14291B] border-emerald-500/20 text-emerald-400"
+                        : "bg-[#2E1819] border-red-500/20 text-red-400"
                     }`}
                   >
-                    <span className="font-black uppercase tracking-wider block mb-2">
+                    <span className="font-bold uppercase tracking-wider block mb-1.5">
                       {(userAnswers[currentIdx]?.trim().toLowerCase() === questions[currentIdx].correctAnswer.trim().toLowerCase()) ? "✓ Correct" : "✕ Incorrect"}
                     </span>
-                    <p className="font-medium text-white/80">{questions[currentIdx].explanation}</p>
+                    <p className="font-medium text-white/80 select-text">{questions[currentIdx].explanation}</p>
                   </motion.div>
                 )}
 
                 <div className="flex justify-between items-center pt-6 border-t border-white/5 mt-6">
                   <button
                     onClick={handlePrev} disabled={currentIdx === 0}
-                    className="h-12 px-6 border border-white/10 rounded-xl text-xs font-medium text-white/40 hover:text-white hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    className="h-11 px-6 border border-white/10 rounded-xl text-xs font-bold text-white/50 hover:text-white hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-[0.97] active:opacity-80 transition-[background-color,opacity] duration-100"
                   >
                     Previous
                   </button>
@@ -510,7 +510,7 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                   {!quizChecked[currentIdx] && (
                     <button
                       onClick={checkQuizAnswer} disabled={!userAnswers[currentIdx]}
-                      className="bg-omnave-primary/20 text-[#D8B4FE] hover:bg-omnave-primary/40 hover:text-white font-semibold transition-colors px-6 py-2.5 rounded-xl border border-omnave-primary/30 cursor-pointer disabled:opacity-30 text-xs"
+                      className="bg-omnave-primary text-white font-bold transition-[background-color,opacity] px-6 h-11 rounded-xl cursor-pointer disabled:opacity-30 text-xs active:scale-[0.97] active:opacity-80 duration-100"
                     >
                       Check Answer
                     </button>
@@ -519,12 +519,12 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                   {currentIdx === questions.length - 1 ? (
                     <button
                       onClick={triggerGrading}
-                      className="h-12 px-8 text-white text-xs font-black rounded-xl transition-all bg-emerald-500 hover:bg-emerald-600 cursor-pointer"
+                      className="h-11 px-8 text-white text-xs font-bold rounded-xl bg-emerald-500 hover:bg-emerald-600 cursor-pointer active:scale-[0.97] active:opacity-80 transition-[background-color,opacity] duration-100"
                     >
                       Finish Quiz
                     </button>
                   ) : (
-                    <button onClick={handleNext} className="h-12 px-6 border border-white/10 rounded-xl text-xs font-bold text-white hover:bg-white/5 transition-all cursor-pointer">
+                    <button onClick={handleNext} className="h-11 px-6 border border-white/10 rounded-xl text-xs font-bold text-white hover:bg-white/5 cursor-pointer active:scale-[0.97] active:opacity-80 transition-[background-color,opacity] duration-100">
                       Next
                     </button>
                   )}
@@ -534,20 +534,20 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
           </div>
         ) : (
           <motion.div key="playing" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-            <div className="w-full max-w-2xl mx-auto mt-8 p-6 sm:p-8 bg-[#130E24]/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl space-y-6 relative">
+            <div className="w-full max-w-2xl mx-auto mt-8 p-6 sm:p-8 bg-[#121214] border border-white/10 rounded-2xl space-y-6 relative">
               <div className="flex justify-between items-start gap-4">
                 <div className="space-y-2">
-                  <span className="px-2.5 py-0.5 bg-white/5 border border-white/10 rounded-full text-[9px] font-black text-white/50 uppercase tracking-wider">
+                  <span className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-[9px] font-bold text-white/40 uppercase tracking-widest select-none">
                     {questions[currentIdx].type?.replace("-", " ") || "Question"}
                   </span>
-                  <h3 className="text-xl sm:text-2xl font-bold text-white leading-snug mt-4 select-text">
+                  <h3 className="text-lg sm:text-xl font-bold text-white leading-snug mt-4 select-text text-left">
                     {questions[currentIdx].question}
                   </h3>
                 </div>
 
                 <button
                   onClick={toggleFlag}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all cursor-pointer ${
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center border cursor-pointer active:scale-[0.95] active:opacity-80 transition-[background-color,border-color,opacity] duration-100 ${
                     flaggedQuestions[currentIdx] ? "border-amber-500 bg-amber-500/10 text-amber-500" : "border-white/5 text-white/40 hover:text-white/70"
                   }`}
                 >
@@ -559,16 +559,15 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                 {(questions[currentIdx].type === "multiple-choice" || questions[currentIdx].type?.toLowerCase() === "true-false") && 
                  (questions[currentIdx].type?.toLowerCase() === "true-false" ? ["True", "False"] : (questions[currentIdx].options || [])).map((opt, i) => {
                    const isSel = userAnswers[currentIdx] === opt;
-                   const isCor = opt === questions[currentIdx].correctAnswer;
 
-                   let btnStyle = "border-white/10 bg-white/5 hover:bg-white/10 text-white/70";
-                   if (isSel) btnStyle = "border-omnave-primary bg-omnave-primary/10 text-white font-black ring-1 ring-omnave-primary/20";
+                   let btnStyle = "border-white/10 bg-white/[0.01] hover:bg-white/5 text-white/70 hover:text-white";
+                   if (isSel) btnStyle = "border-omnave-primary bg-[#201B30] text-white font-semibold ring-1 ring-omnave-primary";
 
                    return (
                      <button
                        key={i}
                        onClick={() => handleSelectAnswer(opt)}
-                       className={`w-full p-4 border rounded-2xl text-xs sm:text-sm font-bold text-left transition-all cursor-pointer flex items-center justify-between ${btnStyle}`}
+                       className={`w-full p-4 border rounded-xl text-sm font-medium text-left cursor-pointer flex items-center justify-between active:scale-[0.98] transition-[background-color,border-color,opacity] duration-100 ${btnStyle}`}
                      >
                        <span>{opt}</span>
                        {isSel && <CheckCircle2 size={16} className="text-omnave-primary" />}
@@ -580,7 +579,7 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                   <IdentificationInput
                     value={userAnswers[currentIdx] || ""}
                     onChange={handleSelectAnswer}
-                    className="w-full bg-[#0A0710] border border-white/10 rounded-xl px-4 py-4 text-white placeholder:text-white/30 focus:outline-none focus:border-omnave-primary focus:ring-1 focus:ring-omnave-primary transition-all mt-6 transform-gpu"
+                    className="w-full h-14 px-5 bg-white/[0.01] border border-white/10 rounded-xl text-sm font-semibold text-white focus:outline-none focus:border-omnave-primary focus:ring-1 focus:ring-omnave-primary transition-colors mt-6"
                   />
                 )}
               </div>
@@ -588,7 +587,7 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
               <div className="flex justify-between items-center pt-6 border-t border-white/5 mt-6">
                 <button
                   onClick={handlePrev} disabled={currentIdx === 0}
-                  className="h-12 px-6 border border-white/10 rounded-xl text-xs font-medium text-white/40 hover:text-white hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  className="h-11 px-6 border border-white/10 rounded-xl text-xs font-bold text-white/50 hover:text-white hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-[0.97] active:opacity-80 transition-[background-color,opacity] duration-100"
                 >
                   Previous
                 </button>
@@ -596,12 +595,12 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                 {currentIdx === questions.length - 1 ? (
                   <button
                     onClick={() => setGameState("review-screen")}
-                    className="h-12 px-8 text-white text-xs font-black rounded-xl transition-all bg-amber-500 text-black hover:bg-amber-600 cursor-pointer"
+                    className="h-11 px-8 text-black text-xs font-bold rounded-xl bg-amber-500 hover:bg-amber-600 cursor-pointer active:scale-[0.97] active:opacity-80 transition-[background-color,opacity] duration-100"
                   >
                     Review Exam
                   </button>
                 ) : (
-                  <button onClick={handleNext} className="h-12 px-6 border border-white/10 rounded-xl text-xs font-bold text-white hover:bg-white/5 transition-all cursor-pointer">
+                  <button onClick={handleNext} className="h-11 px-6 border border-white/10 rounded-xl text-xs font-bold text-white hover:bg-white/5 cursor-pointer active:scale-[0.97] active:opacity-80 transition-[background-color,opacity] duration-100">
                     Next
                   </button>
                 )}
@@ -613,10 +612,10 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
 
       {/* 3. REVIEW SCREEN */}
       {gameState === "review-screen" && (
-        <motion.div key="review-screen" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-black/[0.4] border border-white/[0.1] backdrop-blur-2xl rounded-[24px] p-6 md:p-10 shadow-premium-glass space-y-6 text-left">
+        <motion.div key="review-screen" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-[#121214] border border-white/10 rounded-2xl p-6 md:p-10 space-y-6 text-left max-w-2xl mx-auto mt-8">
           <div className="flex items-center justify-between border-b border-white/5 pb-4">
-            <h2 className="text-lg font-black text-white">Review Assessment</h2>
-            <button onClick={() => setGameState("playing")} className="text-xs font-bold text-white/50 hover:text-white transition-colors">Return to Exam</button>
+            <h2 className="text-base font-bold text-white">Review Assessment</h2>
+            <button onClick={() => setGameState("playing")} className="text-xs font-bold text-white/50 hover:text-white cursor-pointer active:opacity-75 transition-opacity">Return to Exam</button>
           </div>
           
           <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-3">
@@ -627,9 +626,9 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                 <button
                   key={idx}
                   onClick={() => { setCurrentIdx(idx); setGameState("playing"); }}
-                  className={`relative h-12 rounded-xl flex items-center justify-center font-bold text-sm border transition-all ${
-                    isFlag ? "border-amber-500 bg-amber-500/20 text-amber-500" :
-                    isAns ? "border-white/20 bg-white/10 text-white" : "border-white/5 bg-transparent text-white/40"
+                  className={`relative h-12 rounded-xl flex items-center justify-center font-bold text-sm border cursor-pointer active:scale-[0.95] active:opacity-80 transition-[background-color,border-color,opacity] duration-100 ${
+                    isFlag ? "border-amber-500 bg-[#342416] text-amber-500" :
+                    isAns ? "border-white/20 bg-white/5 text-white" : "border-white/5 bg-transparent text-white/40"
                   }`}
                 >
                   {idx + 1}
@@ -639,7 +638,7 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
           </div>
 
           <div className="pt-6 border-t border-white/5 flex justify-end">
-            <button onClick={triggerGrading} className="h-14 px-10 bg-amber-500 hover:bg-amber-400 text-black text-sm font-black rounded-2xl transition-all shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+            <button onClick={triggerGrading} className="h-14 px-10 bg-amber-500 hover:bg-amber-600 text-black text-sm font-bold rounded-2xl cursor-pointer active:scale-[0.97] active:opacity-80 transition-[background-color,opacity] duration-100 shadow-[0_4px_12px_rgba(245,158,11,0.15)]">
               Submit Final Exam
             </button>
           </div>
@@ -648,10 +647,10 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
 
       {/* 4. GRADING LOADER */}
       {gameState === "grading" && (
-        <motion.div key="grading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-black/[0.4] border border-white/[0.1] backdrop-blur-2xl rounded-[24px] p-12 text-center space-y-8 shadow-2xl max-w-md mx-auto py-20 mt-10">
-          <div className="w-20 h-20 rounded-full border-4 border-omnave-primary/20 border-t-omnave-primary animate-spin mx-auto" />
-          <div className="space-y-2">
-            <h3 className="text-lg font-black text-white">AI Grading Engine</h3>
+        <motion.div key="grading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-[#121214] border border-white/10 rounded-2xl p-10 text-center space-y-6 max-w-md mx-auto py-16 mt-10">
+          <div className="w-1.5 h-1.5 rounded-full bg-omnave-primary animate-ping mx-auto" />
+          <div className="space-y-1.5">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider">AI Grading Engine</h3>
             <p className="text-xs text-white/50 font-medium">{gradingText}</p>
           </div>
         </motion.div>

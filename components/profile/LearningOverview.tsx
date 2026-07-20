@@ -1,29 +1,24 @@
 "use client";
 
 import { memo } from "react";
-import { motion } from "framer-motion";
 import { BookOpen, BrainCircuit, Target, Clock, Flame } from "lucide-react";
 
 interface StatItemProps {
   icon: React.ReactNode;
   value: string | number;
   label: string;
-  delay: number;
   colSpan?: string;
 }
 
-const StatItem = memo(function StatItem({ icon, value, label, delay, colSpan = "" }: StatItemProps) {
+const StatItem = memo(function StatItem({ icon, value, label, colSpan = "" }: StatItemProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, delay }}
-      className={`bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl rounded-2xl px-4 py-4 flex flex-col items-center justify-center text-center transition-all hover:bg-white/[0.05] shadow-lg ${colSpan}`}
+    <div
+      className={`bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl rounded-2xl px-4 py-4 flex flex-col items-center justify-center text-center transition-colors hover:bg-white/[0.05] shadow-lg ${colSpan}`}
     >
       <div className="mb-2 text-omnave-primary shrink-0">{icon}</div>
       <span className="text-2xl font-black text-white leading-none mb-1">{value}</span>
       <span className="text-[10px] font-bold tracking-widest text-white/40 uppercase text-center">{label}</span>
-    </motion.div>
+    </div>
   );
 });
 
@@ -59,7 +54,6 @@ export const LearningOverview = memo(function LearningOverview({
           icon={stat.icon} 
           value={stat.value} 
           label={stat.label} 
-          delay={i * 0.05} 
           colSpan={i === 4 ? "col-span-2" : ""}
         />
       ))}

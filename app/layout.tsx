@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
 import TopRightActions from "@/components/TopRightActions";
+import TabScrollRestorer from "@/components/TabScrollRestorer";
 import { UserProvider } from "@/context/UserContext";
 import { AssessmentProvider } from "@/context/AssessmentContext";
 import { UploadProvider } from "@/context/UploadContext";
@@ -66,6 +67,7 @@ export default function RootLayout({
 
                     {/* GLOBAL HUDS - Restored to fix the missing header */}
                     <BottomNav/>
+                    <TabScrollRestorer />
                   </AssessmentProvider>
                 </UploadProvider>
               </OnboardingGuard>

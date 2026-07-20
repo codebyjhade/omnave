@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, memo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FileText, MoreVertical, Trash2, Clock, Star, Edit3, Share2, BrainCircuit } from "lucide-react";
 
 interface LessonCardProps {
@@ -29,8 +30,13 @@ export const LessonCard = memo(function LessonCard({
   highlightText = "",
   isProcessed = true,
 }: LessonCardProps) {
+  const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const handlePrefetch = () => {
+    router.prefetch(`/lesson/${id}`);
+  };
   const isGhostLesson = !isProcessed;
 
   const getCleanTitle = (name: string) => {
@@ -87,7 +93,7 @@ export const LessonCard = memo(function LessonCard({
 
   const cardClasses = isGhostLesson
     ? `relative flex flex-col p-4 pb-5 bg-[#130E24]/30 border border-dashed border-white/10 backdrop-blur-sm rounded-2xl opacity-70 w-full select-none min-h-[140px] ${showMenu ? 'z-50' : 'z-10'}`
-    : `relative flex flex-col p-4 pb-5 bg-[#130E24]/60 backdrop-blur-sm border border-white/5 rounded-2xl hover:bg-white/[0.02] transition-all duration-200 active:scale-[0.97] cursor-pointer select-none group w-full min-h-[140px] ${showMenu ? 'z-50' : 'z-10'}`;
+    : `relative flex flex-col p-4 pb-5 bg-[#130E24]/60 backdrop-blur-sm border border-white/5 rounded-2xl hover:bg-white/[0.02] active:scale-[0.97] active:opacity-80 cursor-pointer select-none group w-full min-h-[140px] ${showMenu ? 'z-50' : 'z-10'} transition-[background-color,border-color,opacity] duration-150`;
 
   const displayTitle = ai_title || (isGhostLesson ? "Analyzing topic..." : getCleanTitle(filename));
 
@@ -223,6 +229,8 @@ export const LessonCard = memo(function LessonCard({
       href={`/lesson/${id}`}
       className={cardClasses}
       aria-label={`Open study kit: ${getCleanTitle(filename)}`}
+      onMouseEnter={handlePrefetch}
+      onTouchStart={handlePrefetch}
     >
       {cardContent}
     </Link>
