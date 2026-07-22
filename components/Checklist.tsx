@@ -1,93 +1,102 @@
 "use client";
 
 import { useUserContext } from "@/context/UserContext";
-import { Skeleton } from "@/components/Skeleton";
 import { useMemo } from "react";
+import { Check } from "lucide-react";
 
 export default function Checklist() {
   const { lessons, quizScores, streak, loading } = useUserContext();
-  const isZeroState = lessons.length === 0;
 
   const goals = useMemo(() => {
     return [
       {
-        id: "daily-upload",
-        title: "Upload a PDF",
-        description: "Import a new study document.",
-        rewardXp: 15,
+        id: "finish-lesson",
+        title: "Finish Lesson",
+        description: "Complete your active study material",
         completed: lessons.length > 0,
       },
       {
-        id: "daily-quiz",
-        title: "Complete a Quiz",
-        description: "Complete one practice quiz on any lesson.",
-        rewardXp: 20,
+        id: "practice-quiz",
+        title: "Practice Quiz",
+        description: "Test your recall with a quick assessment",
         completed: quizScores.length > 0,
       },
       {
-        id: "daily-streak",
-        title: "Maintain Streak",
-        description: "Keep your daily study momentum going.",
-        rewardXp: 10,
-        completed: streak > 1,
+        id: "review-cards",
+        title: "Review Flashcards",
+        description: "Reinforce key concepts & definitions",
+        completed: streak > 0,
       }
     ];
   }, [lessons.length, quizScores.length, streak]);
 
+  const completedCount = useMemo(() => goals.filter(g => g.completed).length, [goals]);
+  const totalCount = goals.length;
+
   if (loading) {
     return (
-      <div className="w-full flex flex-col gap-4">
-        <div className="flex items-center justify-between pl-2 mb-1">
-          <Skeleton className="h-4 w-28 rounded-md" />
+      <div className="bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-5 shadow-lg shadow-black/40 flex flex-col gap-4 animate-pulse h-full">
+        <div className="flex justify-between items-center mb-2">
+          <div className="h-3.5 w-24 bg-white/[0.06] rounded" />
+          <div className="h-4 w-12 bg-white/[0.06] rounded-full" />
         </div>
-        <Skeleton className="h-[210px] w-full rounded-3xl" />
+        <div className="flex flex-col">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-14 w-full bg-white/[0.04] border border-white/[0.04] rounded-2xl mb-2" />
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full flex flex-col gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between pl-2 mb-1 select-none">
-        <span className="text-[10px] font-extrabold tracking-[0.2em] text-neutral-500 uppercase">Upcoming Goals</span>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/40"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-      </div>
+    <div className="bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-5 shadow-lg shadow-black/40 flex flex-col justify-between h-full transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-900/10 hover:border-white/10">
+      <div className="flex flex-col gap-3">
+        {/* Header Row with Psychological Momentum */}
+        <div className="flex justify-between items-center mb-1">
+          <span className="text-[10px] font-bold tracking-[0.2em] text-zinc-500 uppercase">
+            Today's Focus
+          </span>
+          <span className="text-[10px] font-medium text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full">
+            {completedCount}/{totalCount} Done
+          </span>
+        </div>
 
-      {/* Checklist Card */}
-      <div className={`w-full p-6 ${
-        isZeroState 
-          ? "bg-[#130E24] border border-white/5" 
-          : "bg-black/[0.4] border border-white/[0.1]"
-      } backdrop-blur-2xl rounded-3xl flex flex-col gap-5 relative overflow-hidden shadow-2xl`}>
-        {/* Ambient Inner Glow */}
-        <div className="absolute -bottom-[20%] -left-[10%] w-[250px] h-[250px] bg-omnave-primary/15 blur-[90px] rounded-full pointer-events-none" aria-hidden="true" />
-        
-        {goals.map((goal, idx) => (
-          <div key={goal.id || idx} className={`flex gap-4 items-start ${goal.completed ? "opacity-50" : "group cursor-pointer"} ${isZeroState && goal.id !== "daily-upload" ? "opacity-40" : ""}`}>
-            {goal.completed ? (
-              <div className="mt-1 flex items-center justify-center size-5 rounded-full bg-[#1db954]/20 text-[#1db954] border border-[#1db954]/50 shrink-0">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        {/* Compact List Container */}
+        <div className="flex flex-col">
+          {goals.map((goal) => (
+            <div
+              key={goal.id}
+              className="flex items-center gap-3 p-3 mb-2 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.06] transition-colors cursor-pointer"
+            >
+              {/* Checkmark Box - Purple when completed, Neutral border when pending */}
+              <div
+                className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border transition-all ${
+                  goal.completed
+                    ? "bg-purple-600 border-purple-600 text-white"
+                    : "border-white/20 bg-white/[0.02] hover:border-purple-500/50"
+                }`}
+              >
+                {goal.completed && <Check size={12} strokeWidth={3} />}
               </div>
-            ) : (
-              <div className="mt-1 size-5 rounded-full border-2 border-white/20 group-hover:border-omnave-primary transition-colors shrink-0" />
-            )}
-            <div className="flex flex-col gap-0.5 text-left">
-              <span className={`text-sm font-bold text-white ${goal.completed ? "line-through" : "group-hover:text-omnave-primary transition-colors"}`}>
-                {goal.title}
-              </span>
-              <span className="text-[10px] text-white/40">
-                {goal.description} {goal.rewardXp ? `(+${goal.rewardXp} XP)` : ""}
-              </span>
+
+              <div className="flex flex-col text-left min-w-0">
+                <span
+                  className={
+                    goal.completed
+                      ? "text-sm font-medium text-zinc-500 line-through"
+                      : "text-sm font-medium text-zinc-200"
+                  }
+                >
+                  {goal.title}
+                </span>
+                <span className="text-[11px] text-zinc-500 leading-tight mt-0.5">
+                  {goal.description}
+                </span>
+              </div>
             </div>
-          </div>
-        ))}
-
-        {isZeroState && (
-          <p className="text-[10px] text-white/40 font-bold mt-2 pt-3 border-t border-white/5 tracking-wider uppercase text-left select-none">
-            Waiting for activity data to track daily goals.
-          </p>
-        )}
-
+          ))}
+        </div>
       </div>
     </div>
   );

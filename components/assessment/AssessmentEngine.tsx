@@ -424,7 +424,7 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
 
             {/* PERFECTLY CENTERED CARD CONTAINER */}
             <div className="flex-1 flex items-center justify-center w-full p-4 pt-20 pb-[env(safe-area-inset-bottom)]">
-              <div className="w-full max-w-2xl bg-[#121214] border border-white/10 rounded-2xl p-6 md:p-8 space-y-6 relative">
+              <div className="w-full max-w-2xl bg-omnave-surface border border-white/5 rounded-2xl p-6 md:p-8 space-y-6 relative">
                 
                 {/* Progress bar */}
                 <div className="w-full bg-white/[0.02] rounded-xl p-3 flex items-center gap-3">
@@ -534,7 +534,7 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
           </div>
         ) : (
           <motion.div key="playing" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-            <div className="w-full max-w-2xl mx-auto mt-8 p-6 sm:p-8 bg-[#121214] border border-white/10 rounded-2xl space-y-6 relative">
+            <div className="w-full max-w-2xl mx-auto mt-8 p-6 sm:p-8 bg-omnave-surface border border-white/5 rounded-2xl space-y-6 relative">
               <div className="flex justify-between items-start gap-4">
                 <div className="space-y-2">
                   <span className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-[9px] font-bold text-white/40 uppercase tracking-widest select-none">
@@ -612,7 +612,7 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
 
       {/* 3. REVIEW SCREEN */}
       {gameState === "review-screen" && (
-        <motion.div key="review-screen" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-[#121214] border border-white/10 rounded-2xl p-6 md:p-10 space-y-6 text-left max-w-2xl mx-auto mt-8">
+        <motion.div key="review-screen" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-omnave-surface border border-white/5 rounded-2xl p-6 md:p-10 space-y-6 text-left max-w-2xl mx-auto mt-8">
           <div className="flex items-center justify-between border-b border-white/5 pb-4">
             <h2 className="text-base font-bold text-white">Review Assessment</h2>
             <button onClick={() => setGameState("playing")} className="text-xs font-bold text-white/50 hover:text-white cursor-pointer active:opacity-75 transition-opacity">Return to Exam</button>
@@ -647,7 +647,7 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
 
       {/* 4. GRADING LOADER */}
       {gameState === "grading" && (
-        <motion.div key="grading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-[#121214] border border-white/10 rounded-2xl p-10 text-center space-y-6 max-w-md mx-auto py-16 mt-10">
+        <motion.div key="grading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-omnave-surface border border-white/5 rounded-2xl p-10 text-center space-y-6 max-w-md mx-auto py-16 mt-10">
           <div className="w-1.5 h-1.5 rounded-full bg-omnave-primary animate-ping mx-auto" />
           <div className="space-y-1.5">
             <h3 className="text-sm font-bold text-white uppercase tracking-wider">AI Grading Engine</h3>

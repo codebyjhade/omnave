@@ -108,7 +108,7 @@ export default function FileUploadArea() {
             onDragOver={handleDrag}
             onDragLeave={handleDrag}
             onDrop={handleDrop}
-            className={`bg-[#121214] border-2 border-dashed border-white/10 hover:border-white/20 rounded-2xl transition-colors duration-150 flex flex-col items-center justify-center p-10 text-center max-w-md mx-auto w-full group relative cursor-pointer z-10 ${
+            className={`bg-omnave-canvas border-2 border-dashed border-white/10 hover:border-white/20 rounded-2xl transition-colors duration-150 flex flex-col items-center justify-center p-10 text-center max-w-md mx-auto w-full group relative cursor-pointer z-10 ${
               isDragActive
                 ? "border-white/40 bg-white/[0.02]"
                 : ""
@@ -133,9 +133,9 @@ export default function FileUploadArea() {
           </div>
         </>
       ) : (
-        <div className="bg-[#121214] border border-white/10 rounded-2xl p-6 md:p-8">
+        <div className="bg-omnave-surface border border-white/5 rounded-2xl p-6 md:p-8">
           <div className="flex items-center space-x-4 mb-8">
-            <div className="w-14 h-14 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-white/60 shrink-0">
+            <div className="w-14 h-14 bg-white/5 border border-white/5 rounded-xl flex items-center justify-center text-white/60 shrink-0">
               <FileText size={24} />
             </div>
             <div className="flex flex-col flex-1 truncate text-left">

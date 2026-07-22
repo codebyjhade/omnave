@@ -1,9 +1,9 @@
 "use client";
 
 import { useUserContext } from "@/context/UserContext";
-import { Skeleton } from "@/components/Skeleton";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
+import { Sparkles, ArrowRight } from "lucide-react";
 
 export default function AIRecommendation() {
   const router = useRouter();
@@ -104,34 +104,32 @@ export default function AIRecommendation() {
 
   if (loading) {
     return (
-      <div className="w-full flex flex-col gap-4">
-        <div className="flex items-center gap-2 pl-2">
-          <Skeleton className="h-4 w-32 rounded-md" />
-        </div>
-        <Skeleton className="h-[140px] w-full rounded-3xl" />
-      </div>
+      <div className="w-full h-40 bg-white/[0.02] backdrop-blur-xl border border-white/[0.06] border-t-white/[0.12] rounded-3xl animate-pulse shadow-lg" />
     );
   }
 
   return (
-    <div className="w-full relative overflow-hidden bg-gradient-to-br from-omnave-primary/40 to-omnave-primary/10 border border-omnave-primary/30 backdrop-blur-xl rounded-[24px] p-6 md:p-8 flex flex-col items-start gap-4 shadow-[0_10px_40px_rgba(127,34,254,0.15)] group">
-      
-      <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 blur-[50px] rounded-full pointer-events-none group-hover:bg-white/10 transition-colors duration-700" />
+    <div className="bg-white/[0.02] backdrop-blur-xl border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-6 sm:p-8 flex flex-col items-start gap-5 shadow-lg shadow-black/40 text-left transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-900/10 hover:border-white/10">
+      {/* Internal Section Header */}
+      <span className="text-[11px] font-bold tracking-[0.15em] text-zinc-500 uppercase">
+        AI Recommendation
+      </span>
 
-      <div className="flex items-center gap-2 text-white mb-2 pl-2">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
-        <span className="text-[10px] font-extrabold tracking-[0.2em] text-neutral-500 uppercase">AI Recommendation</span>
+      <div className="flex items-start gap-4">
+        <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+          <Sparkles size={20} strokeWidth={1.5} />
+        </div>
+        <h3 className="text-base md:text-lg font-semibold text-zinc-100 leading-snug">
+          {recommendation.text}
+        </h3>
       </div>
 
-      <h3 className="text-lg md:text-2xl font-bold text-white leading-tight max-w-[90%] drop-shadow-md text-left">
-        {recommendation.text}
-      </h3>
-
-      <button 
+      <button
         onClick={recommendation.onClick}
-        className="mt-2 px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-sm transition-all active:scale-95 shadow-premium-glass cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#130E24]"
+        className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-medium text-sm rounded-xl transition-all shadow-[0_4px_20px_rgba(147,51,234,0.3)] active:scale-[0.98] cursor-pointer mt-2"
       >
-        {recommendation.actionLabel}
+        <span>{recommendation.actionLabel}</span>
+        <ArrowRight size={16} strokeWidth={1.5} />
       </button>
     </div>
   );

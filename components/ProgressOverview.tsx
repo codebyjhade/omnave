@@ -1,75 +1,77 @@
 "use client";
 
 import { useUserContext } from "@/context/UserContext";
-import { Skeleton } from "@/components/Skeleton";
+import { Flame, Zap, Award, Sparkles } from "lucide-react";
 
 export default function ProgressOverview() {
   const { gamificationStats, lessons, loading } = useUserContext();
 
   if (loading) {
     return (
-      <div className="grid grid-cols-2 gap-4 w-full">
-        <Skeleton className="h-[110px] w-full rounded-2xl" />
-        <Skeleton className="h-[110px] w-full rounded-2xl" />
+      <div className="bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-6 shadow-lg shadow-black/40 flex flex-col gap-5 animate-pulse h-full">
+        <div className="h-4 w-32 bg-white/[0.06] rounded" />
+        <div className="grid grid-cols-2 gap-4 mt-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-20 bg-white/[0.04] rounded-2xl" />
+          ))}
+        </div>
       </div>
     );
   }
 
   const isZeroState = lessons.length === 0;
 
+  const stats = [
+    {
+      label: "Streak",
+      value: isZeroState ? "0 days" : `${gamificationStats?.currentStreak || 0} days`,
+      icon: <Flame size={20} strokeWidth={1.5} className="text-zinc-500" />,
+    },
+    {
+      label: "Total XP",
+      value: isZeroState
+        ? "0 XP"
+        : `${(gamificationStats?.currentXp || 0) >= 1000 ? ((gamificationStats?.currentXp || 0) / 1000).toFixed(1) + "k" : (gamificationStats?.currentXp || 0)} XP`,
+      icon: <Zap size={20} strokeWidth={1.5} className="text-zinc-500" />,
+    },
+    {
+      label: "Level",
+      value: `Lvl ${gamificationStats?.currentLevel || 1}`,
+      icon: <Award size={20} strokeWidth={1.5} className="text-zinc-500" />,
+    },
+    {
+      label: "Next Lvl",
+      value: isZeroState ? "100 XP" : `${gamificationStats?.xpNeeded || 100} XP`,
+      icon: <Sparkles size={20} strokeWidth={1.5} className="text-zinc-500" />,
+    },
+  ];
+
   return (
-    <div className="grid grid-cols-2 gap-4 w-full">
-      
-      {/* Streak */}
-      <div className={`${
-        isZeroState 
-          ? "bg-[#130E24] border border-white/5" 
-          : "bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.05]"
-      } backdrop-blur-xl rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center text-center min-h-[110px] transition-all shadow-lg overflow-hidden`}>
-        <div className="text-white/40 mb-1">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
-        </div>
-        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-neutral-500 mb-1.5 whitespace-nowrap">
-          Streak
-        </span>
-        <div className="flex flex-col items-center gap-1">
-          <span className={`text-3xl font-black tracking-tighter leading-none ${isZeroState ? "text-white/20" : "text-white"}`}>
-            {isZeroState ? 0 : gamificationStats.currentStreak}
-          </span>
-          <span className="text-[9px] font-medium text-white/40 leading-none uppercase tracking-wider">days</span>
-        </div>
-        {isZeroState && (
-          <span className="text-[10px] text-white/40 uppercase tracking-widest mt-2">
-            Complete your first lesson to begin.
-          </span>
-        )}
-      </div>
+    <div className="bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-6 shadow-lg shadow-black/40 flex flex-col gap-5 h-full transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-900/10 hover:border-white/10">
+      {/* Internal Section Header */}
+      <span className="text-[11px] font-bold tracking-[0.15em] text-zinc-500 uppercase">
+        Your Progress
+      </span>
 
-      {/* XP */}
-      <div className={`${
-        isZeroState 
-          ? "bg-[#130E24] border border-white/5" 
-          : "bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.05]"
-      } backdrop-blur-xl rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center text-center min-h-[110px] transition-all shadow-lg overflow-hidden`}>
-        <div className="text-white/40 mb-1">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 22 12 2l10 20-10-4Z"/></svg>
-        </div>
-        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-neutral-500 mb-1.5 whitespace-nowrap">
-          Total XP
-        </span>
-        <div className="flex flex-col items-center gap-1">
-          <span className={`text-3xl font-black tracking-tighter leading-none ${isZeroState ? "text-white/20" : "text-white"}`}>
-            {isZeroState ? 0 : (gamificationStats.currentXp >= 1000 ? `${(gamificationStats.currentXp / 1000).toFixed(1)}k` : gamificationStats.currentXp)}
-          </span>
-          <span className="text-[9px] font-medium text-white/40 leading-none uppercase tracking-wider">earned</span>
-        </div>
-        {isZeroState && (
-          <span className="text-[10px] text-white/40 uppercase tracking-widest mt-2">
-            Complete your first lesson to begin.
-          </span>
-        )}
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 gap-4">
+        {stats.map((stat, idx) => (
+          <div
+            key={idx}
+            className="p-4 bg-white/[0.02] border border-white/[0.04] rounded-2xl flex flex-col items-start text-left"
+          >
+            <div className="flex w-full justify-between items-center text-zinc-500">
+              <span className="text-[10px] font-medium tracking-wide uppercase">
+                {stat.label}
+              </span>
+              {stat.icon}
+            </div>
+            <span className="text-lg font-semibold text-white mt-2">
+              {stat.value}
+            </span>
+          </div>
+        ))}
       </div>
-
     </div>
   );
 }

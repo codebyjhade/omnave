@@ -92,8 +92,8 @@ export const LessonCard = memo(function LessonCard({
   }, [showMenu]);
 
   const cardClasses = isGhostLesson
-    ? `relative flex flex-col p-4 pb-5 bg-[#130E24]/30 border border-dashed border-white/10 backdrop-blur-sm rounded-2xl opacity-70 w-full select-none min-h-[140px] ${showMenu ? 'z-50' : 'z-10'}`
-    : `relative flex flex-col p-4 pb-5 bg-[#130E24]/60 backdrop-blur-sm border border-white/5 rounded-2xl hover:bg-white/[0.02] active:scale-[0.97] active:opacity-80 cursor-pointer select-none group w-full min-h-[140px] ${showMenu ? 'z-50' : 'z-10'} transition-[background-color,border-color,opacity] duration-150`;
+    ? `relative flex flex-col p-4 pb-5 bg-omnave-canvas/40 border border-dashed border-white/10 rounded-2xl opacity-70 w-full select-none min-h-[140px] ${showMenu ? 'z-50' : 'z-10'}`
+    : `relative flex flex-col p-4 pb-5 bg-omnave-surface border border-white/5 rounded-2xl hover:bg-[#1A1528] active:scale-[0.97] active:opacity-80 cursor-pointer select-none group w-full min-h-[140px] ${showMenu ? 'z-50' : 'z-10'} transition-[background-color,border-color,opacity] duration-150`;
 
   const displayTitle = ai_title || (isGhostLesson ? "Analyzing topic..." : getCleanTitle(filename));
 

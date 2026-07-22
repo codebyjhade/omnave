@@ -36,10 +36,10 @@ export const StudySessionBanner = memo(function StudySessionBanner({
   const { abandonHandler } = useAssessmentGuard();
 
   return (
-    <div className="flex items-center justify-between w-full px-4 py-2.5 bg-[#130E24]/80 backdrop-blur-md border border-white/5 rounded-full shadow-sm mt-4 select-none antialiased mb-4">
+    <div className="flex items-center justify-between w-full px-4 py-2.5 bg-omnave-surface border border-white/5 rounded-full shadow-sm mt-4 select-none antialiased mb-4">
       {/* Left: Status Dot & Title */}
       <div className="flex items-center gap-2.5">
-        <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse" />
+        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
         <span className="text-[13px] font-semibold text-white/90">
           {config.label}
         </span>

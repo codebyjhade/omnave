@@ -40,15 +40,12 @@ export const SubscriptionCard = memo(function SubscriptionCard({ plan = "free" }
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="bg-gradient-to-br from-[#2e1a5e] to-[#130E24] border border-purple-500/20 rounded-2xl p-6 md:p-8 relative overflow-hidden shadow-[0_8px_30px_rgba(88,28,135,0.15)] flex flex-col w-full"
+      className="bg-omnave-surface border border-white/5 rounded-2xl p-6 md:p-8 relative overflow-hidden shadow-2xl flex flex-col w-full"
     >
-      {/* Decorative Radial Glow */}
-      <div className="absolute -top-10 -right-10 w-32 h-32 bg-purple-500/20 blur-[50px] rounded-full pointer-events-none" aria-hidden="true"></div>
-
       <div className="flex items-center justify-between mb-6 relative z-10">
         <div className="flex items-center gap-3">
-          <div className="bg-purple-500/20 text-purple-300 p-2.5 rounded-xl flex items-center justify-center shrink-0">
-            <Crown size={20} className="text-purple-300" />
+          <div className="bg-zinc-800 text-zinc-300 p-2.5 rounded-xl flex items-center justify-center shrink-0 border border-zinc-700">
+            <Crown size={20} className="text-zinc-300" />
           </div>
           <div>
             <h3 className="text-sm font-bold text-white">{config.label} Plan</h3>

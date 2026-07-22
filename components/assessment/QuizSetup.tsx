@@ -33,7 +33,7 @@ export const QuizSetup = React.memo(function QuizSetup({ onStartQuiz }: QuizSetu
         <p className="text-xs sm:text-sm text-white/50 max-w-xl">Configure your ideal study session. Select your preferred formats and let the AI pull from the massive master question bank.</p>
       </div>
  
-      <div className="bg-[#121214] border border-white/10 rounded-2xl p-6 sm:p-10 relative overflow-hidden">
+      <div className="bg-omnave-surface border border-white/5 rounded-2xl p-6 sm:p-10 relative overflow-hidden">
         <div className="relative z-10 flex flex-col gap-10">
           
           {/* Section 1: Question Format */}

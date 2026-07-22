@@ -121,7 +121,7 @@ export default function TopRightActions() {
           className="text-2xl font-black text-white tracking-tighter hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A] rounded-lg" 
           href="/home"
         >
-          omnave.
+          omnave
         </Link>
       </div>
 

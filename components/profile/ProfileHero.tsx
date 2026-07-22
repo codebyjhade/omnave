@@ -24,10 +24,8 @@ export const ProfileHero = memo(function ProfileHero({ profileName, email, initi
 
   return (
     <div
-      className="bg-[#0f0a1c]/80 border border-white/10 backdrop-blur-md shadow-2xl rounded-2xl p-5 flex flex-col gap-4 relative overflow-hidden"
+      className="bg-omnave-surface border border-white/5 shadow-2xl rounded-2xl p-5 flex flex-col gap-4 relative overflow-hidden"
     >
-      {/* Ambient Inner Glow */}
-      <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-omnave-primary/10 blur-[80px] rounded-full pointer-events-none" aria-hidden="true" />
 
       {/* Top Section: Split into Left and Right Columns */}
       <div className="flex flex-row justify-between gap-6 relative z-10 select-none">

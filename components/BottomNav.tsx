@@ -27,7 +27,7 @@ export default function BottomNav() {
   const navContent = (
     <>
       {/* Full-width, bottom-docked glass bar */}
-      <div className="fixed bottom-0 left-0 w-full h-[72px] bg-[#0A0A0A]/60 backdrop-blur-2xl border-t border-white/10 flex items-center justify-around px-2 md:px-6 z-[9999] pb-safe">
+      <div className="fixed bottom-0 left-0 w-full h-[72px] bg-[#05030A]/60 backdrop-blur-2xl border-t border-white/10 flex items-center justify-around px-2 md:px-6 z-[9999] pb-safe">
         
         {/* Home */}
         <NavItem 
