@@ -62,7 +62,7 @@ export const BadgeShowcase = memo(function BadgeShowcase({ onViewAll }: { onView
   const RecentIcon = recentAchievement ? getIcon(recentAchievement.icon) : null;
 
   return (
-    <div className="bg-black/[0.4] border border-white/[0.1] backdrop-blur-2xl rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-2xl space-y-6 flex flex-col w-full">
+    <div className="bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-lg space-y-6 flex flex-col w-full transition-all duration-500 ease-out hover:bg-[#151515] hover:border-white/[0.15] hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
       {/* Summary Header */}
       <div className="flex items-center justify-between w-full">
         <div className="space-y-1">
@@ -91,17 +91,15 @@ export const BadgeShowcase = memo(function BadgeShowcase({ onViewAll }: { onView
 
       {/* Recent Unlock Banner */}
       {recentAchievement && RecentIcon && (
-        <motion.div
-          initial={{ opacity: 0, y: 5 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-omnave-primary/10 to-transparent border border-white/5 rounded-2xl p-4 flex items-center justify-between gap-4 shadow-xs w-full"
+        <div
+          className="bg-white/[0.03] backdrop-blur-md border border-white/[0.08] shadow-inner rounded-2xl p-4 flex items-center justify-between gap-4 w-full"
         >
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-omnave-primary/20 text-omnave-primary flex items-center justify-center shrink-0 border border-omnave-primary/30">
+            <div className="w-10 h-10 rounded-xl bg-white/[0.03] border border-white/[0.08] text-zinc-500 flex items-center justify-center shrink-0">
               <RecentIcon size={20} />
             </div>
             <div className="min-w-0 leading-tight">
-              <span className="text-[9px] font-black text-omnave-primary uppercase tracking-widest block">
+              <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block">
                 Recent Unlock
               </span>
               <h4 className="text-xs font-bold text-white block truncate mt-0.5">
@@ -115,7 +113,7 @@ export const BadgeShowcase = memo(function BadgeShowcase({ onViewAll }: { onView
           <span className="text-[9px] font-extrabold text-amber-500 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-xl shrink-0">
             +{recentAchievement.rewardXp} XP
           </span>
-        </motion.div>
+        </div>
       )}
 
       {/* Carousel */}
@@ -170,9 +168,9 @@ export const BadgeShowcase = memo(function BadgeShowcase({ onViewAll }: { onView
                     {item.progress}/{item.target}
                   </span>
                 </div>
-                <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden border border-white/5">
+                <div className="w-full bg-white/5 h-[2px] rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full ${item.completed ? "bg-gradient-to-r from-omnave-primary/50 to-omnave-primary" : "bg-white/10"}`}
+                    className={`h-full rounded-full ${item.completed ? "bg-purple-500" : "bg-white/10"}`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -184,11 +182,9 @@ export const BadgeShowcase = memo(function BadgeShowcase({ onViewAll }: { onView
 
       {/* Absolute Bottom-Edge Progress Bar */}
       <div className="absolute bottom-0 left-0 w-full h-[2px] bg-white/5" role="progressbar" aria-valuenow={completionPercentage} aria-valuemin={0} aria-valuemax={100} aria-label="Overall badges completion">
-        <motion.div
-          className="h-full w-full bg-omnave-primary shadow-[0_0_10px_rgba(var(--omnave-primary),0.5)] origin-left transform-gpu"
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: completionPercentage / 100 }}
-          transition={{ duration: 0.4 }}
+        <div
+          className="h-full bg-purple-500"
+          style={{ width: `${completionPercentage}%` }}
         />
       </div>
     </div>

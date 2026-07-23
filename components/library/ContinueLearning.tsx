@@ -34,7 +34,7 @@ export function ContinueLearning({
     <div className="w-full" aria-labelledby="continue-learning-title">
       <h2 
         id="continue-learning-title" 
-        className="text-[10px] font-extrabold tracking-[0.2em] text-neutral-500 uppercase mb-4"
+        className="text-[11px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-4"
       >
         Continue Learning
       </h2>

@@ -13,11 +13,11 @@ interface StatItemProps {
 const StatItem = memo(function StatItem({ icon, value, label, colSpan = "" }: StatItemProps) {
   return (
     <div
-      className={`bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl rounded-2xl px-4 py-4 flex flex-col items-center justify-center text-center transition-colors hover:bg-white/[0.05] shadow-lg ${colSpan}`}
+      className={`bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-6 flex flex-col items-center justify-center text-center shadow-lg transition-all duration-500 ease-out hover:bg-[#151515] hover:border-white/[0.15] hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)] ${colSpan}`}
     >
-      <div className="mb-2 text-omnave-primary shrink-0">{icon}</div>
-      <span className="text-2xl font-black text-white leading-none mb-1">{value}</span>
-      <span className="text-[10px] font-bold tracking-widest text-white/40 uppercase text-center">{label}</span>
+      <div className="mb-2 text-zinc-500 shrink-0">{icon}</div>
+      <span className="text-3xl font-semibold tracking-tight text-white leading-none mb-1">{value}</span>
+      <span className="text-[10px] font-bold tracking-widest text-zinc-500 uppercase text-center">{label}</span>
     </div>
   );
 });

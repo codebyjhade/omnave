@@ -1,7 +1,6 @@
 "use client";
 
 import { memo } from "react";
-import { motion } from "framer-motion";
 import { Calendar, Clock, BookOpen } from "lucide-react";
 import type { WeeklyDay } from "@/hooks/useProgressStats";
 
@@ -28,14 +27,9 @@ export const WeeklyActivity = memo(function WeeklyActivity({
   const maxSessions = Math.max(...weeklyData.map((d) => d.sessions), 1);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
-      className="bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl rounded-2xl p-6 md:p-8 relative overflow-hidden shadow-lg flex flex-col w-full transition-all hover:bg-white/[0.05]"
+    <div
+      className="bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-lg flex flex-col w-full"
     >
-      {/* Ambient Inner Glow */}
-      <div className="absolute -top-[50%] -right-[20%] w-[500px] h-[500px] bg-omnave-primary/20 blur-[120px] rounded-full pointer-events-none" aria-hidden="true" />
       {/* Weekly Activity Top Stats */}
       <div className="grid grid-cols-3 divide-x divide-white/10 mb-6 select-none">
         <div className="flex flex-col items-center justify-center text-center px-2">
@@ -43,7 +37,7 @@ export const WeeklyActivity = memo(function WeeklyActivity({
             <BookOpen size={12}/> 
             <span className="text-[10px] uppercase tracking-wider font-semibold">Sessions</span>
           </div>
-          <span className="text-2xl font-bold text-white leading-none">
+          <span className="text-3xl font-semibold tracking-tight text-white leading-none">
             {totalSessions}
           </span>
         </div>
@@ -52,7 +46,7 @@ export const WeeklyActivity = memo(function WeeklyActivity({
             <Calendar size={12}/> 
             <span className="text-[10px] uppercase tracking-wider font-semibold">Days</span>
           </div>
-          <span className="text-2xl font-bold text-white leading-none">
+          <span className="text-3xl font-semibold tracking-tight text-white leading-none">
             {daysStudied}
           </span>
         </div>
@@ -61,7 +55,7 @@ export const WeeklyActivity = memo(function WeeklyActivity({
             <Clock size={12}/> 
             <span className="text-[10px] uppercase tracking-wider font-semibold">Time</span>
           </div>
-          <span className="text-2xl font-bold text-white leading-none">
+          <span className="text-3xl font-semibold tracking-tight text-white leading-none">
             {formatStudyTime(estimatedStudyMinutes)}
           </span>
         </div>
@@ -74,27 +68,29 @@ export const WeeklyActivity = memo(function WeeklyActivity({
           aria-label={`Weekly study activity: ${daysStudied} days studied, ${totalSessions} sessions`}
         >
           {weeklyData.map((day) => {
-            const height =
-              day.sessions === 0 ? 4 : Math.max(12, (day.sessions / maxSessions) * 40);
-            const isActive = day.sessions > 0;
+            const fillHeight = day.sessions > 0
+              ? `${Math.max(15, (day.sessions / maxSessions) * 100)}%`
+              : "0%";
 
             return (
-              <div key={day.day} className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
+              <div key={day.day} className="flex-1 flex flex-col items-center gap-3 min-w-0">
                 <div
-                  className={`w-full max-w-[28px] rounded-md transition-all duration-150 ${
-                    isActive
-                      ? "bg-gradient-to-t from-omnave-primary/50 to-omnave-primary"
-                      : "bg-white/5 border border-white/10"
-                  }`}
-                  style={{ height: `${height}px` }}
+                  className="relative w-2.5 h-24 bg-white/[0.03] rounded-full overflow-hidden flex items-end"
                   title={`${day.sessions} session${day.sessions === 1 ? "" : "s"} on ${day.day}`}
-                />
-                <span className="text-[9px] font-bold text-white/40">{day.day}</span>
+                >
+                  {day.sessions > 0 && (
+                    <div 
+                      className="w-full bg-purple-500 rounded-full shadow-[0_0_10px_rgba(168,85,247,0.5)] transition-all duration-300"
+                      style={{ height: fillHeight }}
+                    />
+                  )}
+                </div>
+                <span className="text-[10px] text-zinc-500 uppercase">{day.day}</span>
               </div>
             );
           })}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 });

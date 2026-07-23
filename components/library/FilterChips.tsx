@@ -33,15 +33,15 @@ export function FilterChips({ activeFilter, onFilterChange }: FilterChipsProps) 
             onClick={() => onFilterChange(id)}
             className={
               isActive
-                ? "relative px-4 py-2.5 rounded-full text-xs font-black whitespace-nowrap text-white transition-colors duration-200 focus:outline-none min-h-[44px] snap-start shrink-0 cursor-pointer"
-                : "relative px-4 py-2.5 rounded-full text-xs font-bold bg-white/5 border border-white/10 text-white/80 hover:text-white hover:bg-white/10 transition-all duration-200 focus:outline-none min-h-[44px] snap-start shrink-0 cursor-pointer"
+                ? "relative px-4 py-2.5 rounded-full text-xs font-medium whitespace-nowrap text-white border border-transparent transition-all duration-200 focus:outline-none min-h-[44px] snap-start shrink-0 cursor-pointer"
+                : "relative px-4 py-2.5 rounded-full text-xs font-medium whitespace-nowrap bg-transparent border border-white/[0.04] text-zinc-400 hover:bg-white/[0.02] hover:text-zinc-300 transition-all duration-200 focus:outline-none min-h-[44px] snap-start shrink-0 cursor-pointer"
             }
           >
             {/* Animated Active Background pill */}
             {isActive && (
               <motion.div
                 layoutId="activeFilterPill"
-                className="absolute inset-0 bg-omnave-primary rounded-full -z-10"
+                className="absolute -inset-[1px] bg-white/[0.08] border border-white/[0.12] rounded-full -z-10 shadow-[0_0_15px_rgba(255,255,255,0.05)]"
                 transition={{ type: "spring", stiffness: 380, damping: 30 }}
               />
             )}

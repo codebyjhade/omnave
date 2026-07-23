@@ -92,8 +92,8 @@ export const LessonCard = memo(function LessonCard({
   }, [showMenu]);
 
   const cardClasses = isGhostLesson
-    ? `relative flex flex-col p-4 pb-5 bg-omnave-canvas/40 border border-dashed border-white/10 rounded-2xl opacity-70 w-full select-none min-h-[140px] ${showMenu ? 'z-50' : 'z-10'}`
-    : `relative flex flex-col p-4 pb-5 bg-omnave-surface border border-white/5 rounded-2xl hover:bg-[#1A1528] active:scale-[0.97] active:opacity-80 cursor-pointer select-none group w-full min-h-[140px] ${showMenu ? 'z-50' : 'z-10'} transition-[background-color,border-color,opacity] duration-150`;
+    ? `relative flex flex-col p-4 pb-5 bg-[#111111]/40 border border-dashed border-white/10 rounded-2xl opacity-70 w-full select-none min-h-[140px] ${showMenu ? 'z-50' : 'z-10'}`
+    : `relative flex flex-col p-4 pb-5 rounded-2xl select-none group w-full min-h-[140px] ${showMenu ? 'z-50' : 'z-10'} bg-[#111111] border border-white/[0.06] border-t-white/[0.12] transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-900/10 hover:border-white/[0.15] cursor-pointer`;
 
   const displayTitle = ai_title || (isGhostLesson ? "Analyzing topic..." : getCleanTitle(filename));
 
@@ -101,8 +101,8 @@ export const LessonCard = memo(function LessonCard({
     <>
       {/* Top Row: Icon & Action Menu */}
       <div className="flex justify-between items-start w-full mb-3">
-        <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-omnave-primary/10 border border-omnave-primary/20 text-omnave-primary flex items-center justify-center">
-          <FileText className="w-5 h-5" />
+        <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-white/[0.04] border border-white/[0.08] text-zinc-500 flex items-center justify-center">
+          <FileText className="w-5 h-5 text-zinc-500" />
         </div>
         <div className="relative shrink-0 flex items-center" ref={menuRef}>
           {isGhostLesson ? (
@@ -116,11 +116,11 @@ export const LessonCard = memo(function LessonCard({
                 e.stopPropagation();
                 setShowMenu(!showMenu);
               }}
-              className="text-white/40 hover:text-white transition-colors -mt-1 -mr-2 p-2 focus:outline-none"
+              className="text-zinc-500 hover:text-zinc-300 transition-colors -mt-1 -mr-2 p-2 focus:outline-none"
               aria-label="More study options"
               aria-expanded={showMenu}
             >
-              <MoreVertical className="w-4 h-4" />
+              <MoreVertical className="w-4 h-4 text-zinc-500" />
             </button>
           )}
 
@@ -180,13 +180,13 @@ export const LessonCard = memo(function LessonCard({
       {/* Text Group (Pushes bottom content down) */}
       <div className="flex flex-col flex-1 mt-3 mb-4 min-w-0">
         <h3 
-          className={`text-[14px] font-bold text-white leading-snug line-clamp-2 text-left ${isGhostLesson ? "text-white/60" : "text-white group-hover:text-omnave-primary transition-colors"}`} 
+          className={`text-[14px] font-semibold text-white leading-snug line-clamp-2 text-left`} 
           title={displayTitle}
         >
           {renderHighlightedTitle(displayTitle, highlightText)}
         </h3>
-        <p className="text-[12px] text-white/40 truncate mt-1 flex items-center gap-1.5 text-left" title={filename}>
-          <FileText className="w-3.5 h-3.5 shrink-0 text-white/40" /> 
+        <p className="text-xs text-zinc-500 truncate mt-1 flex items-center gap-1.5 text-left" title={filename}>
+          <FileText className="w-3.5 h-3.5 shrink-0 text-zinc-500" /> 
           {filename}
         </p>
       </div>
@@ -194,11 +194,11 @@ export const LessonCard = memo(function LessonCard({
       {/* Meta Row (Anchored at bottom) */}
       <div className="mt-auto pb-1 text-left">
         {isGhostLesson ? (
-          <p className="text-[11px] text-white/40 font-medium tracking-wide animate-pulse">
+          <p className="text-xs text-zinc-500 font-medium tracking-wide animate-pulse">
             Generating study kit...
           </p>
         ) : (
-          <p className="text-[11px] text-white/40 font-medium tracking-wide">
+          <p className="text-xs text-zinc-500 font-medium tracking-wide">
             {flashcardsCount} {flashcardsCount === 1 ? "Card" : "Cards"} • {quizzesCount} {quizzesCount === 1 ? "Quiz" : "Quizzes"}
           </p>
         )}
@@ -206,7 +206,7 @@ export const LessonCard = memo(function LessonCard({
 
       {/* Progress Bar (Absolute to OUTER container) */}
       {!isGhostLesson && (
-        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/5 pointer-events-none">
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/5 pointer-events-none">
           <div 
             className="h-full w-full bg-gradient-to-r from-purple-600 to-omnave-primary transition-transform duration-500 transform-gpu origin-left" 
             style={{ transform: `scaleX(${progress / 100})` }}

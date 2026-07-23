@@ -145,11 +145,13 @@ export default function LibraryPage() {
   return (
     <div className="relative min-h-screen">
  
-      <main className="relative z-10 w-full max-w-[1200px] mx-auto pt-4 pb-40 md:pb-24 lg:px-10 xl:px-12 flex flex-col gap-8 md:gap-12">
-        <header className="px-6 md:px-10 lg:px-0">
-          <h2 className="text-[10px] font-extrabold tracking-[0.2em] text-neutral-500 uppercase mb-2">Knowledge Vault</h2>
-          <div className="flex items-center flex-wrap gap-4">
-            <h1 className="text-[clamp(1.75rem,6vw,2.5rem)] md:text-5xl font-black tracking-tighter text-white">Your Library.</h1>
+      <main className="relative z-10 w-full max-w-[1200px] mx-auto pt-6 pb-24 lg:px-10 xl:px-12">
+        <header className="px-6 md:px-10 lg:px-0 mb-6">
+          <p className="text-[11px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-2 m-0 leading-none">
+            Knowledge Vault
+          </p>
+          <div className="flex items-center min-h-[32px] gap-3">
+            <h1 className="text-3xl font-bold tracking-tight text-white leading-none m-0">Your Library</h1>
             <LibraryHeader totalLessons={stats.total} />
           </div>
         </header>
@@ -169,7 +171,7 @@ export default function LibraryPage() {
               )}
 
               {filteredNotes.length > 0 && (
-                <h2 className="text-[10px] font-extrabold tracking-[0.2em] text-white/40 uppercase mt-4">All Study Kits</h2>
+                <h2 className="text-[11px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-4">All Study Kits</h2>
               )}
 
               {filteredNotes.length === 0 && (

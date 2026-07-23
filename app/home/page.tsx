@@ -14,7 +14,7 @@ export default function HomePage() {
   const showLaunchpad = !loading && lessons.length === 0;
 
   return (
-    <main className="w-full max-w-5xl mx-auto px-6 md:px-8 py-8 flex flex-col gap-6 pb-20 bg-[#0A0A0A]">
+    <main className="w-full max-w-5xl mx-auto px-6 md:px-8 pt-6 pb-20 flex flex-col gap-6 bg-[#0A0A0A]">
       {/* 1. Header: Greeting Block */}
       <Header />
 

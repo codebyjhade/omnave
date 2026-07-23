@@ -1,7 +1,6 @@
 "use client";
 
 import { memo } from "react";
-import { motion } from "framer-motion";
 import { Flame, Trophy, CalendarDays } from "lucide-react";
 import type { HeatmapDay } from "@/hooks/useProgressStats";
 
@@ -21,18 +20,13 @@ export const StudyConsistency = memo(function StudyConsistency({
   const showMilestone = currentStreak >= 7 || longestStreak >= 7;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
-      className="bg-black/[0.4] border border-white/[0.1] backdrop-blur-2xl rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-2xl flex flex-col w-full"
+    <div
+      className="bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-lg flex flex-col w-full"
     >
-      {/* Ambient Inner Glow */}
-      <div className="absolute -top-[50%] -right-[20%] w-[500px] h-[500px] bg-omnave-primary/20 blur-[120px] rounded-full pointer-events-none" aria-hidden="true" />
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="text-center">
           <div className="flex items-center justify-center gap-1 mb-1">
-            <Flame size={14} className="text-orange-400" aria-hidden="true" />
+            <Flame size={14} className="text-zinc-500" aria-hidden="true" />
             <span className="text-lg font-black text-white">{currentStreak}</span>
           </div>
           <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider">
@@ -41,7 +35,7 @@ export const StudyConsistency = memo(function StudyConsistency({
         </div>
         <div className="text-center border-x border-white/10">
           <div className="flex items-center justify-center gap-1 mb-1">
-            <Trophy size={14} className="text-amber-400" aria-hidden="true" />
+            <Trophy size={14} className="text-zinc-500" aria-hidden="true" />
             <span className="text-lg font-black text-white">{longestStreak}</span>
           </div>
           <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider">
@@ -50,7 +44,7 @@ export const StudyConsistency = memo(function StudyConsistency({
         </div>
         <div className="text-center">
           <div className="flex items-center justify-center gap-1 mb-1">
-            <CalendarDays size={14} className="text-blue-400" aria-hidden="true" />
+            <CalendarDays size={14} className="text-zinc-500" aria-hidden="true" />
             <span className="text-lg font-black text-white">{daysStudiedThisMonth}</span>
           </div>
           <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider">
@@ -76,17 +70,17 @@ export const StudyConsistency = memo(function StudyConsistency({
           {heatmapDays.map((day, idx) => {
             const level =
               day.count === 0
-                ? "bg-[#1A1A24] border border-white/5"
+                ? "bg-white/[0.02] border border-white/[0.02] rounded-sm"
                 : day.count === 1
-                  ? "bg-omnave-primary/20 border border-omnave-primary/30"
+                  ? "bg-purple-500/20 border border-purple-500/30 rounded-sm"
                   : day.count === 2
-                    ? "bg-omnave-primary/50 border border-omnave-primary/60"
-                    : "bg-omnave-primary border border-omnave-primary/80 shadow-[0_0_8px_rgba(127,34,254,0.8)]";
+                    ? "bg-purple-500/50 border border-purple-500/60 rounded-sm"
+                    : "bg-purple-500 border border-purple-500/80 shadow-[0_0_8px_rgba(168,85,247,0.4)] rounded-sm";
 
             return (
               <div
                 key={idx}
-                className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-[2px] ${level} transition-colors duration-150`}
+                className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${level} transition-colors duration-150`}
                 title={`${day.count} session${day.count === 1 ? "" : "s"} on ${day.date.toLocaleDateString()}`}
                 role="gridcell"
                 aria-label={`${day.count} sessions on ${day.date.toLocaleDateString()}`}
@@ -95,6 +89,6 @@ export const StudyConsistency = memo(function StudyConsistency({
           })}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 });

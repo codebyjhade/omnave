@@ -10,7 +10,6 @@ import {
   BadgeArchiveModal,
 } from "@/components/profile";
 import { ProfileMenuSheet } from "@/components/profile/ProfileMenuSheet";
-import { ToastProvider } from "@/components/ToastProvider";
 
 export default function ProfilePage() {
   const {
@@ -111,20 +110,17 @@ export default function ProfilePage() {
   }
 
   return (
-    <ToastProvider>
-      <div className="relative min-h-screen">
+    <div className="relative min-h-screen">
         {/* Main scroll */}
-        <main className="relative z-10 w-full max-w-[1200px] mx-auto pt-4 pb-40 md:pb-24 lg:px-10 xl:px-12 flex flex-col gap-8 md:gap-12">
-          <header className="px-6 md:px-10 lg:px-0 text-left">
-            <h2 className="text-[10px] font-extrabold tracking-[0.2em] text-neutral-500 uppercase mb-2">
-              Account
-            </h2>
-            <h1 className="text-[clamp(1.75rem,6vw,2.5rem)] md:text-5xl font-black tracking-tighter text-white">
-              Your Profile.
-            </h1>
+        <main className="relative z-10 w-full max-w-[1200px] mx-auto pt-6 pb-24 lg:px-10 xl:px-12">
+          <header className="px-6 md:px-10 lg:px-0 mb-6">
+            <p className="text-[11px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-2 m-0 leading-none">Account</p>
+            <div className="flex items-center min-h-[40px] gap-3">
+              <h1 className="text-3xl font-bold tracking-tight text-white leading-none m-0">Your Profile</h1>
+            </div>
           </header>
 
-          <div className="flex flex-col w-full space-y-8 pb-16 px-6 md:px-10 lg:px-0">
+          <div className="px-6 md:px-10 lg:px-0">
             {/* 1. Profile Hero */}
             <ProfileHero
               profileName={profileName}
@@ -138,8 +134,8 @@ export default function ProfilePage() {
             />
 
             {/* 2. Overview Stats */}
-            <div>
-              <h3 className="text-xs font-bold text-white/50 tracking-widest uppercase mb-4 mt-2">
+            <div className="mt-8 md:mt-12">
+              <h3 className="text-[11px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-4 m-0 leading-none">
                 Overview
               </h3>
               <LearningOverview
@@ -153,8 +149,8 @@ export default function ProfilePage() {
             </div>
 
             {/* 3. Achievements */}
-            <div>
-              <h3 className="text-xs font-bold text-white/50 tracking-widest uppercase mb-4">
+            <div className="mt-8 md:mt-12">
+              <h3 className="text-[11px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-4 m-0 leading-none">
                 Achievements
               </h3>
               <BadgeShowcase onViewAll={() => setShowBadgesModal(true)} />
@@ -180,6 +176,5 @@ export default function ProfilePage() {
           appVersion="1.0.0"
         />
       </div>
-    </ToastProvider>
   );
 }
