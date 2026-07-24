@@ -44,10 +44,15 @@ import {
   ChevronDown,
   ChevronUp,
   X,
+  Flame,
+  BookOpen,
+  BrainCircuit
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createBrowserClient } from "@supabase/ssr";
 import { useUserContext } from "@/context/UserContext";
+import { useUploadContext } from "@/context/UploadContext";
+import { useRouter } from "next/navigation";
 import { BadgeShowcase, BadgeArchiveModal } from "@/components/profile";
 import { useToast } from "@/components/ToastProvider";
 
@@ -106,19 +111,19 @@ function SheetHandle() {
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <p className="px-1 pt-1 pb-2 text-[10px] font-extrabold tracking-[0.18em] text-white/35 uppercase select-none">
+    <p className="px-1 pt-2 mb-3 text-[11px] font-bold tracking-[0.2em] text-zinc-500 uppercase select-none">
       {label}
     </p>
   );
 }
 
 function MenuDivider() {
-  return <div className="my-3 border-t border-white/[0.07]" />;
+  return <div className="my-4 border-t border-white/[0.04]" />;
 }
 
 function TrailingValue({ value }: { value: string }) {
   return (
-    <span className="text-xs text-white/40 font-medium mr-1 shrink-0">
+    <span className="text-xs font-semibold text-zinc-500 mr-1 shrink-0 px-2 py-0.5 rounded-md bg-white/[0.02] border border-white/[0.04] select-none">
       {value}
     </span>
   );
@@ -126,7 +131,7 @@ function TrailingValue({ value }: { value: string }) {
 
 function MenuSection({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl bg-white/[0.03] border border-white/[0.07] overflow-hidden divide-y divide-white/[0.05]">
+    <div className="rounded-2xl bg-[#111111] border border-white/[0.06] overflow-hidden divide-y divide-white/[0.06]">
       {children}
     </div>
   );
@@ -145,13 +150,13 @@ function MenuItem({ icon, label, trailing, onClick, disabled }: MenuItemProps) {
     <button
       onClick={onClick}
       disabled={disabled}
-      className="flex items-center w-full min-h-[44px] px-4 py-3 gap-3.5 text-sm text-white rounded-xl hover:bg-white/[0.06] active:bg-white/10 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-inset group"
+      className="flex items-center w-full min-h-[48px] px-4 py-4 gap-3.5 text-sm text-zinc-100 hover:bg-white/[0.01] active:bg-white/[0.03] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-inset group"
     >
-      <span className="text-white/55 shrink-0 group-hover:text-white/80 transition-colors">
-        {icon}
+      <span className="text-zinc-400 shrink-0 group-hover:text-zinc-200 transition-colors">
+        {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement<any>, { size: 16 }) : icon}
       </span>
       <span className="flex-1 text-left font-medium leading-snug">{label}</span>
-      {trailing ?? <ChevronRight size={15} className="text-white/20 shrink-0" />}
+      {trailing ?? <ChevronRight size={14} className="text-zinc-600 shrink-0 transition-transform group-hover:translate-x-0.5" />}
     </button>
   );
 }
@@ -171,9 +176,11 @@ function DangerMenuItem({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="flex items-center w-full min-h-[44px] px-4 py-3 gap-3.5 text-sm text-red-400 rounded-xl hover:bg-red-500/10 active:bg-red-500/15 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60 focus-visible:ring-inset"
+      className="flex items-center w-full min-h-[48px] px-4 py-4 gap-3.5 text-sm text-red-400 hover:bg-red-500/10 active:bg-red-500/15 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60 focus-visible:ring-inset"
     >
-      <span className="shrink-0">{icon}</span>
+      <span className="text-red-400 shrink-0">
+        {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement<any>, { size: 16 }) : icon}
+      </span>
       <span className="flex-1 text-left font-semibold leading-snug">{label}</span>
     </button>
   );
@@ -621,40 +628,139 @@ function HistoryView({
 
 // ─── Sub-View: Notifications ──────────────────────────────────────────────────
 
-const SAMPLE_NOTIFICATIONS = [
-  { id: "streak", icon: "🔥", title: "Streak Active!", desc: "You have an active study streak. Keep the momentum going!", time: "Just now" },
-  { id: "ai", icon: "💡", title: "AI Study Tip", desc: "Practice with quizzes after reviewing flashcards to reinforce retention.", time: "2h ago" },
-  { id: "welcome", icon: "✨", title: "Welcome to Omnave", desc: "Upload a PDF or paste a link to generate flashcards and quizzes instantly.", time: "1d ago" },
-];
+function NotificationsView({ onClose }: { onClose: () => void }) {
+  const { notifications, markNotificationAsRead, clearAllNotifications } = useUserContext();
+  const { uploadStatus, uploadMessage, uploadProgress, cancelUpload } = useUploadContext();
+  const router = useRouter();
 
-function NotificationsView() {
-  const [items, setItems] = useState(SAMPLE_NOTIFICATIONS);
+  const getNotificationIcon = (type: string, isRead: boolean) => {
+    const colorClass = isRead ? "text-zinc-500" : "text-[#a855f7]";
+    switch (type) {
+      case "streak":
+        return <Flame size={16} className={`${colorClass} shrink-0`} />;
+      case "lesson":
+        return <BookOpen size={16} className={`${colorClass} shrink-0`} />;
+      case "welcome":
+        return <Sparkles size={16} className={`${colorClass} shrink-0`} />;
+      case "ai":
+        return <BrainCircuit size={16} className={`${colorClass} shrink-0`} />;
+      default:
+        return <Bell size={16} className={`${colorClass} shrink-0`} />;
+    }
+  };
+
+  const handleNotificationClick = (n: any) => {
+    markNotificationAsRead(n.id);
+    if (n.id.startsWith("processed-")) {
+      const lessonId = n.id.replace("processed-", "");
+      onClose();
+      router.push(`/lesson/${lessonId}`);
+    }
+  };
 
   return (
     <div className="flex-1 overflow-y-auto overscroll-contain pb-10">
-      {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-          <span className="text-4xl">🧹</span>
-          <p className="text-sm text-white/40">You're all caught up!</p>
+      {uploadStatus === "uploading" && (
+        <div className="p-4 bg-[#a855f7]/5 border-b border-white/[0.06] flex flex-row items-center gap-4 relative text-left">
+          {/* 1. Micro-Engine container (left side) */}
+          <div className="w-12 h-12 flex items-center justify-center bg-[#0a0a0a] rounded-xl border border-white/[0.04] shadow-inner shrink-0">
+            <motion.div
+              animate={{ 
+                scale: [1, 1.05, 0.96, 1.03, 1],
+                filter: [
+                  "drop-shadow(0 0 4px rgba(168,85,247,0.4))",
+                  "drop-shadow(0 0 8px rgba(168,85,247,0.7))",
+                  "drop-shadow(0 0 4px rgba(168,85,247,0.4))"
+                ]
+              }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="w-full h-full flex items-center justify-center px-1"
+            >
+              <svg viewBox="0 0 320 80" width="34" className="overflow-visible select-none">
+                {/* Letter 'o' */}
+                <path d="M 30,40 A 15,15 0 1,1 29.9,40 Z" fill="none" stroke="#a855f7" strokeWidth="8" strokeLinecap="round" />
+                {/* Letter 'm' */}
+                <path d="M 60,55 V 30 A 8,8 0 0,1 76,30 V 55 M 76,30 A 8,8 0 0,1 92,30 V 55" fill="none" stroke="#a855f7" strokeWidth="8" strokeLinecap="round" />
+                {/* Letter 'n' */}
+                <path d="M 110,55 V 30 A 8,8 0 0,1 126,30 V 55" fill="none" stroke="#a855f7" strokeWidth="8" strokeLinecap="round" />
+                {/* Letter 'a' */}
+                <path d="M 155,42.5 A 12.5,12.5 0 1,1 154.9,42.5 Z M 167.5,30 V 55" fill="none" stroke="#a855f7" strokeWidth="8" strokeLinecap="round" />
+                {/* Letter 'v' */}
+                <path d="M 185,30 L 195,55 L 205,30" fill="none" stroke="#a855f7" strokeWidth="8" strokeLinecap="round" />
+                {/* Letter 'e' */}
+                <path d="M 235,42.5 H 215 A 12.5,12.5 0 1,1 235,40" fill="none" stroke="#a855f7" strokeWidth="8" strokeLinecap="round" />
+              </svg>
+            </motion.div>
+          </div>
+
+          {/* 2. Task info & Controls (right side) */}
+          <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-bold tracking-widest text-[#a855f7] uppercase">Active Task</span>
+              <button
+                onClick={cancelUpload}
+                className="text-zinc-500 hover:text-red-400 text-[10px] font-extrabold uppercase tracking-widest transition-colors cursor-pointer select-none"
+              >
+                [x] Cancel
+              </button>
+            </div>
+            
+            <p className="text-xs font-semibold text-zinc-100 truncate pr-4 mt-0.5">AI is analyzing your material...</p>
+            
+            <div className="flex items-center gap-3 mt-1.5">
+              <div className="flex-1 bg-white/5 h-1.5 rounded-full overflow-hidden border border-white/5">
+                <div 
+                  className="bg-gradient-to-r from-purple-600 to-[#a855f7] h-full rounded-full transition-all duration-300 ease-out" 
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              <span className="text-[10px] font-bold text-white shrink-0">{uploadProgress}%</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {notifications.length === 0 && uploadStatus !== "uploading" ? (
+        <div className="flex flex-col items-center justify-center gap-3 py-20 text-center select-none">
+          <p className="text-sm text-zinc-500">You're all caught up!</p>
         </div>
       ) : (
         <>
-          <div className="flex justify-end px-4 py-2">
-            <button onClick={() => setItems([])} className="text-[11px] font-bold text-white/40 hover:text-white transition-colors cursor-pointer">
-              Clear All
-            </button>
-          </div>
-          <div className="divide-y divide-white/[0.05]">
-            {items.map((n) => (
-              <div key={n.id} className="flex gap-3 px-4 py-4 hover:bg-white/[0.02] transition-colors">
-                <span className="text-xl shrink-0 mt-0.5 select-none">{n.icon}</span>
-                <div className="flex flex-col gap-0.5 min-w-0">
-                  <span className="text-xs font-bold text-white">{n.title}</span>
-                  <p className="text-[11px] text-white/60 leading-relaxed">{n.desc}</p>
-                  <span className="text-[9px] text-white/30 mt-1">{n.time}</span>
+          {notifications.length > 0 && (
+            <div className="flex justify-end px-4 py-2">
+              <button 
+                onClick={clearAllNotifications} 
+                className="text-[11px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-colors cursor-pointer select-none"
+              >
+                Clear All
+              </button>
+            </div>
+          )}
+          <div className="divide-y divide-white/[0.06]">
+            {notifications.map((n) => {
+              const isProcessed = n.id.startsWith("processed-");
+              return (
+                <div 
+                  key={n.id} 
+                  onClick={() => handleNotificationClick(n)}
+                  className={`flex gap-3.5 px-4 py-4 hover:bg-white/[0.01] transition-colors cursor-pointer text-left ${!n.isRead ? "bg-purple-500/[0.01]" : ""}`}
+                >
+                  <div className="shrink-0 mt-0.5 select-none">
+                    {getNotificationIcon(n.type, n.isRead)}
+                  </div>
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    <span className="text-xs font-bold text-zinc-100">{n.title}</span>
+                    <p className="text-[11px] text-zinc-400 leading-normal">{n.desc}</p>
+                    {isProcessed && (
+                      <span className="text-[10px] text-[#a855f7] font-semibold mt-1 flex items-center gap-1 hover:underline">
+                        View Lesson ➔
+                      </span>
+                    )}
+                    <span className="text-[9px] text-zinc-600 font-medium mt-1">{n.time}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
@@ -763,10 +869,10 @@ export function ProfileMenuSheet({
       shouldScaleBackground={false}
     >
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm" />
+        <Drawer.Overlay className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-md" />
 
         <Drawer.Content
-          className="fixed bottom-0 left-0 right-0 z-[10000] flex flex-col rounded-t-[28px] bg-[#0D0A1A] border-t border-white/10 shadow-[0_-20px_60px_rgba(0,0,0,0.6)] outline-none"
+          className="fixed bottom-0 left-0 right-0 z-[10000] flex flex-col rounded-t-[28px] bg-[#09090b]/95 backdrop-blur-md border-t border-white/10 shadow-[0_-20px_60px_rgba(0,0,0,0.6)] outline-none"
           style={{ height: "85dvh", maxHeight: "92dvh" }}
           aria-label="Profile settings"
         >
@@ -816,7 +922,7 @@ export function ProfileMenuSheet({
                 {activeView === "editProfile" && <EditProfileView onBack={goBack} />}
                 {activeView === "badges" && <BadgesView />}
                 {activeView === "history" && <HistoryView quizScores={quizScores} lessons={lessons} />}
-                {activeView === "notifications" && <NotificationsView />}
+                {activeView === "notifications" && <NotificationsView onClose={onClose} />}
                 {activeView === "appearance" && <AppearanceView />}
               </motion.div>
             </AnimatePresence>

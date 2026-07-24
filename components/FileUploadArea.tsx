@@ -102,16 +102,16 @@ export default function FileUploadArea() {
 
       {!file ? (
         <>
-          {/* Flat Dropzone Container (Minimal dashed design) */}
+          {/* Flat Dropzone Container (Minimal dashed design with depth) */}
           <div
             onDragEnter={handleDrag}
             onDragOver={handleDrag}
             onDragLeave={handleDrag}
             onDrop={handleDrop}
-            className={`bg-omnave-canvas border-2 border-dashed border-white/10 hover:border-white/20 rounded-2xl transition-colors duration-150 flex flex-col items-center justify-center p-10 text-center max-w-md mx-auto w-full group relative cursor-pointer z-10 ${
+            className={`bg-[#111111]/80 backdrop-blur-md border-2 border-dashed border-white/[0.15] rounded-3xl transition-all duration-300 flex flex-col items-center justify-center py-16 px-10 text-center max-w-md mx-auto w-full group relative cursor-pointer z-10 shadow-[0_0_100px_-20px_rgba(168,85,247,0.12)] hover:shadow-[0_0_100px_-10px_rgba(168,85,247,0.18)] ${
               isDragActive
-                ? "border-white/40 bg-white/[0.02]"
-                : ""
+                ? "border-[#a855f7]/50 bg-[#a855f7]/5"
+                : "hover:border-white/20 hover:bg-white/[0.01]"
             }`}
           >
             <input
@@ -120,14 +120,20 @@ export default function FileUploadArea() {
               onChange={handleFileChange}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
             />
-            {/* Clean Upload Icon */}
-            <div className="w-16 h-16 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-6">
-              <UploadCloud size={28} className="text-white/60" />
-            </div>
-            <h3 className="text-base font-bold text-white mb-1.5">
-              {isDragActive ? "Drop PDF document here" : "Select PDF Document"}
-            </h3>
-            <p className="text-xs text-white/45 font-medium max-w-[220px] leading-normal">
+            {/* Sleek SVG floating upload icon */}
+            <UploadCloud size={48} className="text-white mb-6 transition-colors duration-300 group-hover:scale-105" />
+            
+            {isDragActive ? (
+              <h3 className="text-base font-bold text-white mb-2 select-none">
+                Drop PDF document here
+              </h3>
+            ) : (
+              <div className="bg-white text-black text-sm font-semibold px-6 py-2.5 rounded-full hover:bg-zinc-200 transition-colors mb-3.5 inline-block shadow-md select-none">
+                Select PDF Document
+              </div>
+            )}
+            
+            <p className="text-xs text-zinc-500 font-medium max-w-[220px] leading-normal group-hover:text-zinc-400 transition-colors">
               Drag & drop or browse. Max file size 10MB.
             </p>
           </div>

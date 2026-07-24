@@ -43,6 +43,15 @@ export interface Lesson {
   is_processed?: boolean;
 }
 
+export interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  desc: string;
+  time: string;
+  isRead: boolean;
+}
+
 interface UserContextType {
   user: any;
   xp: number;
@@ -64,6 +73,10 @@ interface UserContextType {
   insights: string[];
   hasCompletedOnboarding: boolean;
   completeOnboarding: () => Promise<void>;
+  notifications: Notification[];
+  markNotificationAsRead: (id: string) => void;
+  clearAllNotifications: () => void;
+  addNotification: (notification: Omit<Notification, 'isRead'>) => void;
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -291,6 +304,98 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, refreshUser]);
 
+  // ── Notifications persistence ────────────────────────────────────────────────
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  // Helper to generate default initial notifications list
+  const generateDefaultNotifications = useCallback((streakVal: number, lessonsVal: Lesson[]) => {
+    const list: Notification[] = [];
+    if (streakVal > 0) {
+      list.push({
+        id: "streak",
+        type: "streak",
+        title: "Streak Active!",
+        desc: `You are on a ${streakVal}-day study streak. Keep the momentum going!`,
+        time: "Just now",
+        isRead: false,
+      });
+    }
+    if (lessonsVal.length > 0) {
+      const firstTitle = lessonsVal[0].title || "Study document";
+      list.push({
+        id: "lesson",
+        type: "lesson",
+        title: "Material Processed",
+        desc: `"${firstTitle}" has been successfully analyzed by AI.`,
+        time: "10m ago",
+        isRead: false,
+      });
+    } else {
+      list.push({
+        id: "welcome",
+        type: "welcome",
+        title: "Welcome to Omnave",
+        desc: "Upload a PDF or paste a link to generate flashcards and practice quizzes instantly.",
+        time: "1h ago",
+        isRead: false,
+      });
+    }
+    list.push({
+      id: "ai",
+      type: "ai",
+      title: "AI Study Tip",
+      desc: "Practice with quizzes after reviewing flashcards to reinforce retention.",
+      time: "2h ago",
+      isRead: false,
+    });
+    return list;
+  }, []);
+
+  // Sync / load notifications state from localStorage when user, streak, or lessons load
+  useEffect(() => {
+    if (loading) return;
+    const storageKey = user ? `omnave_notifications_${user.id}` : "omnave_notifications_guest";
+    const saved = localStorage.getItem(storageKey);
+    if (saved !== null) {
+      try {
+        setNotifications(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse notifications", e);
+      }
+    } else {
+      const initialList = generateDefaultNotifications(streak, lessons);
+      localStorage.setItem(storageKey, JSON.stringify(initialList));
+      setNotifications(initialList);
+    }
+  }, [user, loading, streak, lessons, generateDefaultNotifications]);
+
+  const markNotificationAsRead = useCallback((id: string) => {
+    setNotifications((prev) => {
+      const updated = prev.map((n) => (n.id === id ? { ...n, isRead: true } : n));
+      const storageKey = user ? `omnave_notifications_${user.id}` : "omnave_notifications_guest";
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+      return updated;
+    });
+  }, [user]);
+
+  const clearAllNotifications = useCallback(() => {
+    setNotifications([]);
+    const storageKey = user ? `omnave_notifications_${user.id}` : "omnave_notifications_guest";
+    localStorage.setItem(storageKey, JSON.stringify([]));
+  }, [user]);
+
+  const addNotification = useCallback((newNotif: Omit<Notification, 'isRead'>) => {
+    setNotifications((prev) => {
+      const fullNotif = { ...newNotif, isRead: false };
+      // Check if notification already exists to avoid duplicates
+      if (prev.some((n) => n.id === newNotif.id)) return prev;
+      const updated = [fullNotif, ...prev];
+      const storageKey = user ? `omnave_notifications_${user.id}` : "omnave_notifications_guest";
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+      return updated;
+    });
+  }, [user]);
+
   // ── Context value ────────────────────────────────────────────────────────────
 
   const value: UserContextType = {
@@ -314,6 +419,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     insights,
     hasCompletedOnboarding,
     completeOnboarding,
+    notifications,
+    markNotificationAsRead,
+    clearAllNotifications,
+    addNotification,
   };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

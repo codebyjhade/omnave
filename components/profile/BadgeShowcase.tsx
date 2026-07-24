@@ -55,44 +55,47 @@ export const BadgeShowcase = memo(function BadgeShowcase({ onViewAll }: { onView
   const unlockedCount = unlockedList.length;
   const completionPercentage = Math.round((unlockedCount / achievements.length) * 100);
 
-  const recentAchievement = useMemo(() => {
+  const recentHighlight = useMemo(() => {
     return unlockedList.length > 0 ? unlockedList[unlockedList.length - 1] : null;
   }, [unlockedList]);
 
-  const RecentIcon = recentAchievement ? getIcon(recentAchievement.icon) : null;
+  const RecentIcon = recentHighlight ? getIcon(recentHighlight.icon) : null;
 
   return (
-    <div className="bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-lg space-y-6 flex flex-col w-full transition-all duration-500 ease-out hover:bg-[#151515] hover:border-white/[0.15] hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
-      {/* Summary Header */}
+    <div className="space-y-6 flex flex-col w-full">
+      {/* Summary Header (Sitting naked directly on background) */}
       <div className="flex items-center justify-between w-full">
         <div className="space-y-1">
-          <h3 id="badge-showcase-heading" className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase">
-            Achievements & Badges
-          </h3>
-          <span className="text-[10px] text-white/50 font-bold block">
+          <span className="text-[10px] text-zinc-500 font-bold block">
             {unlockedCount} of {achievements.length} badges unlocked
           </span>
         </div>
         <button
           onClick={onViewAll}
-          className="text-[10px] font-bold px-3 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded-full text-white/70 uppercase tracking-widest transition-all cursor-pointer"
+          className="text-[10px] font-bold px-3 py-1.5 bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.08] rounded-full text-white uppercase tracking-widest transition-all cursor-pointer select-none"
         >
           View All
         </button>
       </div>
 
-      {/* Completion Slider */}
+      {/* Completion Slider (Sitting naked directly on background) */}
       <div className="space-y-1.5 w-full">
-        <div className="flex justify-between text-[9px] font-bold text-white/45 uppercase tracking-widest">
+        <div className="flex justify-between text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
           <span>Overall completion</span>
           <span>{completionPercentage}%</span>
         </div>
+        <div className="w-full h-[2px] bg-white/5 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-purple-500 rounded-full transition-all duration-300"
+            style={{ width: `${completionPercentage}%` }}
+          />
+        </div>
       </div>
 
-      {/* Recent Unlock Banner */}
-      {recentAchievement && RecentIcon && (
+      {/* Recent Unlock Banner (Clean ODL card floating on canvas) */}
+      {recentHighlight && RecentIcon && (
         <div
-          className="bg-white/[0.03] backdrop-blur-md border border-white/[0.08] shadow-inner rounded-2xl p-4 flex items-center justify-between gap-4 w-full"
+          className="bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-2xl p-4 flex items-center justify-between gap-4 w-full transition-colors duration-300 hover:border-white/[0.12]"
         >
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-white/[0.03] border border-white/[0.08] text-zinc-500 flex items-center justify-center shrink-0">
@@ -103,20 +106,20 @@ export const BadgeShowcase = memo(function BadgeShowcase({ onViewAll }: { onView
                 Recent Unlock
               </span>
               <h4 className="text-xs font-bold text-white block truncate mt-0.5">
-                {recentAchievement.title}
+                {recentHighlight.title}
               </h4>
-              <p className="text-[10px] text-white/50 truncate block mt-0.5">
-                {recentAchievement.description}
+              <p className="text-[10px] text-zinc-500 truncate block mt-0.5">
+                {recentHighlight.description}
               </p>
             </div>
           </div>
           <span className="text-[9px] font-extrabold text-amber-500 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-xl shrink-0">
-            +{recentAchievement.rewardXp} XP
+            +{recentHighlight.rewardXp} XP
           </span>
         </div>
       )}
 
-      {/* Carousel */}
+      {/* Carousel (Badge cards floating beautifully on canvas) */}
       <div 
         className="flex overflow-x-auto gap-3 py-1.5 scrollbar-hide cursor-grab active:cursor-grabbing select-none w-full"
         style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch" }}
@@ -131,7 +134,7 @@ export const BadgeShowcase = memo(function BadgeShowcase({ onViewAll }: { onView
           return (
             <div
               key={item.id}
-              className={`min-w-[140px] max-w-[140px] bg-white/[0.04] border border-white/5 ${style.border} ${style.glow} rounded-2xl p-3 flex flex-col justify-between items-center text-center scroll-snap-align-start shrink-0 relative transition-all duration-150 ${
+              className={`min-w-[140px] max-w-[140px] bg-[#111111] border border-white/[0.06] rounded-2xl p-3 flex flex-col justify-between items-center text-center scroll-snap-align-start shrink-0 relative transition-all duration-300 hover:border-white/[0.12] ${
                 item.completed ? "opacity-100" : "opacity-40 grayscale"
               }`}
               role="listitem"
@@ -178,14 +181,6 @@ export const BadgeShowcase = memo(function BadgeShowcase({ onViewAll }: { onView
             </div>
           );
         })}
-      </div>
-
-      {/* Absolute Bottom-Edge Progress Bar */}
-      <div className="absolute bottom-0 left-0 w-full h-[2px] bg-white/5" role="progressbar" aria-valuenow={completionPercentage} aria-valuemin={0} aria-valuemax={100} aria-label="Overall badges completion">
-        <div
-          className="h-full bg-purple-500"
-          style={{ width: `${completionPercentage}%` }}
-        />
       </div>
     </div>
   );
