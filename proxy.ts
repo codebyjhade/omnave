@@ -57,14 +57,50 @@ export async function proxy(request: NextRequest) {
     path.startsWith('/upload') || 
     path.startsWith('/lesson');
 
-  // If a guest tries to access the app, kick them to the landing page
+  const isPublicPage = path === '/' || isPublicAuthRoute;
+
+  // If a guest tries to access a protected route, redirect to landing page '/'
   if (!user && isProtectedRoute) {
-    return NextResponse.redirect(new URL('/', request.url));
+    const redirectUrl = new URL('/', request.url);
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+    
+    // CRITICAL: Copy Supabase auth cookies to the redirect response to prevent token refresh loops
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, {
+        path: cookie.path,
+        domain: cookie.domain,
+        maxAge: cookie.maxAge,
+        expires: cookie.expires,
+        secure: cookie.secure,
+        httpOnly: cookie.httpOnly,
+        sameSite: cookie.sameSite,
+      });
+    });
+    return redirectResponse;
+  }
+
+  // If unauthenticated and already on a public page, do not redirect
+  if (!user && isPublicPage) {
+    return supabaseResponse;
   }
 
   // If a logged-in user hits /login or /signup, push them into the app
   if (user && isPublicAuthRoute) {
-    return NextResponse.redirect(new URL('/home', request.url));
+    const redirectResponse = NextResponse.redirect(new URL('/home', request.url));
+    
+    // CRITICAL: Copy Supabase auth cookies to the redirect response to prevent loops
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, {
+        path: cookie.path,
+        domain: cookie.domain,
+        maxAge: cookie.maxAge,
+        expires: cookie.expires,
+        secure: cookie.secure,
+        httpOnly: cookie.httpOnly,
+        sameSite: cookie.sameSite,
+      });
+    });
+    return redirectResponse;
   }
 
   // Allow the request to proceed and securely attach the refreshed Supabase cookies

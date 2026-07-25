@@ -12,6 +12,7 @@ import React, {
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 import { useUserContext } from '@/context/UserContext';
+import { useToast } from '@/components/ToastProvider';
 import BackgroundProcessingWidget from '@/components/BackgroundProcessingWidget';
 
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
@@ -23,17 +24,21 @@ interface UploadContextValue {
   uploadMessage: string | null;
   uploadProgress: number;
   clearUploadState: () => void;
+  activeQueue: string[];
 }
 
 const UploadContext = createContext<UploadContextValue | undefined>(undefined);
 
 export function UploadProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { refreshUser, addNotification } = useUserContext();
+  const { refreshUser, addNotification, removeLessonFromState } = useUserContext();
+  const { toast } = useToast();
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [activeQueue, setActiveQueue] = useState<string[]>([]);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const activeMaterialIdRef = useRef<string | null>(null);
 
   const clearUploadState = useCallback(() => {
     setUploadStatus('idle');
@@ -52,15 +57,38 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearTimeout(timer);
   }, [clearUploadState, uploadStatus]);
 
-  const cancelUpload = useCallback(() => {
+  const cancelUpload = useCallback(async () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    setUploadStatus('error');
-    setUploadMessage('Processing cancelled by user.');
+
+    const targetId = activeMaterialIdRef.current;
+    if (targetId) {
+      activeMaterialIdRef.current = null;
+      // 1. Remove the pending item from the global active queue array
+      setActiveQueue((prev) => prev.filter((id) => id !== targetId));
+
+      // 2. Optimistically remove from context state instantly
+      removeLessonFromState(targetId);
+
+      // 3. Fire background delete request to Supabase
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      try {
+        await supabase.from('materials').delete().eq('id', targetId);
+      } catch (err) {
+        console.error('[UploadContext] cancelUpload db delete error:', err);
+      }
+    }
+
+    setUploadStatus('idle');
+    setUploadMessage(null);
     setUploadProgress(0);
-  }, []);
+    toast('Processing cancelled.', 'info');
+  }, [toast, removeLessonFromState]);
 
   const processBackgroundUpload = useCallback(
     async (file: File) => {
@@ -132,6 +160,9 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           throw dbError ?? new Error('Unable to register the study material.');
         }
 
+        activeMaterialIdRef.current = newMaterial.id;
+        setActiveQueue((prev) => [...prev, newMaterial.id]);
+
         if (signal.aborted) return;
 
         await refreshUser();
@@ -189,6 +220,11 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
         setUploadMessage(error?.message || 'Failed to process the document. Please try again.');
       } finally {
         abortControllerRef.current = null;
+        const targetId = activeMaterialIdRef.current;
+        if (targetId) {
+          setActiveQueue((prev) => prev.filter((id) => id !== targetId));
+        }
+        activeMaterialIdRef.current = null;
       }
     },
     [refreshUser, router, addNotification]
@@ -202,8 +238,9 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       uploadMessage,
       uploadProgress,
       clearUploadState,
+      activeQueue,
     }),
-    [clearUploadState, processBackgroundUpload, cancelUpload, uploadMessage, uploadStatus, uploadProgress]
+    [clearUploadState, processBackgroundUpload, cancelUpload, uploadMessage, uploadStatus, uploadProgress, activeQueue]
   );
 
   return (

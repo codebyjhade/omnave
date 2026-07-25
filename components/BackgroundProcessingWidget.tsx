@@ -39,13 +39,14 @@ export default function BackgroundProcessingWidget({
             y: bellRect.top + (bellRect.height / 2) - (logoRect.top + (logoRect.height / 2)),
           });
         } else {
+          // Fallback coords
           setOffsets({
             x: window.innerWidth / 2 - 40,
             y: -window.innerHeight / 2 + 40,
           });
         }
         setIsFlying(true);
-      }, 3000);
+      }, 2800);
 
       return () => clearTimeout(timer);
     } else {
@@ -55,6 +56,16 @@ export default function BackgroundProcessingWidget({
   }, [uploadStatus]);
 
   if (uploadStatus === "idle") return null;
+
+  // Shared trace transition for the letters to trace continuously
+  const pathTransition = (delay: number) => ({
+    duration: 1.2,
+    ease: "easeInOut" as const,
+    delay,
+    repeat: Infinity,
+    repeatType: "loop" as const,
+    repeatDelay: 1.5,
+  });
 
   return (
     <>
@@ -83,93 +94,66 @@ export default function BackgroundProcessingWidget({
               }
               onAnimationComplete={() => {
                 if (isFlying) {
+                  // Pulse the bell icon to signal handoff completion
                   window.dispatchEvent(new CustomEvent("pulse-bell-icon"));
                   setShowCenterLoader(false);
                 }
               }}
               className="flex flex-col items-center gap-6"
             >
-              {/* Actual Omnave Logo Wordmark shape drawing paths with undulation */}
+              {/* Brand Logo Wordmark SVG Trace drawing paths with glow */}
               <motion.div
                 animate={{ 
-                  scale: [1, 1.03, 0.98, 1.01, 1],
-                  filter: [
-                    "drop-shadow(0 0 10px rgba(168,85,247,0.5))",
-                    "drop-shadow(0 0 20px rgba(168,85,247,0.8))",
-                    "drop-shadow(0 0 10px rgba(168,85,247,0.5))"
-                  ]
+                  scale: [1, 1.02, 0.98, 1.01, 1],
                 }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="flex items-center justify-center px-4"
+                className="flex items-center justify-center px-4 filter drop-shadow-[0_0_12px_rgba(168,85,247,0.8)]"
               >
-                <svg viewBox="0 0 320 80" width="220" className="overflow-visible select-none">
-                  {/* Letter 'o' */}
-                  <motion.path
-                    d="M 30,40 A 15,15 0 1,1 29.9,40 Z"
-                    fill="none"
-                    stroke="#a855f7"
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 1.2, ease: "easeInOut" }}
-                  />
-                  {/* Letter 'm' */}
-                  <motion.path
-                    d="M 60,55 V 30 A 8,8 0 0,1 76,30 V 55 M 76,30 A 8,8 0 0,1 92,30 V 55"
-                    fill="none"
-                    stroke="#a855f7"
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 1.6, ease: "easeInOut", delay: 0.2 }}
-                  />
-                  {/* Letter 'n' */}
-                  <motion.path
-                    d="M 110,55 V 30 A 8,8 0 0,1 126,30 V 55"
-                    fill="none"
-                    stroke="#a855f7"
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 1.2, ease: "easeInOut", delay: 0.5 }}
-                  />
-                  {/* Letter 'a' */}
-                  <motion.path
-                    d="M 155,42.5 A 12.5,12.5 0 1,1 154.9,42.5 Z M 167.5,30 V 55"
-                    fill="none"
-                    stroke="#a855f7"
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 1.4, ease: "easeInOut", delay: 0.8 }}
-                  />
-                  {/* Letter 'v' */}
-                  <motion.path
-                    d="M 185,30 L 195,55 L 205,30"
-                    fill="none"
-                    stroke="#a855f7"
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 1.0, ease: "easeInOut", delay: 1.1 }}
-                  />
-                  {/* Letter 'e' */}
-                  <motion.path
-                    d="M 235,42.5 H 215 A 12.5,12.5 0 1,1 235,40"
-                    fill="none"
-                    stroke="#a855f7"
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 1.4, ease: "easeInOut", delay: 1.3 }}
-                  />
-                </svg>
+                <>
+                  <style>{`
+                    @keyframes svg-trace-anim {
+                      0% {
+                        stroke-dasharray: 400;
+                        stroke-dashoffset: 400;
+                        fill: transparent;
+                      }
+                      40% {
+                        stroke-dasharray: 400;
+                        stroke-dashoffset: 0;
+                        fill: transparent;
+                      }
+                      60% {
+                        stroke-dasharray: 400;
+                        stroke-dashoffset: 0;
+                        fill: rgba(168, 85, 247, 0.15);
+                      }
+                      100% {
+                        stroke-dasharray: 400;
+                        stroke-dashoffset: 400;
+                        fill: transparent;
+                      }
+                    }
+                    .animate-svg-trace {
+                      stroke-dasharray: 400;
+                      stroke-dashoffset: 400;
+                      animation: svg-trace-anim 4s ease-in-out infinite;
+                    }
+                  `}</style>
+                  <svg width="200" height="60" viewBox="0 0 200 60" className="w-48 h-auto">
+                    <text 
+                      x="50%" 
+                      y="50%" 
+                      dominantBaseline="middle" 
+                      textAnchor="middle" 
+                      fill="transparent" 
+                      stroke="#a855f7" 
+                      strokeWidth="1.5"
+                      className="animate-svg-trace font-brand tracking-widest text-4xl lowercase"
+                    >
+                      omnave
+                    </text>
+                  </svg>
+                </>
               </motion.div>
               
               {!isFlying && (

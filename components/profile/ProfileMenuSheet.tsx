@@ -676,19 +676,19 @@ function NotificationsView({ onClose }: { onClose: () => void }) {
               transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
               className="w-full h-full flex items-center justify-center px-1"
             >
-              <svg viewBox="0 0 320 80" width="34" className="overflow-visible select-none">
-                {/* Letter 'o' */}
-                <path d="M 30,40 A 15,15 0 1,1 29.9,40 Z" fill="none" stroke="#a855f7" strokeWidth="8" strokeLinecap="round" />
-                {/* Letter 'm' */}
-                <path d="M 60,55 V 30 A 8,8 0 0,1 76,30 V 55 M 76,30 A 8,8 0 0,1 92,30 V 55" fill="none" stroke="#a855f7" strokeWidth="8" strokeLinecap="round" />
-                {/* Letter 'n' */}
-                <path d="M 110,55 V 30 A 8,8 0 0,1 126,30 V 55" fill="none" stroke="#a855f7" strokeWidth="8" strokeLinecap="round" />
-                {/* Letter 'a' */}
-                <path d="M 155,42.5 A 12.5,12.5 0 1,1 154.9,42.5 Z M 167.5,30 V 55" fill="none" stroke="#a855f7" strokeWidth="8" strokeLinecap="round" />
-                {/* Letter 'v' */}
-                <path d="M 185,30 L 195,55 L 205,30" fill="none" stroke="#a855f7" strokeWidth="8" strokeLinecap="round" />
-                {/* Letter 'e' */}
-                <path d="M 235,42.5 H 215 A 12.5,12.5 0 1,1 235,40" fill="none" stroke="#a855f7" strokeWidth="8" strokeLinecap="round" />
+              <svg viewBox="0 0 200 60" width="34" className="overflow-visible select-none">
+                <text 
+                  x="50%" 
+                  y="50%" 
+                  dominantBaseline="middle" 
+                  textAnchor="middle" 
+                  fill="transparent" 
+                  stroke="#a855f7" 
+                  strokeWidth="4"
+                  className="animate-svg-trace font-brand tracking-widest text-4xl lowercase"
+                >
+                  omnave
+                </text>
               </svg>
             </motion.div>
           </div>

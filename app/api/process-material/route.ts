@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 
 export async function POST(req: Request) {
   const reqId = crypto.randomUUID();
+  const signal = req.signal; // Listens for client disconnect
   
   // API Key load diagnostics logging
   const rawKey = process.env.GEMINI_API_KEY || "";
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
 
     // 3. Gemini AI Processing
     const provider = getAIProvider();
-    const studyData = await provider.generateStudyKit({ pdfBase64: base64Pdf }, reqId);
+    const studyData = await provider.generateStudyKit({ pdfBase64: base64Pdf, signal }, reqId);
 
     // 4. Single, Clean Database Update
     const { data: updateData, error: updateError } = await supabase

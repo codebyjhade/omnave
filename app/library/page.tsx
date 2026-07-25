@@ -13,6 +13,8 @@ import { useLessons } from "@/hooks/useLessons";
 import { useProgress } from "@/hooks/useProgress";
 import { calculateKitProgress } from "@/hooks/useProgressStats";
 import dynamic from "next/dynamic";
+import { useToast } from "@/components/ToastProvider";
+import { useUploadContext } from "@/context/UploadContext";
 
 const DeleteLessonDialog = dynamic(
   () => import("@/components/library/DeleteLessonDialog").then((mod) => mod.DeleteLessonDialog),
@@ -22,12 +24,31 @@ const DeleteLessonDialog = dynamic(
 export default function LibraryPage() {
   const { lessons: notes, loading, refreshLessons } = useLessons();
   const { quizScores } = useProgress();
+  const { toast } = useToast();
+  const { activeQueue } = useUploadContext();
 
+  const [localNotes, setLocalNotes] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterId>("all");
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    if (notes) {
+      setLocalNotes(notes);
+    }
+  }, [notes]);
+
+  const visibleNotes = useMemo(() => {
+    return localNotes.filter((note) => {
+      // If a note is not processed, it must be in the activeQueue to be displayed
+      if (note.is_processed === false && !activeQueue.includes(note.id)) {
+        return false;
+      }
+      return true;
+    });
+  }, [localNotes, activeQueue]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -41,17 +62,17 @@ export default function LibraryPage() {
   }, [quizScores]);
 
   const stats = useMemo(() => {
-    const total = notes.length;
-    const ready = notes.filter((note) => note.is_processed !== false).length;
+    const total = visibleNotes.length;
+    const ready = visibleNotes.filter((note) => note.is_processed !== false).length;
     let avgProgress = 0;
     if (total > 0) {
-      const totalProgress = notes.reduce((acc, note) => {
+      const totalProgress = localNotes.reduce((acc, note) => {
         return acc + getNoteProgress(note);
       }, 0);
       avgProgress = Math.round(totalProgress / total);
     }
     return { total, ready, avgProgress };
-  }, [notes, getNoteProgress]);
+  }, [localNotes, getNoteProgress]);
 
   const getNoteStudyTime = useCallback((summaryText: string) => {
     if (!summaryText) return "5 mins";
@@ -60,9 +81,20 @@ export default function LibraryPage() {
     return `${readingTime + 4} mins`;
   }, []);
 
-  const handleDeleteLesson = async (material: { id: string; content_url?: string | null }) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this study material?");
-    if (!confirmDelete) return;
+  const handleDeleteConfirm = async () => {
+    if (!deleteTargetId) return;
+    setIsDeleting(true);
+
+    const target = localNotes.find((note) => note.id === deleteTargetId);
+    if (!target) {
+      setDeleteTargetId(null);
+      setIsDeleting(false);
+      return;
+    }
+
+    // 1. Optimistic UI: Remove card instantly
+    setLocalNotes((prev) => prev.filter((note) => note.id !== deleteTargetId));
+    setDeleteTargetId(null);
 
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -70,31 +102,19 @@ export default function LibraryPage() {
     );
 
     try {
-      if (material.content_url) {
-        await supabase.storage.from("study_materials").remove([material.content_url]);
+      if (target.content_url) {
+        await supabase.storage.from("study_materials").remove([target.content_url]);
       }
 
-      const { error } = await supabase.from("materials").delete().eq("id", material.id);
+      const { error } = await supabase.from("materials").delete().eq("id", target.id);
       if (error) throw error;
 
       await refreshLessons();
     } catch (err) {
       console.error("Failed to delete lesson:", err);
-      alert("Failed to delete the study lesson. Please try again.");
-    }
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!deleteTargetId) return;
-    setIsDeleting(true);
-    try {
-      const target = notes.find((note) => note.id === deleteTargetId);
-      if (!target) return;
-      await handleDeleteLesson(target);
-      setDeleteTargetId(null);
-    } catch (err) {
-      console.error("Failed to delete lesson:", err);
-      alert("Failed to delete the study lesson. Please try again.");
+      toast("Failed to delete the study lesson. Please try again.", "error");
+      // Revert to original notes
+      setLocalNotes(notes);
     } finally {
       setIsDeleting(false);
     }
@@ -111,7 +131,7 @@ export default function LibraryPage() {
   };
 
   const filteredNotes = useMemo(() => {
-    return notes.filter((note) => {
+    return visibleNotes.filter((note) => {
       const cleanTitle = getCleanTitle(note.file_path).toLowerCase();
       const subject = cleanTitle.split(/[\s\-_]+/)[0] || "";
       const matchesSearch = cleanTitle.includes(debouncedSearchTerm.toLowerCase()) || subject.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
@@ -127,12 +147,12 @@ export default function LibraryPage() {
         default: return true;
       }
     });
-  }, [notes, debouncedSearchTerm, activeFilter, getNoteProgress]);
+  }, [visibleNotes, debouncedSearchTerm, activeFilter, getNoteProgress]);
 
   const continueLearningNote = useMemo(() => {
-    if (notes.length === 0) return null;
-    return notes.find((note) => note.is_processed !== false) ?? notes[0];
-  }, [notes]);
+    if (visibleNotes.length === 0) return null;
+    return visibleNotes.find((note) => note.is_processed !== false) ?? visibleNotes[0];
+  }, [visibleNotes]);
 
   if (loading) {
     return (
@@ -157,7 +177,7 @@ export default function LibraryPage() {
         </header>
 
         <div className="flex flex-col w-full animate-in fade-in duration-500 space-y-8 pb-16 px-6 md:px-10 lg:px-0">
-          {notes.length === 0 ? (
+          {visibleNotes.length === 0 ? (
             <EmptyLibrary onDemoClick={() => alert("Interactive demo triggered")} />
           ) : (
             <>

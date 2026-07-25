@@ -59,6 +59,7 @@ export class GeminiServiceProvider implements AIServiceProvider {
   async generateStudyKit(params: GenerateNotesParams, reqId: string): Promise<StudyKitResponse> {
     AILogger.log("GEMINI_REQUEST", reqId, "Starting SEQUENTIAL Gemini study kit JSON request");
 
+    const requestOptions = params.signal ? { signal: params.signal } : undefined;
     const client = this.getClient();
     const safetySettings = AI_CONFIG.safetySettings.map((s) => ({
       category: s.category as HarmCategory,
@@ -147,16 +148,25 @@ export class GeminiServiceProvider implements AIServiceProvider {
       safetySettings,
     });
 
-    const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+    const delay = (ms: number) => new Promise((resolve, reject) => {
+      const timer = setTimeout(resolve, ms);
+      if (params.signal) {
+        params.signal.addEventListener('abort', () => {
+          clearTimeout(timer);
+          reject(new DOMException('Aborted', 'AbortError'));
+        });
+      }
+    });
 
     // Step A: Await the generation of the Main Kit
     AILogger.log("GEMINI_REQUEST", reqId, "Generating Main Kit (Summary, Flashcards, 20 Quizzes)");
     const mainData = await RetryService.runWithRetry(async () => {
+      if (params.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
       const prompt = PromptService.getStudyKitPrompt(false);
       const result = await mainModel.generateContent([
         { inlineData: { data: params.pdfBase64, mimeType: "application/pdf" } },
         prompt
-      ]);
+      ], requestOptions);
       const text = result.response.text();
       if (!text) throw new Error("Empty response from main task");
       return ParserService.parseJson(text);
@@ -174,10 +184,11 @@ export class GeminiServiceProvider implements AIServiceProvider {
       AILogger.log("GEMINI_REQUEST", reqId, "Generating Supplemental Batch 1 (20 Quizzes)");
       const suppPrompt1 = PromptService.getStudyKitPrompt(true);
       const rawText = await RetryService.runWithRetry(async () => {
+        if (params.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
         const result = await suppModel.generateContent([
           { inlineData: { data: params.pdfBase64, mimeType: "application/pdf" } },
           suppPrompt1
-        ]);
+        ], requestOptions);
         const text = result.response.text();
         if (!text) throw new Error("Empty response from supplemental batch 1");
         return text;
@@ -188,6 +199,7 @@ export class GeminiServiceProvider implements AIServiceProvider {
         supp1 = parsed.quizzes;
       }
     } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') throw e;
       console.error("Supplemental Batch 1 Failed (graceful fallback to empty):", e);
     }
 
@@ -201,10 +213,11 @@ export class GeminiServiceProvider implements AIServiceProvider {
       AILogger.log("GEMINI_REQUEST", reqId, "Generating Supplemental Batch 2 (20 Quizzes)");
       const suppPrompt2 = PromptService.getStudyKitPrompt(true);
       const rawText = await RetryService.runWithRetry(async () => {
+        if (params.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
         const result = await suppModel.generateContent([
           { inlineData: { data: params.pdfBase64, mimeType: "application/pdf" } },
           suppPrompt2
-        ]);
+        ], requestOptions);
         const text = result.response.text();
         if (!text) throw new Error("Empty response from supplemental batch 2");
         return text;
@@ -215,6 +228,7 @@ export class GeminiServiceProvider implements AIServiceProvider {
         supp2 = parsed.quizzes;
       }
     } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') throw e;
       console.error("Supplemental Batch 2 Failed (graceful fallback to empty):", e);
     }
 

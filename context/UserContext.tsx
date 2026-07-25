@@ -77,6 +77,7 @@ interface UserContextType {
   markNotificationAsRead: (id: string) => void;
   clearAllNotifications: () => void;
   addNotification: (notification: Omit<Notification, 'isRead'>) => void;
+  removeLessonFromState: (id: string) => void;
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -396,6 +397,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     });
   }, [user]);
 
+  const removeLessonFromState = useCallback((id: string) => {
+    setLessons((prev) => prev.filter((l) => l.id !== id));
+    setDocCount((prev) => Math.max(0, prev - 1));
+  }, []);
+
   // ── Context value ────────────────────────────────────────────────────────────
 
   const value: UserContextType = {
@@ -423,6 +429,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     markNotificationAsRead,
     clearAllNotifications,
     addNotification,
+    removeLessonFromState,
   };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

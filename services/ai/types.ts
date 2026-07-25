@@ -5,6 +5,7 @@ export interface GenerateChatParams {
 
 export interface GenerateNotesParams {
   pdfBase64: string;
+  signal?: AbortSignal;
 }
 
 export interface StudyKitResponse {

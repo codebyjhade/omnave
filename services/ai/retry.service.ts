@@ -1,10 +1,13 @@
 export class RetryService {
   static isTransient(error: any): boolean {
+    const errMsg = (error.message || "").toLowerCase();
+    if (error.name === 'AbortError' || errMsg.includes("abort") || errMsg.includes("cancel")) {
+      return false;
+    }
     const status = error.status || error.statusCode || error.response?.status;
     if (status === 429 || status === 503 || status === 504) {
       return true;
     }
-    const errMsg = (error.message || "").toLowerCase();
     if (
       errMsg.includes("rate limit") ||
       errMsg.includes("quota exceeded") ||
@@ -12,8 +15,7 @@ export class RetryService {
       errMsg.includes("503") ||
       errMsg.includes("timeout") ||
       errMsg.includes("econnrefused") ||
-      errMsg.includes("socket") ||
-      errMsg.includes("aborted")
+      errMsg.includes("socket")
     ) {
       return true;
     }
