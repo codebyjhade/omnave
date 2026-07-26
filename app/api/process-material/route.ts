@@ -1,119 +1,148 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
-import { getAIProvider } from '@/services/ai';
-import { handleAIError } from '@/services/ai/error';
-import crypto from 'crypto';
-import { revalidatePath } from 'next/cache';
+import { NextResponse } from "next/server";
+import { inngest } from "@/lib/inngest/client";
+import { supabaseServer } from "@/utils/supabase/server-backend";
+import { extractTextFromPdfUrl } from "@/services/pdf.service";
 
 export async function POST(req: Request) {
-  const reqId = crypto.randomUUID();
-  const signal = req.signal; // Listens for client disconnect
-  
-  // API Key load diagnostics logging
-  const rawKey = process.env.GEMINI_API_KEY || "";
-  const keyLength = rawKey.length;
-  const maskedKey = keyLength > 10 
-    ? `${rawKey.slice(0, 5)}...${rawKey.slice(-5)}`
-    : "invalid-length";
-  
-  console.log(`[POST /api/process-material] Request received (ID: ${reqId})`);
-  console.log(`[POST /api/process-material] GEMINI_API_KEY load check: exists=${!!rawKey}, len=${keyLength}, masked=${maskedKey}`);
-
   try {
     const body = await req.json();
-    const { materialId, filePath } = body;
+    const { materialId, text, fileUrl, planType = "paid" } = body;
 
-    if (!materialId || !filePath) {
-      return NextResponse.json({ error: 'Missing materialId or filePath payload' }, { status: 400 });
+    // Require materialId, and EITHER pre-extracted text OR a fileUrl
+    if (!materialId || (!text && !fileUrl)) {
+      return NextResponse.json(
+        { error: "Missing materialId, and either text or fileUrl payload" },
+        { status: 400 }
+      );
     }
 
-    // 1. Secure Auth Initialization
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll() },
-          setAll() {}
-        }
+    // 1. Fetch current material to get title, user_id, and content_url
+    const { data: currentMaterial, error: fetchErr } = await supabaseServer
+      .from("materials")
+      .select("title, user_id, content_url")
+      .eq("id", materialId)
+      .single();
+
+    if (fetchErr || !currentMaterial) {
+      console.error("Failed to fetch current material:", fetchErr);
+      return NextResponse.json(
+        { error: "Failed to locate registered material" },
+        { status: 404 }
+      );
+    }
+
+    // 2. Extract text if a URL was provided
+    let extractedText = text;
+    if (!extractedText && fileUrl) {
+      extractedText = await extractTextFromPdfUrl(fileUrl);
+    }
+
+    // 3. Quality-Gated Deduplication check
+    const getFilenameFromUrl = (url: string | null | undefined): string | null => {
+      if (!url) return null;
+      const parts = url.split("/");
+      const lastPart = parts[parts.length - 1];
+      const underscoreIdx = lastPart.indexOf("_");
+      if (underscoreIdx !== -1) {
+        return lastPart.slice(underscoreIdx + 1);
       }
-    );
+      return lastPart;
+    };
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Authentication failed. Please sign in.' }, { status: 401 });
+    const currentFilename = getFilenameFromUrl(currentMaterial.content_url);
+
+    // Fetch all processed materials for this user to check for duplicates
+    const { data: processedMaterials } = await supabaseServer
+      .from("materials")
+      .select("id, title, content_url, quizzes, flashcards")
+      .eq("user_id", currentMaterial.user_id)
+      .eq("is_processed", true)
+      .neq("id", materialId);
+
+    const existingMaterial = (processedMaterials || []).find(m => {
+      const mFilename = getFilenameFromUrl(m.content_url);
+      const isFilenameMatch = currentFilename && mFilename && currentFilename.toLowerCase() === mFilename.toLowerCase();
+      const isTitleMatch = currentMaterial.title && m.title && currentMaterial.title.toLowerCase() === m.title.toLowerCase();
+      return isFilenameMatch || isTitleMatch;
+    });
+
+    if (existingMaterial) {
+      const quizCount = Array.isArray(existingMaterial.quizzes) ? existingMaterial.quizzes.length : 0;
+      const cardCount = Array.isArray(existingMaterial.flashcards) ? existingMaterial.flashcards.length : 0;
+
+      if (quizCount >= 50 && cardCount >= 15) {
+        // Cache Hit! Delete duplicate draft row and return existing ID
+        await supabaseServer.from("materials").delete().eq("id", materialId);
+        
+        return NextResponse.json({
+          success: true,
+          materialId: existingMaterial.id,
+          status: "COMPLETED",
+          message: "Cache hit: reusing existing high-quality study material"
+        });
+      } else {
+        // Cache Miss / Upgrade! Overwrite existing DB entry and trigger queue
+        await supabaseServer.from("materials").delete().eq("id", materialId);
+        
+        await supabaseServer
+          .from("materials")
+          .update({ is_processed: false, status: "PROCESSING" })
+          .eq("id", existingMaterial.id);
+
+        await inngest.send({
+          name: "ai/process.material",
+          data: {
+            materialId: existingMaterial.id,
+            text: extractedText,
+            planType: "paid" // Force paid tier regeneration for upgrading
+          },
+        });
+
+        return NextResponse.json({
+          success: true,
+          materialId: existingMaterial.id,
+          status: "PROCESSING",
+          message: "Cache miss: upgrading existing material to high-quality paid tier"
+        });
+      }
     }
 
-    // 2. Download PDF
-    const { data: fileData, error: downloadError } = await supabase.storage
-      .from('study_materials')
-      .download(filePath);
+    // 4. Update Supabase to mark the material as 'PROCESSING' for new uploads
+    const { error: dbError } = await supabaseServer
+      .from("materials")
+      .update({ is_processed: false, status: "PROCESSING" })
+      .eq("id", materialId);
 
-    if (downloadError || !fileData) {
-      return NextResponse.json({ error: `Storage download failed: ${downloadError?.message}` }, { status: 500 });
+    if (dbError) {
+      console.error("Supabase update error:", dbError);
+      return NextResponse.json(
+        { error: `Database Error: ${dbError.message} (Code: ${dbError.code})` },
+        { status: 500 }
+      );
     }
 
-    const arrayBuffer = await fileData.arrayBuffer();
-    const base64Pdf = Buffer.from(arrayBuffer).toString('base64');
+    // 5. Dispatch the event to the Inngest background queue
+    await inngest.send({
+      name: "ai/process.material",
+      data: {
+        materialId,
+        text: extractedText,
+        planType
+      },
+    });
 
-    // 3. Gemini AI Processing
-    const provider = getAIProvider();
-    const studyData = await provider.generateStudyKit({ pdfBase64: base64Pdf, signal }, reqId);
-
-    // 4. Single, Clean Database Update
-    const { data: updateData, error: updateError } = await supabase
-      .from('materials')
-      .update({
-        is_processed: true,
-        title: studyData.ai_title || undefined,
-        summary: studyData.summary,
-        flashcards: studyData.flashcards,
-        quizzes: studyData.quizzes
-      })
-      .eq('id', materialId)
-      .eq('user_id', user.id)
-      .select(); 
-
-    if (updateError) {
-      console.error("Database Update Error:", updateError);
-      return NextResponse.json({ error: `Database update failed: ${updateError.message}` }, { status: 500 });
-    }
-
-    // 5. RLS Policy Safety Check
-    if (!updateData || updateData.length === 0) {
-      return NextResponse.json({ error: 'Supabase blocked the save. Please add the UPDATE policy to the public.materials table.' }, { status: 500 });
-    }
-
-    // 6. FORCE NEXT.JS TO CLEAR THE CACHE FOR THESE PAGES
-    // This guarantees the Library and Home pages instantly update!
-    revalidatePath('/library');
-    revalidatePath('/home');
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      materialId,
+      message: "Material queued for background processing",
+      status: "PROCESSING"
+    });
 
   } catch (error: any) {
-    console.error("CRITICAL API ERROR:", error);
-    
-    // Determine the error stage
-    let stage: 'auth' | 'validation' | 'supabase' | 'gemini' | 'internal' = 'internal';
-    const msg = String(error?.message || '').toLowerCase();
-    if (msg.includes('auth') || msg.includes('sign in')) {
-      stage = 'auth';
-    } else if (msg.includes('storage') || msg.includes('database') || msg.includes('supabase') || msg.includes('rls')) {
-      stage = 'supabase';
-    } else if (
-      msg.includes('google') ||
-      msg.includes('generative') ||
-      msg.includes('gemini') ||
-      msg.includes('model') ||
-      msg.includes('api key') ||
-      msg.includes('api_key')
-    ) {
-      stage = 'gemini';
-    }
-
-    return NextResponse.json(handleAIError(error, reqId, stage), { status: 500 });
+    console.error("Failed to trigger AI processing:", error);
+    return NextResponse.json(
+      { error: error.message || "Internal server error" },
+      { status: 500 }
+    );
   }
 }

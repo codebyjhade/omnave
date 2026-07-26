@@ -644,6 +644,8 @@ function NotificationsView({ onClose }: { onClose: () => void }) {
         return <Sparkles size={16} className={`${colorClass} shrink-0`} />;
       case "ai":
         return <BrainCircuit size={16} className={`${colorClass} shrink-0`} />;
+      case "processing":
+        return <RefreshCw size={16} className="text-amber-500 animate-spin shrink-0" />;
       default:
         return <Bell size={16} className={`${colorClass} shrink-0`} />;
     }
@@ -705,12 +707,12 @@ function NotificationsView({ onClose }: { onClose: () => void }) {
               </button>
             </div>
             
-            <p className="text-xs font-semibold text-zinc-100 truncate pr-4 mt-0.5">AI is analyzing your material...</p>
+            <p className="text-xs font-semibold text-zinc-100 truncate pr-4 mt-0.5">{uploadMessage || "AI is analyzing your material..."}</p>
             
             <div className="flex items-center gap-3 mt-1.5">
-              <div className="flex-1 bg-white/5 h-1.5 rounded-full overflow-hidden border border-white/5">
+              <div className="flex-1 bg-white/5 h-1.5 rounded-full overflow-hidden border border-white/5 relative">
                 <div 
-                  className="bg-gradient-to-r from-purple-600 to-[#a855f7] h-full rounded-full transition-all duration-300 ease-out" 
+                  className="bg-purple-500 h-full rounded-full transition-all duration-300 ease-linear shadow-[0_0_10px_rgba(168,85,247,0.7)] animate-pulse" 
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
@@ -739,18 +741,37 @@ function NotificationsView({ onClose }: { onClose: () => void }) {
           <div className="divide-y divide-white/[0.06]">
             {notifications.map((n) => {
               const isProcessed = n.id.startsWith("processed-");
+              const isProcessing = n.type === "processing";
               return (
                 <div 
                   key={n.id} 
-                  onClick={() => handleNotificationClick(n)}
-                  className={`flex gap-3.5 px-4 py-4 hover:bg-white/[0.01] transition-colors cursor-pointer text-left ${!n.isRead ? "bg-purple-500/[0.01]" : ""}`}
+                  onClick={() => !isProcessing && handleNotificationClick(n)}
+                  className={`flex gap-3.5 px-4 py-4 hover:bg-white/[0.01] transition-colors ${isProcessing ? 'cursor-default' : 'cursor-pointer'} text-left ${!n.isRead ? "bg-purple-500/[0.01]" : ""}`}
                 >
                   <div className="shrink-0 mt-0.5 select-none">
                     {getNotificationIcon(n.type, n.isRead)}
                   </div>
-                  <div className="flex flex-col gap-0.5 min-w-0">
+                  <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                     <span className="text-xs font-bold text-zinc-100">{n.title}</span>
                     <p className="text-[11px] text-zinc-400 leading-normal">{n.desc}</p>
+                    
+                    {isProcessing && n.progress !== undefined && (
+                      <div className="w-full mt-3 space-y-2">
+                        {/* Progress Bar Track */}
+                        <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/10 relative">
+                          <div 
+                            className="bg-purple-500 h-full rounded-full transition-all duration-300 ease-linear shadow-[0_0_10px_rgba(168,85,247,0.7)] animate-pulse" 
+                            style={{ width: `${n.progress}%` }}
+                          />
+                        </div>
+                        {/* Dynamic Subtext */}
+                        <div className="flex justify-between items-center text-[9px] text-zinc-500 font-bold uppercase tracking-wide">
+                          <span>{n.progressStatus || "Analyzing..."}</span>
+                          <span>{n.progress}%</span>
+                        </div>
+                      </div>
+                    )}
+
                     {isProcessed && (
                       <span className="text-[10px] text-[#a855f7] font-semibold mt-1 flex items-center gap-1 hover:underline">
                         View Lesson ➔

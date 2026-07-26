@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { AIServiceProvider, GenerateChatParams, GenerateNotesParams, StudyKitResponse } from "./types";
 import { PromptService } from "./prompt.service";
 import { ParserService } from "./parser.service";
@@ -6,6 +7,7 @@ import { ValidationService } from "./validation.service";
 import { RetryService } from "./retry.service";
 import { AILogger } from "./logger";
 import { AI_CONFIG } from "./config";
+import { flashcardArraySchema, quizArraySchema } from "./schema";
 
 export class GeminiServiceProvider implements AIServiceProvider {
   private genAI: GoogleGenerativeAI | null = null;
@@ -240,4 +242,53 @@ export class GeminiServiceProvider implements AIServiceProvider {
 
     return ValidationService.validateStudyKit(mainData);
   }
+}
+
+// Initialize the new Google Gen AI SDK
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+export async function generateWithGemini(
+  text: string, 
+  taskType: "summary" | "flashcards" | "quiz" | "title",
+  planType: "free" | "paid" = "paid"
+) {
+  let systemInstruction = "";
+  let responseSchema = undefined;
+
+  // Configure prompt and schema based on the specific generation task
+  if (taskType === "summary") {
+    systemInstruction = "You are an expert tutor. Summarize the provided text into a clear, comprehensive, and highly structured overview. Format the output as clean markdown.";
+  } else if (taskType === "title") {
+    systemInstruction = "You are an expert tutor. Generate a short, academic, human-readable title for the provided text. Limit it to 4-6 words. Do not use quotes, prefixes like 'Title:', or markdown formatting, just return the title.";
+  } else if (taskType === "flashcards") {
+    systemInstruction = "You are an expert tutor. Create highly effective flashcards covering the core concepts, vocabulary, and facts from the provided text.";
+    responseSchema = flashcardArraySchema;
+  } else if (taskType === "quiz") {
+    if (planType === "free") {
+      systemInstruction = "You are an expert tutor. Generate a standard multiple-choice quiz based strictly on the provided text. The quiz must contain exactly 15 questions.";
+    } else {
+      systemInstruction = "You are an expert university professor. Act as a strict professor, analyze the core topics, and incorporate related external knowledge/research to make the questions highly challenging and unique. Generate exactly 80 questions (suitable for a mix of practice quizzes and comprehensive exams).";
+    }
+    responseSchema = quizArraySchema;
+  }
+
+  // Execute the request to Gemini 2.5 Flash
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: text,
+    config: {
+      systemInstruction,
+      responseMimeType: responseSchema ? "application/json" : "text/plain",
+      responseSchema: responseSchema,
+    }
+  });
+
+  const responseText = response.text;
+  if (!responseText) throw new Error("Gemini returned an empty response.");
+
+  // Parse and return JSON for arrays, otherwise return raw markdown text
+  if (responseSchema) {
+    return JSON.parse(responseText);
+  }
+  return responseText;
 }

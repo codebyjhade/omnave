@@ -29,7 +29,7 @@ export function EmptyLibrary({ onDemoClick }: EmptyLibraryProps) {
       </h3>
       
       <p className="text-xs md:text-sm text-white/50 font-medium max-w-sm leading-relaxed mb-8 mx-auto">
-        Upload your first PDF and omnave. will automatically generate summaries, flashcards, quizzes, and an AI tutor.
+        Upload a PDF to get started!
       </p>
 
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">

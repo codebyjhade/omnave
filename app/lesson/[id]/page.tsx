@@ -153,21 +153,11 @@ export default function LessonView() {
 
     setIsActionLoading(true);
     try {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
+      const response = await fetch(`/api/materials/${id}`, {
+        method: "DELETE",
+      });
 
-      if (data.content_url) {
-        await supabase.storage.from("study_materials").remove([data.content_url]);
-      }
-
-      const { error } = await supabase
-        .from('materials')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      if (!response.ok) throw new Error("Failed to delete study kit via API");
 
       toast("Study kit deleted successfully", "success");
       router.push("/library");
@@ -241,7 +231,14 @@ export default function LessonView() {
     };
   }, [loading, data, viewMode]);
 
-  // 1. Initial Loading State
+  // 3. AI STILL GENERATING STATE (Redirect instead of Trap)
+  useEffect(() => {
+    if (!loading && data && (!data.is_processed || data.status === "PROCESSING")) {
+      toast("Your material is still processing in the background.", "info");
+      router.replace('/library');
+    }
+  }, [loading, data, router, toast]);
+
   if (loading || contextLoading) {
     return (
       <div className="relative min-h-screen bg-[#0A0710] pb-32 px-4 md:px-8 overflow-hidden flex flex-col items-center">
@@ -268,34 +265,8 @@ export default function LessonView() {
   // 2. Data Not Found State
   if (!data) return <div className="p-6 text-white text-center mt-20">Study Kit not found.</div>;
 
-  // 3. AI STILL GENERATING STATE (The Polling Lock Screen)
-  if (!data.is_processed) {
-    return (
-      <div className="relative min-h-screen bg-[#0A0710] pb-32 px-4 flex flex-col items-center justify-center overflow-hidden">
-        <div className="relative z-10 flex flex-col items-center text-center p-8 md:p-12 bg-black/[0.4] backdrop-blur-2xl border border-white/[0.1] rounded-[24px] shadow-2xl max-w-md w-full animate-in fade-in zoom-in-95 duration-500">
-          <div className="w-20 h-20 rounded-2xl bg-omnave-primary/20 border border-omnave-primary/30 flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(127,34,254,0.3)]">
-            <BrainCircuit className="w-10 h-10 text-omnave-primary animate-pulse" />
-          </div>
-          <h2 className="text-2xl font-black text-white mb-3">AI is analyzing your document</h2>
-          <p className="text-white/50 text-sm mb-8 leading-relaxed">
-            Extracting key concepts, generating flashcards, and building your quizzes. This usually takes about 15-20 seconds.
-          </p>
-          <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/10">
-            <motion.div
-              className="h-full w-full bg-gradient-to-r from-omnave-primary/50 to-omnave-primary rounded-full relative origin-left transform-gpu"
-              initial={{ scaleX: 0 }}
-              animate={{ scaleX: 1 }}
-              transition={{ duration: 18, ease: "linear" }}
-            >
-               <div className="absolute top-0 right-0 bottom-0 w-10 bg-white/20 blur-[5px] animate-pulse" />
-            </motion.div>
-          </div>
-          <div className="mt-6 text-[10px] font-bold tracking-widest text-white/30 uppercase animate-pulse">
-            Generating Lesson...
-          </div>
-        </div>
-      </div>
-    );
+  if (!data.is_processed || data.status === "PROCESSING") {
+    return null; // Return null while redirecting
   }
 
   // Formatting variables

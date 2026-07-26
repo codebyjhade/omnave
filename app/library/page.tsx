@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import { RefreshCw } from "lucide-react";
 import { LibraryHeader } from "@/components/library/LibraryHeader";
 import { LibrarySearch } from "@/components/library/LibrarySearch";
 import { FilterChips, FilterId } from "@/components/library/FilterChips";
@@ -22,7 +23,7 @@ const DeleteLessonDialog = dynamic(
 );
 
 export default function LibraryPage() {
-  const { lessons: notes, loading, refreshLessons } = useLessons();
+  const { lessons: notes, loading, refreshLessons, deleteLesson } = useLessons();
   const { quizScores } = useProgress();
   const { toast } = useToast();
   const { activeQueue } = useUploadContext();
@@ -33,6 +34,19 @@ export default function LibraryPage() {
   const [activeFilter, setActiveFilter] = useState<FilterId>("all");
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshLessons();
+      toast("Library synced successfully", "success");
+    } catch (err) {
+      toast("Failed to sync library", "error");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     if (notes) {
@@ -96,20 +110,8 @@ export default function LibraryPage() {
     setLocalNotes((prev) => prev.filter((note) => note.id !== deleteTargetId));
     setDeleteTargetId(null);
 
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
     try {
-      if (target.content_url) {
-        await supabase.storage.from("study_materials").remove([target.content_url]);
-      }
-
-      const { error } = await supabase.from("materials").delete().eq("id", target.id);
-      if (error) throw error;
-
-      await refreshLessons();
+      await deleteLesson(target.id);
     } catch (err) {
       console.error("Failed to delete lesson:", err);
       toast("Failed to delete the study lesson. Please try again.", "error");
@@ -150,9 +152,11 @@ export default function LibraryPage() {
   }, [visibleNotes, debouncedSearchTerm, activeFilter, getNoteProgress]);
 
   const continueLearningNote = useMemo(() => {
-    if (visibleNotes.length === 0) return null;
-    return visibleNotes.find((note) => note.is_processed !== false) ?? visibleNotes[0];
-  }, [visibleNotes]);
+    if (!notes || notes.length === 0) return null;
+    return [...notes].sort(
+      (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    )[0];
+  }, [notes]);
 
   if (loading) {
     return (
@@ -166,14 +170,27 @@ export default function LibraryPage() {
     <div className="relative min-h-screen">
  
       <main className="relative z-10 w-full max-w-[1200px] mx-auto pt-6 pb-24 lg:px-10 xl:px-12">
-        <header className="px-6 md:px-10 lg:px-0 mb-6">
-          <p className="text-[11px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-2 m-0 leading-none">
-            Knowledge Vault
-          </p>
-          <div className="flex items-center min-h-[32px] gap-3">
-            <h1 className="text-3xl font-bold tracking-tight text-white leading-none m-0">Your Library</h1>
-            <LibraryHeader totalLessons={stats.total} />
+        <header className="px-6 md:px-10 lg:px-0 mb-6 flex justify-between items-end">
+          <div>
+            <p className="text-[11px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-2 m-0 leading-none">
+              Knowledge Vault
+            </p>
+            <div className="flex items-center min-h-[32px] gap-3">
+              <h1 className="text-3xl font-bold tracking-tight text-white leading-none m-0">Your Library</h1>
+              <LibraryHeader totalLessons={stats.total} />
+            </div>
           </div>
+          <button
+            onClick={handleRefresh}
+            className="flex items-center justify-center p-2.5 rounded-xl bg-white/5 border border-white/10 text-zinc-450 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all select-none cursor-pointer group active:scale-95 disabled:opacity-50 disabled:pointer-events-none mb-1"
+            title="Refresh Library"
+            disabled={isRefreshing}
+          >
+            <RefreshCw 
+              size={18} 
+              className={`transition-all ${isRefreshing ? "animate-spin text-purple-400" : ""}`} 
+            />
+          </button>
         </header>
 
         <div className="flex flex-col w-full animate-in fade-in duration-500 space-y-8 pb-16 px-6 md:px-10 lg:px-0">

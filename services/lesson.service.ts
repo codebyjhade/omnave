@@ -70,41 +70,13 @@ export class LessonService {
   }
 
   static async deleteLesson(userId: string, lessonId: string): Promise<void> {
-    const supabase = createClient();
+    const response = await fetch(`/api/materials/${lessonId}`, {
+      method: "DELETE",
+    });
 
-    const { data: lessonRow, error: fetchError } = await supabase
-      .from('materials')
-      .select('content_url')
-      .eq('id', lessonId)
-      .eq('is_processed', true)
-      .eq('user_id', userId)
-      .single();
-
-    if (fetchError) {
-      console.error('[LessonService] deleteLesson fetch error:', fetchError.message);
-      throw fetchError;
-    }
-
-    if (lessonRow?.content_url) {
-      const { error: storageError } = await supabase.storage
-        .from('study_materials')
-        .remove([lessonRow.content_url]);
-
-      if (storageError) {
-        console.error('[LessonService] deleteLesson storage error:', storageError.message);
-        throw storageError;
-      }
-    }
-
-    const { error } = await supabase
-      .from('materials')
-      .delete()
-      .eq('id', lessonId)
-      .eq('user_id', userId); // RLS double-check
-
-    if (error) {
-      console.error('[LessonService] deleteLesson error:', error.message);
-      throw error;
+    if (!response.ok) {
+      const errorJson = await response.json().catch(() => ({}));
+      throw new Error(errorJson.error || "Failed to delete lesson");
     }
   }
 

@@ -33,3 +33,5 @@ export interface GenerateChatParams {
   // Add this line so TypeScript knows we are passing memory!
   history?: { role: "user" | "assistant"; content: string }[];
 }
+
+export * from "./schema";

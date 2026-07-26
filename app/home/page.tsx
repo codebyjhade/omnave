@@ -36,7 +36,12 @@ export default function HomePage() {
     return gamificationStats.lastStudyDate === getLocalDateString();
   }, [gamificationStats?.lastStudyDate]);
 
-  const currentLesson = lessonsList.length > 0 ? lessonsList[0] : null;
+  const currentLesson = useMemo(() => {
+    if (!lessonsList || lessonsList.length === 0) return null;
+    return [...lessonsList].sort(
+      (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    )[0];
+  }, [lessonsList]);
 
   const getCleanTitle = (path: string) => {
     const base = path.split("/").pop() || "";
@@ -132,7 +137,7 @@ export default function HomePage() {
     }
 
     return {
-      text: "Upload a study document to start generating custom flashcards and quizzes!",
+      text: "Upload a PDF to get started!",
       actionLabel: "Upload PDF",
       onClick: () => {
         router.push("/upload");
@@ -211,7 +216,7 @@ export default function HomePage() {
             <div>
               <span className="text-[11px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-2 block">UP NEXT</span>
               <h2 className="text-xl font-semibold tracking-tight text-white leading-tight">Your workspace is empty</h2>
-              <p className="text-xs text-zinc-400 mt-1.5">Upload your first study document to generate a study kit.</p>
+              <p className="text-xs text-zinc-400 mt-1.5">Upload a PDF to get started!</p>
             </div>
             <div className="flex items-center gap-1 text-xs font-semibold text-purple-400 mt-4">
               <span>Go to Library</span>
@@ -266,7 +271,7 @@ export default function HomePage() {
                 <span className="text-[9px] font-bold tracking-[0.15em] text-purple-400 uppercase block leading-none mb-1">AI Assistant</span>
                 <p className="text-xs text-zinc-300 leading-normal truncate">
                   {!currentLesson 
-                    ? "I am standing by. Once you upload your first document, I will generate personalized insights here."
+                    ? "Upload a PDF to get started!"
                     : recommendation.text}
                 </p>
               </div>

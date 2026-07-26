@@ -291,6 +291,16 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
     resetPlayState(mockTime, mockTime);
   }, [lesson.quizzes, lesson.summary, resetPlayState]);
 
+  const handleRestart = useCallback(() => {
+    setQuestions(prepareScrambledAssessment(questions));
+    if (mode === "mock") {
+      const mockTime = duration;
+      resetPlayState(mockTime, mockTime);
+    } else {
+      resetPlayState(0, 0);
+    }
+  }, [questions, mode, duration, resetPlayState]);
+
   const submitGrading = useCallback(async () => {
     let correctCount = 0;
     questions.forEach((q, idx) => {
@@ -680,12 +690,20 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                 </div>
               </div>
 
-              <button
-                onClick={() => setGameState("setup")}
-                className="h-14 px-10 bg-white text-black text-sm font-black rounded-2xl transition-all hover:scale-[1.02]"
-              >
-                Back to Settings
-              </button>
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={() => setGameState("setup")}
+                  className="h-14 px-8 border border-white/10 bg-white/5 text-white text-sm font-black rounded-2xl transition-all hover:bg-white/10"
+                >
+                  Back to Settings
+                </button>
+                <button
+                  onClick={handleRestart}
+                  className="h-14 px-8 bg-omnave-primary text-white text-sm font-black rounded-2xl transition-all hover:opacity-90 flex items-center gap-2 cursor-pointer"
+                >
+                  <RotateCcw size={16} /> Restart Quiz
+                </button>
+              </div>
             </div>
           ) : (
             <div className="bg-black/[0.4] border border-white/[0.1] backdrop-blur-2xl rounded-[24px] p-8 md:p-12 shadow-premium-glass space-y-8 max-w-3xl mx-auto">
@@ -715,9 +733,20 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                 </div>
               </div>
 
-              <button onClick={() => setGameState("setup")} className="w-full h-14 bg-amber-500 text-black text-sm font-black rounded-2xl transition-all hover:bg-amber-400">
-                Close Report
-              </button>
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setGameState("setup")} 
+                  className="flex-1 h-14 border border-white/10 bg-white/5 text-white text-sm font-black rounded-2xl transition-all hover:bg-white/10"
+                >
+                  Close Report
+                </button>
+                <button 
+                  onClick={handleRestart} 
+                  className="flex-1 h-14 bg-amber-500 text-[#0A0A0A] text-sm font-black rounded-2xl transition-all hover:bg-amber-450 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <RotateCcw size={16} /> Restart Exam
+                </button>
+              </div>
             </div>
           )}
         </motion.div>

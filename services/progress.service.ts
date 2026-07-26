@@ -20,6 +20,10 @@ export interface UserStats {
   current_streak: number;
   highest_streak?: number;
   last_study_date?: string;
+  plan_type?: 'free' | 'pro' | string;
+  generation_count?: number;
+  agent_message_count?: number;
+  last_message_date?: string | null;
 }
 
 // ─── DB row shapes ────────────────────────────────────────────────────────────
@@ -29,6 +33,10 @@ interface ProfileRow {
   total_xp: number;
   current_streak: number;
   last_active_date: string | null;
+  plan_type: string;
+  generation_count: number;
+  agent_message_count: number;
+  last_message_date: string | null;
 }
 
 interface QuizScoreRow {
@@ -54,7 +62,7 @@ export class ProgressService {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, total_xp, current_streak, last_active_date')
+      .select('id, total_xp, current_streak, last_active_date, plan_type, generation_count, agent_message_count, last_message_date')
       .eq('id', userId)
       .maybeSingle<ProfileRow>();
 
@@ -70,7 +78,11 @@ export class ProgressService {
         .insert([{ 
           id: userId, 
           total_xp: 0, 
-          current_streak: 0 
+          current_streak: 0,
+          plan_type: 'free',
+          generation_count: 0,
+          agent_message_count: 0,
+          last_message_date: null
         }])
         .select()
         .single();
@@ -86,6 +98,10 @@ export class ProgressService {
         current_streak: newProfile.current_streak,
         highest_streak: newProfile.current_streak,
         last_study_date: newProfile.last_active_date ?? undefined,
+        plan_type: newProfile.plan_type,
+        generation_count: newProfile.generation_count,
+        agent_message_count: newProfile.agent_message_count,
+        last_message_date: newProfile.last_message_date,
       };
     }
 
@@ -95,6 +111,10 @@ export class ProgressService {
       current_streak: data.current_streak,
       highest_streak: data.current_streak,
       last_study_date: data.last_active_date ?? undefined,
+      plan_type: data.plan_type,
+      generation_count: data.generation_count,
+      agent_message_count: data.agent_message_count,
+      last_message_date: data.last_message_date,
     };
   }
 

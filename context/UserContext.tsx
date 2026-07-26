@@ -50,10 +50,21 @@ export interface Notification {
   desc: string;
   time: string;
   isRead: boolean;
+  progress?: number;
+  progressStatus?: string;
+}
+
+import { User as SupabaseUser } from '@supabase/supabase-js';
+
+export interface User extends SupabaseUser {
+  plan_type: 'free' | 'pro' | string;
+  generation_count: number;
+  agent_message_count: number;
+  last_message_date: string | null;
 }
 
 interface UserContextType {
-  user: any;
+  user: User | null;
   xp: number;
   streak: number;
   docCount: number;
@@ -77,6 +88,9 @@ interface UserContextType {
   markNotificationAsRead: (id: string) => void;
   clearAllNotifications: () => void;
   addNotification: (notification: Omit<Notification, 'isRead'>) => void;
+  removeNotification: (id: string) => void;
+  updateNotification: (id: string, updates: Partial<Notification>) => void;
+  addLessonToState: (newLesson: any) => void;
   removeLessonFromState: (id: string) => void;
 }
 
@@ -86,7 +100,7 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   // Auth state
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Onboarding state
@@ -122,6 +136,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         setStreak(userStats.current_streak);
         setHighestStreak(userStats.highest_streak ?? userStats.current_streak);
         setLastStudyDate(userStats.last_study_date ?? null);
+        setUser((prevUser) => {
+          if (!prevUser) return null;
+          return {
+            ...prevUser,
+            plan_type: userStats.plan_type ?? 'free',
+            generation_count: userStats.generation_count ?? 0,
+            agent_message_count: userStats.agent_message_count ?? 0,
+            last_message_date: userStats.last_message_date ?? null,
+          };
+        });
       }
 
       if (userLessons) {
@@ -164,8 +188,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
-    setUser(authUser);
-    await loadUserData(authUser);
+    const baseUser: User = {
+      ...authUser,
+      plan_type: 'free',
+      generation_count: 0,
+      agent_message_count: 0,
+      last_message_date: null,
+    };
+    setUser(baseUser);
+    await loadUserData(baseUser);
     setLoading(false);
   }, [loadUserData]);
 
@@ -184,10 +215,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         const authUser = session?.user ?? null;
-        setUser(authUser);
         if (authUser) {
-          await loadUserData(authUser);
+          const baseUser: User = {
+            ...authUser,
+            plan_type: 'free',
+            generation_count: 0,
+            agent_message_count: 0,
+            last_message_date: null,
+          };
+          setUser(baseUser);
+          await loadUserData(baseUser);
         } else {
+          setUser(null);
           // Signed out — reset all state
           setXp(0);
           setStreak(0);
@@ -206,6 +245,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, [loadUserData]);
+
+  // Log User State on Boot / Update for verification
+  useEffect(() => {
+    if (user) {
+      console.log("Current User State:", user);
+    }
+  }, [user]);
 
   // ── Mutations ────────────────────────────────────────────────────────────────
 
@@ -228,20 +274,33 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     [user, loadUserData]
   );
 
+  const removeLessonFromState = useCallback((id: string) => {
+    setLessons((prev) => prev.filter((l) => l.id !== id));
+    setDocCount((prev) => Math.max(0, prev - 1));
+  }, []);
+
+  const addLessonToState = useCallback((newLesson: any) => {
+    setLessons((prev) => {
+      if (prev.some((l) => l.id === newLesson.id)) return prev;
+      return [newLesson, ...prev];
+    });
+    setDocCount((prev) => prev + 1);
+  }, []);
+
   const deleteLesson = useCallback(
     async (id: string) => {
       if (!user) return;
       setLoading(true);
       try {
         await LessonService.deleteLesson(user.id, id);
-        await loadUserData(user);
+        removeLessonFromState(id);
       } catch (err) {
         console.error('[UserContext] deleteLesson error:', err);
       } finally {
         setLoading(false);
       }
     },
-    [user, loadUserData]
+    [user, removeLessonFromState]
   );
 
   // ── Derived gamification state ───────────────────────────────────────────────
@@ -397,10 +456,23 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     });
   }, [user]);
 
-  const removeLessonFromState = useCallback((id: string) => {
-    setLessons((prev) => prev.filter((l) => l.id !== id));
-    setDocCount((prev) => Math.max(0, prev - 1));
-  }, []);
+  const removeNotification = useCallback((id: string) => {
+    setNotifications((prev) => {
+      const updated = prev.filter((n) => n.id !== id);
+      const storageKey = user ? `omnave_notifications_${user.id}` : "omnave_notifications_guest";
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+      return updated;
+    });
+  }, [user]);
+
+  const updateNotification = useCallback((id: string, updates: Partial<Notification>) => {
+    setNotifications((prev) => {
+      const updated = prev.map((n) => (n.id === id ? { ...n, ...updates } : n));
+      const storageKey = user ? `omnave_notifications_${user.id}` : "omnave_notifications_guest";
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+      return updated;
+    });
+  }, [user]);
 
   // ── Context value ────────────────────────────────────────────────────────────
 
@@ -429,6 +501,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     markNotificationAsRead,
     clearAllNotifications,
     addNotification,
+    removeNotification,
+    updateNotification,
+    addLessonToState,
     removeLessonFromState,
   };
 
