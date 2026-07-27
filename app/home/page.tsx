@@ -195,8 +195,8 @@ export default function HomePage() {
       {/* 1. Header: Greeting Block */}
       <Header />
 
-      {/* Grounded, Friendly EdTech vertical layout wrapper */}
-      <main className="w-full max-w-5xl mx-auto px-[25px] pb-24 flex flex-col gap-[20px] bg-[#FFFFFF] -mt-8 relative z-20">
+      {/* Grounded, Friendly EdTech vertical layout wrapper with curved canvas */}
+      <main className="w-full max-w-5xl mx-auto px-[25px] pt-8 pb-24 rounded-t-[40px] flex flex-col gap-[20px] bg-[#FFFFFF] -mt-10 relative z-20">
 
         {/* 1. UP NEXT HERO CARD */}
         {loading ? (

@@ -102,8 +102,8 @@ export default function TopRightActions() {
     }
   };
 
-  // Hide on landing/welcome/lesson focus screen (shifted below all Hooks)
-  if (pathname === '/' || pathname === '/welcome' || pathname?.startsWith('/lesson/')) return null;
+  // Hide on landing/welcome/lesson focus screen, and Home dashboard (uses inline header)
+  if (pathname === '/' || pathname === '/welcome' || pathname === '/home' || pathname?.startsWith('/lesson/')) return null;
 
   const isHome = pathname === "/home";
 
