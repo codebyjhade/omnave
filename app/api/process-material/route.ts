@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { inngest } from "@/lib/inngest/client";
 import { supabaseServer } from "@/utils/supabase/server-backend";
-import { extractTextFromPdfUrl } from "@/services/pdf.service";
+import { parsePdfFromUrl } from "@/services/pdf.service";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { materialId, text, fileUrl, planType = "paid" } = body;
+    const { materialId, text, fileUrl } = body;
 
     // Require materialId, and EITHER pre-extracted text OR a fileUrl
     if (!materialId || (!text && !fileUrl)) {
@@ -31,10 +33,124 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Extract text if a URL was provided
+    // Authenticate the user session
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              );
+            } catch {
+              // Ignore if cookie store is read-only
+            }
+          },
+        },
+      }
+    );
+
+    const { data: { user }, error: authErr } = await supabase.auth.getUser();
+    if (authErr || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Ensure user owns this material
+    if (user.id !== currentMaterial.user_id) {
+      return NextResponse.json(
+        { error: "Unauthorized: Material owner mismatch" },
+        { status: 403 }
+      );
+    }
+
+    // Fetch user profile to check plan and quota limits
+    const { data: profile, error: profileErr } = await supabaseServer
+      .from("profiles")
+      .select("plan_type, generation_count")
+      .eq("id", user.id)
+      .single();
+
+    if (profileErr || !profile) {
+      console.error("Failed to fetch user profile in route.ts:", profileErr);
+      return NextResponse.json(
+        { error: "Unable to retrieve user subscription tier details." },
+        { status: 500 }
+      );
+    }
+
+    const planType = profile.plan_type || "free";
+    const generationCount = profile.generation_count || 0;
+
+    // Helper: cleanup on failed checks
+    const cleanUpFailedUpload = async () => {
+      // Delete from Supabase Storage
+      if (currentMaterial.content_url) {
+        const { error: storageDelErr } = await supabaseServer.storage
+          .from("study_materials")
+          .remove([currentMaterial.content_url]);
+        if (storageDelErr) {
+          console.error("Failed to delete orphaned storage file:", storageDelErr);
+        }
+      }
+      // Delete database draft row
+      const { error: dbDelErr } = await supabaseServer
+        .from("materials")
+        .delete()
+        .eq("id", materialId);
+      if (dbDelErr) {
+        console.error("Failed to delete orphaned database row:", dbDelErr);
+      }
+    };
+
+    // Check 1 (Quota)
+    if (planType === "free" && generationCount >= 3) {
+      await cleanUpFailedUpload();
+      return NextResponse.json(
+        { error: "Monthly free quota reached." },
+        { status: 403 }
+      );
+    }
+
+    // 2. Parse PDF and extract page count
     let extractedText = text;
-    if (!extractedText && fileUrl) {
-      extractedText = await extractTextFromPdfUrl(fileUrl);
+    let pageCount = 0;
+
+    if (fileUrl) {
+      try {
+        const parsed = await parsePdfFromUrl(fileUrl);
+        extractedText = parsed.text;
+        pageCount = parsed.pages;
+      } catch (parseError: unknown) {
+        console.error("PDF parsing failure in route.ts:", parseError);
+        const errMsg = parseError instanceof Error ? parseError.message : String(parseError);
+        return NextResponse.json(
+          { error: `Failed to parse PDF: ${errMsg}` },
+          { status: 422 }
+        );
+      }
+    }
+
+    // Check 2 (Pages)
+    if (planType === "free" && pageCount > 30) {
+      await cleanUpFailedUpload();
+      return NextResponse.json(
+        { error: "Free tier page limit exceeded (max 30 pages)." },
+        { status: 403 }
+      );
+    }
+
+    if (planType === "pro" && pageCount > 200) {
+      await cleanUpFailedUpload();
+      return NextResponse.json(
+        { error: "Pro tier page limit exceeded (max 200 pages)." },
+        { status: 403 }
+      );
     }
 
     // 3. Quality-Gated Deduplication check
@@ -89,12 +205,18 @@ export async function POST(req: Request) {
           .update({ is_processed: false, status: "PROCESSING" })
           .eq("id", existingMaterial.id);
 
+        // Increment quota
+        await supabaseServer
+          .from("profiles")
+          .update({ generation_count: generationCount + 1 })
+          .eq("id", user.id);
+
         await inngest.send({
           name: "ai/process.material",
           data: {
             materialId: existingMaterial.id,
             text: extractedText,
-            planType: "paid" // Force paid tier regeneration for upgrading
+            planType: planType
           },
         });
 
@@ -106,6 +228,12 @@ export async function POST(req: Request) {
         });
       }
     }
+
+    // Increment quota for new uploads
+    await supabaseServer
+      .from("profiles")
+      .update({ generation_count: generationCount + 1 })
+      .eq("id", user.id);
 
     // 4. Update Supabase to mark the material as 'PROCESSING' for new uploads
     const { error: dbError } = await supabaseServer
@@ -127,7 +255,7 @@ export async function POST(req: Request) {
       data: {
         materialId,
         text: extractedText,
-        planType
+        planType: planType
       },
     });
 
@@ -138,10 +266,11 @@ export async function POST(req: Request) {
       status: "PROCESSING"
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Failed to trigger AI processing:", error);
+    const errMsg = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { error: errMsg },
       { status: 500 }
     );
   }

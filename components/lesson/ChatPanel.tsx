@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, MessageSquare, ChevronRight, Copy, RotateCcw, ThumbsUp, ThumbsDown, Send } from "lucide-react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { TypewriterText } from "./TypewriterText";
+import { useUserContext } from "@/context/UserContext";
 
 interface ChatMessage {
   role: "user" | "ai";
@@ -50,6 +51,13 @@ export const ChatPanel = memo(function ChatPanel({
   onClearSelectedText,
   scrollRef,
 }: ChatPanelProps) {
+  const { user } = useUserContext();
+  const planType = user?.plan_type || 'free';
+  
+  const isLimitReached = planType === 'free' && (
+    (user?.agent_message_count !== undefined && user.agent_message_count >= 15) ||
+    (chatError !== null && chatError.toLowerCase().includes("limit reached"))
+  );
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -260,7 +268,13 @@ export const ChatPanel = memo(function ChatPanel({
           {suggestionChips.map((chip, i) => (
             <button
               key={i}
-              onClick={() => onSend(chip.text)}
+              onClick={() => {
+                if (isLimitReached) {
+                  console.log("Trigger Paywall: Chat Limit");
+                  return;
+                }
+                onSend(chip.text);
+              }}
               className="flex items-center space-x-1.5 h-11 px-4 bg-white/5 border border-white/10 rounded-full text-[11px] font-bold text-white/70 hover:bg-omnave-primary/20 hover:text-omnave-primary hover:border-omnave-primary transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer"
             >
               {chip.icon} <span>{chip.text}</span>
@@ -268,33 +282,51 @@ export const ChatPanel = memo(function ChatPanel({
           ))}
         </div>
 
+        {/* Warning subtext */}
+        {planType === 'free' && user?.agent_message_count !== undefined && user.agent_message_count >= 12 && user.agent_message_count < 15 && (
+          <div className="text-[11px] font-bold text-amber-500 mb-2 pl-2">
+            Only {15 - user.agent_message_count} free messages remaining today.
+          </div>
+        )}
+
         {/* Character Count */}
-        {chatInput.length >= 800 && (
+        {!isLimitReached && chatInput.length >= 800 && (
           <div className="flex justify-end text-[10px] font-bold text-amber-400 mb-1.5 mr-2">
             {chatInput.length}/1000 characters
           </div>
         )}
 
-        {/* Input Bar */}
-        <div className="flex space-x-2 items-end">
-          <textarea
-            value={chatInput}
-            onChange={(e) => onInputChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            maxLength={1000}
-            placeholder="Ask a question..."
-            className="flex-1 bg-white/5 text-white text-sm rounded-2xl px-5 py-4 h-14 outline-none focus:ring-2 focus:ring-omnave-primary/50 transition-all duration-150 border border-white/10 resize-none overflow-y-auto scrollbar-hide"
-            aria-label="Ask the AI tutor a question"
-          />
+        {/* Input Bar or Paywall CTA */}
+        {isLimitReached ? (
           <button
-            onClick={() => onSend()}
-            disabled={isChatLoading || !chatInput.trim()}
-            className="bg-omnave-primary text-white px-6 h-14 rounded-2xl font-bold hover:brightness-110 transition-all duration-150 disabled:opacity-50 active:scale-95 shadow-sm flex items-center justify-center shrink-0"
-            aria-label="Send message"
+            onClick={() => {
+              console.log("Trigger Paywall: Chat Limit");
+            }}
+            className="w-full py-4 bg-red-950/20 border border-red-500/20 text-red-400 font-bold rounded-2xl text-center text-sm cursor-pointer active:scale-[0.98] transition-transform duration-100"
           >
-            <Send size={18} />
+            Daily message limit reached. Upgrade to Pro for unlimited chat.
           </button>
-        </div>
+        ) : (
+          <div className="flex space-x-2 items-end">
+            <textarea
+              value={chatInput}
+              onChange={(e) => onInputChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              maxLength={1000}
+              placeholder="Ask a question..."
+              className="flex-1 bg-white/5 text-white text-sm rounded-2xl px-5 py-4 h-14 outline-none focus:ring-2 focus:ring-omnave-primary/50 transition-all duration-150 border border-white/10 resize-none overflow-y-auto scrollbar-hide"
+              aria-label="Ask the AI tutor a question"
+            />
+            <button
+              onClick={() => onSend()}
+              disabled={isChatLoading || !chatInput.trim()}
+              className="bg-omnave-primary text-white px-6 h-14 rounded-2xl font-bold hover:brightness-110 transition-all duration-150 disabled:opacity-50 active:scale-95 shadow-sm flex items-center justify-center shrink-0"
+              aria-label="Send message"
+            >
+              <Send size={18} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

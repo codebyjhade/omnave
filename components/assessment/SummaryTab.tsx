@@ -3,12 +3,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Sparkles } from "lucide-react";
 import { ChatPanel, MarkdownRenderer } from "@/components/lesson";
+import { useUserContext } from "@/context/UserContext";
 
 interface SummaryTabProps {
   summary: string;
 }
 
 export const SummaryTab = React.memo(function SummaryTab({ summary }: SummaryTabProps) {
+  const { refreshUser } = useUserContext();
   // Highlight Selection State
   const [selectedText, setSelectedText] = useState("");
   
@@ -89,9 +91,11 @@ export const SummaryTab = React.memo(function SummaryTab({ summary }: SummaryTab
           text: data.reply,
         },
       ]);
-    } catch (err: any) {
+      await refreshUser();
+    } catch (err: unknown) {
       console.error("AI chat error:", err);
-      setChatError(err?.message || "Something went wrong. Please try again.");
+      const errMsg = err instanceof Error ? err.message : String(err);
+      setChatError(errMsg || "Something went wrong. Please try again.");
     } finally {
       setIsChatLoading(false);
     }

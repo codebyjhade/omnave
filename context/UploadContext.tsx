@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation';
 import { useUserContext } from '@/context/UserContext';
 import { useToast } from '@/components/ToastProvider';
 import BackgroundProcessingWidget from '@/components/BackgroundProcessingWidget';
+import UpgradeModal from '@/components/UpgradeModal';
 
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
 
@@ -25,19 +26,22 @@ interface UploadContextValue {
   uploadProgress: number;
   clearUploadState: () => void;
   activeQueue: string[];
+  showUpgradeModal: boolean;
+  setShowUpgradeModal: (show: boolean) => void;
 }
 
 const UploadContext = createContext<UploadContextValue | undefined>(undefined);
 
 export function UploadProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { refreshUser, addNotification, removeNotification, updateNotification, addLessonToState, removeLessonFromState } = useUserContext();
+  const { user, refreshUser, addNotification, removeNotification, updateNotification, addLessonToState, removeLessonFromState } = useUserContext();
   const { toast } = useToast();
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const targetProgressRef = useRef<number>(0);
   const [activeQueue, setActiveQueue] = useState<string[]>([]);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const activeMaterialIdRef = useRef<string | null>(null);
   const displayedProgressRef = useRef<number>(0);
@@ -126,6 +130,11 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
 
   const processBackgroundUpload = useCallback(
     async (file: File) => {
+      // Reset progress state immediately to prevent stale visual jumps
+      setUploadProgress(0);
+      targetProgressRef.current = 0;
+      displayedProgressRef.current = 0;
+
       const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -137,6 +146,34 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       }
       abortControllerRef.current = new AbortController();
       const signal = abortControllerRef.current.signal;
+
+      // Guard Check: MB Limit based on user's plan
+      const planType = user?.plan_type || 'free';
+      const fileSizeMB = file.size / (1024 * 1024);
+
+      // Pre-flight Quota Limit Check: Bypasses optimistic updates completely if limit reached
+      const generationCount = user?.generation_count || 0;
+      if (user && planType === 'free' && generationCount >= 3) {
+        setShowUpgradeModal(true);
+        setUploadStatus('error');
+        setUploadMessage('Free plan upload limit of 3 files reached.');
+        return;
+      }
+
+      if (planType === 'free' && fileSizeMB > 15) {
+        setShowUpgradeModal(true);
+        setUploadStatus('error');
+        setUploadMessage('Free tier limit is 15MB. Please upgrade to Pro.');
+        return;
+      }
+
+      if (planType === 'pro' && fileSizeMB > 50) {
+        alert('You exceeded the 50MB absolute limit.');
+        setUploadStatus('error');
+        setUploadMessage('Pro tier limit is 50MB.');
+        toast('Pro tier limit is 50MB.', 'error');
+        return;
+      }
 
       setUploadStatus('uploading');
       setUploadProgress(10);
@@ -321,6 +358,17 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
 
               if (checkData) {
                 const status = checkData.status || 'PROCESSING';
+
+                if (status === 'failed' || status === 'FAILED') {
+                  clearInterval(pollInterval);
+                  removeLessonFromState(finalMaterialId);
+                  removeNotification(`processing-${finalMaterialId}`);
+                  setUploadStatus('error');
+                  setUploadMessage('AI generation failed. Please try again.');
+                  toast('AI generation failed. Please try again.', 'error');
+                  return;
+                }
+
                 const progressNum = STATUS_PROGRESS[status] || 20;
                 const statusMsg = STATUS_TEXT[status] || 'AI is analyzing content...';
 
@@ -393,14 +441,52 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           }, 90000);
         }
 
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
           console.log('[UploadContext] processBackgroundUpload aborted by user');
           return;
         }
         console.error('[UploadContext] processBackgroundUpload error:', error);
+        
+        const errMsg = error instanceof Error ? error.message : 'Failed to process the document. Please try again.';
+        const isQuotaError = 
+          errMsg.toLowerCase().includes('quota reached') || 
+          errMsg.toLowerCase().includes('limit exceeded');
+
+        if (isQuotaError) {
+          const targetId = activeMaterialIdRef.current;
+          if (targetId) {
+            removeLessonFromState(targetId);
+            removeNotification(`processing-${targetId}`);
+            try {
+              await supabase.from('materials').delete().eq('id', targetId);
+              // Force database sync to ensure the deleted draft is immediately removed from local state
+              await refreshUser();
+            } catch (dbErr) {
+              console.error('[UploadContext] db delete error inside catch:', dbErr);
+            }
+          }
+          setShowUpgradeModal(true);
+          // Set status to idle to completely hide background processing error states
+          setUploadStatus('idle');
+          setUploadMessage(null);
+          return;
+        }
+
+        const targetId = activeMaterialIdRef.current;
+        if (targetId) {
+          removeLessonFromState(targetId);
+          removeNotification(`processing-${targetId}`);
+          try {
+            await supabase.from('materials').delete().eq('id', targetId);
+          } catch (dbErr) {
+            console.error('[UploadContext] db delete error inside catch:', dbErr);
+          }
+        }
+
         setUploadStatus('error');
-        setUploadMessage(error?.message || 'Failed to process the document. Please try again.');
+        setUploadMessage(errMsg);
+        toast(errMsg, 'error');
       } finally {
         abortControllerRef.current = null;
         const targetId = activeMaterialIdRef.current;
@@ -410,7 +496,18 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
         activeMaterialIdRef.current = null;
       }
     },
-    [refreshUser, router, addNotification]
+    [
+      refreshUser,
+      router,
+      addNotification,
+      removeNotification,
+      removeLessonFromState,
+      toast,
+      setShowUpgradeModal,
+      addLessonToState,
+      updateNotification,
+      user
+    ]
   );
 
   const value = useMemo(
@@ -422,8 +519,10 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       uploadProgress,
       clearUploadState,
       activeQueue,
+      showUpgradeModal,
+      setShowUpgradeModal,
     }),
-    [clearUploadState, processBackgroundUpload, cancelUpload, uploadMessage, uploadStatus, uploadProgress, activeQueue]
+    [clearUploadState, processBackgroundUpload, cancelUpload, uploadMessage, uploadStatus, uploadProgress, activeQueue, showUpgradeModal]
   );
 
   return (
@@ -436,6 +535,12 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
         uploadMessage={uploadMessage}
         uploadProgress={uploadProgress}
         onDismiss={clearUploadState}
+      />
+
+      {/* Psychological Upgrade Modal Paywall */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
       />
     </UploadContext.Provider>
   );

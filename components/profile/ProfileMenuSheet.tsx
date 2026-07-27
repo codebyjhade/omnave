@@ -296,6 +296,7 @@ function MainView({
   isStandalone,
   go,
   cs,
+  onClose,
 }: {
   plan: string;
   appVersion: string;
@@ -304,8 +305,10 @@ function MainView({
   isStandalone: boolean;
   go: (view: ActiveView) => void;
   cs: (label: string) => void;
+  onClose: () => void;
 }) {
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const { setShowUpgradeModal } = useUploadContext();
 
   return (
     <div className="flex-1 overflow-y-auto px-4 pb-10 overscroll-contain space-y-1">
@@ -317,7 +320,10 @@ function MainView({
           icon={<Crown size={17} />}
           label="Subscription"
           trailing={<span className="flex items-center gap-1.5"><TrailingValue value={plan} /><ChevronRight size={15} className="text-white/20" /></span>}
-          onClick={() => cs("Subscription")}
+          onClick={() => {
+            onClose();
+            setShowUpgradeModal(true);
+          }}
         />
         <MenuItem icon={<Award size={17} />} label="Achievements & Badges" onClick={() => go("badges")} />
       </MenuSection>
@@ -724,7 +730,7 @@ function NotificationsView({ onClose }: { onClose: () => void }) {
 
       {notifications.length === 0 && uploadStatus !== "uploading" ? (
         <div className="flex flex-col items-center justify-center gap-3 py-20 text-center select-none">
-          <p className="text-sm text-zinc-500">You're all caught up!</p>
+          <p className="text-sm text-zinc-500">You&apos;re all caught up!</p>
         </div>
       ) : (
         <>
@@ -830,13 +836,13 @@ function AppearanceView() {
 
 // ─── Slide animation helpers ──────────────────────────────────────────────────
 
-const slideVariants = {
-  enterFromRight: { x: 40, opacity: 0 },
-  enterFromLeft: { x: -40, opacity: 0 },
-  center: { x: 0, opacity: 1 },
-  exitToLeft: { x: -40, opacity: 0 },
-  exitToRight: { x: 40, opacity: 0 },
-};
+// const slideVariants = {
+//   enterFromRight: { x: 40, opacity: 0 },
+//   enterFromLeft: { x: -40, opacity: 0 },
+//   center: { x: 0, opacity: 1 },
+//   exitToLeft: { x: -40, opacity: 0 },
+//   exitToRight: { x: 40, opacity: 0 },
+// };
 
 // ─── Root Sheet ───────────────────────────────────────────────────────────────
 
@@ -857,8 +863,10 @@ export function ProfileMenuSheet({
   const directionRef = useRef<"forward" | "back">("forward");
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsStandalone(
       window.matchMedia("(display-mode: standalone)").matches ||
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (navigator as any).standalone === true
     );
   }, []);
@@ -867,6 +875,7 @@ export function ProfileMenuSheet({
   useEffect(() => {
     if (isOpen) {
       directionRef.current = "back";
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveView("main");
     }
   }, [isOpen]);
@@ -907,10 +916,12 @@ export function ProfileMenuSheet({
             <AnimatePresence
               mode="wait"
               initial={false}
+              // eslint-disable-next-line react-hooks/refs
               custom={directionRef.current}
             >
               <motion.div
                 key={activeView}
+                // eslint-disable-next-line react-hooks/refs
                 custom={directionRef.current}
                 variants={{
                   enter: (dir: "forward" | "back") => ({
@@ -938,6 +949,7 @@ export function ProfileMenuSheet({
                     isStandalone={isStandalone}
                     go={go}
                     cs={cs}
+                    onClose={onClose}
                   />
                 )}
                 {activeView === "editProfile" && <EditProfileView onBack={goBack} />}

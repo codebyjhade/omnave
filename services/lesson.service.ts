@@ -43,6 +43,7 @@ export class LessonService {
       .from('materials')
       .select('id, user_id, title, material_type, content_url, is_processed, flashcards, quizzes, created_at')
       .eq('user_id', userId)
+      .neq('status', 'failed')
       .order('created_at', { ascending: false })
       .returns<MaterialRow[]>();
 

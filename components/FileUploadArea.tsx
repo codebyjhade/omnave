@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { UploadCloud, FileText, AlertCircle, X } from "lucide-react";
 import { useUploadContext } from "@/context/UploadContext";
+import { useUserContext } from "@/context/UserContext";
 
 export default function FileUploadArea() {
   const [file, setFile] = useState<File | null>(null);
@@ -11,6 +12,7 @@ export default function FileUploadArea() {
   const [isDragActive, setIsDragActive] = useState(false);
   const router = useRouter();
   const { processBackgroundUpload } = useUploadContext();
+  const { user } = useUserContext();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
@@ -74,8 +76,16 @@ export default function FileUploadArea() {
       setError("Only PDF files are supported right now.");
       return;
     }
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      setError("File size must be under 10MB.");
+    const planType = user?.plan_type || 'free';
+    const maxSize = planType === 'pro' ? 50 * 1024 * 1024 : 15 * 1024 * 1024;
+    if (selectedFile.size > maxSize) {
+      if (planType === 'free') {
+        console.log("Trigger Paywall: 15MB Limit");
+        setError("Free tier is limited to 15MB. Please upgrade to Pro.");
+      } else {
+        alert("You exceeded the 50MB absolute limit.");
+        setError("Pro tier is limited to 50MB.");
+      }
       return;
     }
     setFile(selectedFile);
@@ -134,7 +144,7 @@ export default function FileUploadArea() {
             )}
             
             <p className="text-xs text-zinc-500 font-medium max-w-[220px] leading-normal group-hover:text-zinc-400 transition-colors">
-              Drag & drop or browse. Max file size 10MB.
+              Drag & drop or browse. Max file size {user?.plan_type === 'pro' ? '50MB' : '15MB'}.
             </p>
           </div>
         </>

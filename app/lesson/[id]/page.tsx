@@ -38,8 +38,9 @@ export default function LessonView() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
   const { isAssessmentActive, triggerNavAttempt } = useAssessmentGuard();
-  const { loading: contextLoading } = useUserContext();
+  const { user, loading: contextLoading } = useUserContext();
   const { quizScores, refreshProgress } = useProgress();
+  const planType = user?.plan_type || 'free';
 
   // Data State
   const [data, setData] = useState<any>(null);
@@ -56,11 +57,18 @@ export default function LessonView() {
       setViewMode("study");
       if (tabParam === "flashcards" || tabParam === "slides") {
         setActiveTab("slides");
-      } else if (tabParam === "quiz" || tabParam === "exam" || tabParam === "summary") {
+      } else if (tabParam === "quiz" || tabParam === "summary") {
         setActiveTab(tabParam as TabId);
+      } else if (tabParam === "exam") {
+        if (planType === "free") {
+          console.log("Trigger Paywall: Exam Mode");
+          setActiveTab("summary");
+        } else {
+          setActiveTab("exam");
+        }
       }
     }
-  }, [tabParam]);
+  }, [tabParam, planType]);
 
   const [studyDuration, setStudyDuration] = useState(0);
   const studyIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -173,6 +181,10 @@ export default function LessonView() {
     if (isAssessmentActive) {
       triggerNavAttempt(`/lesson/${id}`);
     } else {
+      if (tab === "exam" && planType === "free") {
+        console.log("Trigger Paywall: Exam Mode");
+        return;
+      }
       setActiveTab(tab);
     }
   };

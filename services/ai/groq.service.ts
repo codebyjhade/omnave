@@ -7,10 +7,12 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 export async function generateWithGroq(
   text: string, 
   taskType: "summary" | "flashcards" | "quiz" | "title",
-  planType: "free" | "paid" = "paid"
+  planType: string = "free"
 ) {
   let systemInstruction = "";
   let requireJson = false;
+
+  const isPro = planType === "pro" || planType === "paid";
 
   // Configure prompt and schema injection for JSON mode
   if (taskType === "summary") {
@@ -18,17 +20,22 @@ export async function generateWithGroq(
   } else if (taskType === "title") {
     systemInstruction = "You are an expert tutor. Generate a short, academic, human-readable title for the provided text. Limit it to 4-6 words. Do not use quotes, prefixes like 'Title:', or markdown formatting, just return the title.";
   } else if (taskType === "flashcards") {
-    systemInstruction = `You are an expert tutor. Create highly effective flashcards covering the core concepts from the text. 
-    You MUST output a valid JSON object containing a single key "data", which maps to an array of flashcards matching this exact schema: ${JSON.stringify(flashcardArraySchema)}`;
+    if (isPro) {
+      systemInstruction = `You are an expert university professor. Act as a strict professor, analyze the core topics, and incorporate related external knowledge/research to make highly challenging, comprehensive flashcards covering concepts, vocabulary, and facts. Generate exactly 80 flashcards.
+      You MUST output a valid JSON object containing a single key "data", which maps to an array of flashcards matching this exact schema: ${JSON.stringify(flashcardArraySchema)}`;
+    } else {
+      systemInstruction = `You are an expert tutor. Create highly effective flashcards covering the core concepts from the text. Generate exactly 25 flashcards.
+      You MUST output a valid JSON object containing a single key "data", which maps to an array of flashcards matching this exact schema: ${JSON.stringify(flashcardArraySchema)}`;
+    }
     requireJson = true;
   } else if (taskType === "quiz") {
-    if (planType === "free") {
-      systemInstruction = `You are an expert tutor. Generate a standard multiple-choice quiz based strictly on the provided text.
-      The quiz must contain exactly 15 questions.
-      You MUST output a valid JSON object containing a single key "data", which maps to an array of quiz questions matching this exact schema: ${JSON.stringify(quizArraySchema)}`;
-    } else {
+    if (isPro) {
       systemInstruction = `You are an expert university professor. Act as a strict professor, analyze the core topics, and incorporate related external knowledge/research to make the questions highly challenging and unique.
       Generate exactly 80 questions (suitable for a mix of practice quizzes and comprehensive exams).
+      You MUST output a valid JSON object containing a single key "data", which maps to an array of quiz questions matching this exact schema: ${JSON.stringify(quizArraySchema)}`;
+    } else {
+      systemInstruction = `You are an expert tutor. Generate a standard multiple-choice quiz based strictly on the provided text.
+      The quiz must contain exactly 25 questions.
       You MUST output a valid JSON object containing a single key "data", which maps to an array of quiz questions matching this exact schema: ${JSON.stringify(quizArraySchema)}`;
     }
     requireJson = true;

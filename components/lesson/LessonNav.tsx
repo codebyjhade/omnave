@@ -4,6 +4,8 @@ import { memo } from "react";
 import { motion } from "framer-motion";
 import { BookOpen, BrainCircuit, Presentation, FileQuestion } from "lucide-react";
 
+import { useUserContext } from "@/context/UserContext";
+
 export type TabId = "summary" | "quiz" | "slides" | "exam";
 
 interface LessonNavProps {
@@ -25,13 +27,29 @@ const navItems: NavItem[] = [
 ];
 
 export const LessonNav = memo(function LessonNav({ activeTab, onTabChange }: LessonNavProps) {
+  const { user } = useUserContext();
+  const planType = user?.plan_type || 'free';
+
+  const items = navItems.map((item) => {
+    if (item.id === "exam" && planType === "free") {
+      return { ...item, label: "Exam 🔒" };
+    }
+    return item;
+  });
+
   return (
     <div className="sticky top-[88px] z-30 bg-transparent transition-colors duration-150 w-full mb-2">
       <div className="flex items-center gap-1 overflow-x-auto w-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-1 py-1 bg-white/5 border border-white/5 rounded-2xl" role="tablist" aria-label="Study modes">
-        {navItems.map((item) => (
+        {items.map((item) => (
           <button
             key={item.id}
-            onClick={() => onTabChange(item.id)}
+            onClick={() => {
+              if (item.id === "exam" && planType === "free") {
+                console.log("Trigger Paywall: Exam Mode");
+                return;
+              }
+              onTabChange(item.id);
+            }}
             id={`tab-${item.id}`}
             role="tab"
             aria-selected={activeTab === item.id}

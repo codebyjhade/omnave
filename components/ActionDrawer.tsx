@@ -12,9 +12,11 @@ interface ActionDrawerProps {
 
 export default function ActionDrawer({ isOpen, onClose }: ActionDrawerProps) {
   const router = useRouter();
-  const { lessons } = useUserContext();
+  const { lessons, user } = useUserContext();
   const [view, setView] = useState<'main' | 'lessons'>('main');
   const [activeTab, setActiveTab] = useState<string>('');
+
+  const planType = user?.plan_type || 'free';
 
   // Reset view when drawer closes
   useEffect(() => {
@@ -25,6 +27,10 @@ export default function ActionDrawer({ isOpen, onClose }: ActionDrawerProps) {
   }, [isOpen]);
 
   const handleActionClick = (actionId: string) => {
+    if (actionId === 'exam' && planType === 'free') {
+      console.log("Trigger Paywall: Exam Mode");
+      return;
+    }
     if (actionId === 'import') {
       router.push('/upload');
       onClose();
@@ -43,7 +49,7 @@ export default function ActionDrawer({ isOpen, onClose }: ActionDrawerProps) {
     { id: "import", name: "Import", icon: "↑", desc: "Upload PDF or Link" },
     { id: "flashcards", name: "Flashcards", icon: "📄", desc: "Spaced Repetition" },
     { id: "quiz", name: "Quiz Tools", icon: "✓", desc: "Practice Tests" },
-    { id: "exam", name: "Exam Prep", icon: "📈", desc: "Master Topics" },
+    { id: "exam", name: planType === 'free' ? "Exam Prep 🔒" : "Exam Prep", icon: "📈", desc: "Master Topics" },
   ];
 
   return (

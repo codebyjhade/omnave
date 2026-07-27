@@ -17,6 +17,75 @@ interface AuthModalProps {
 
 type AuthStep = 'signup' | 'signin' | 'verify' | 'success';
 
+// Helper to safely parse and format Supabase/gotrue auth errors
+function getErrorMessage(err: any, fallback: string): string {
+  if (!err) return fallback;
+
+  // Extract message from potential sources
+  let rawMessage: any = null;
+
+  if (typeof err === 'string') {
+    rawMessage = err;
+  } else if (err && typeof err === 'object') {
+    rawMessage = err.message || err.error_description || err.error || err.msg;
+  }
+
+  // If rawMessage is still not found, try to stringify the err if it's not a generic Error/object
+  if (!rawMessage && err && typeof err === 'object') {
+    try {
+      const stringified = JSON.stringify(err);
+      if (stringified && stringified !== '{}') {
+        rawMessage = stringified;
+      }
+    } catch {
+      // Ignore stringification errors
+    }
+  }
+
+  if (!rawMessage) return fallback;
+
+  // If the extracted message is an object
+  if (typeof rawMessage === 'object') {
+    try {
+      const msg = rawMessage.message || rawMessage.msg || rawMessage.error || rawMessage.error_description;
+      if (msg && typeof msg === 'string') return msg;
+      
+      const stringified = JSON.stringify(rawMessage);
+      if (stringified && stringified !== '{}') return stringified;
+    } catch {
+      // Ignore
+    }
+    return fallback;
+  }
+
+  // If it's a string, it might be stringified JSON
+  if (typeof rawMessage === 'string') {
+    const trimmed = rawMessage.trim();
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === 'object') {
+          const msg = parsed.message || parsed.msg || parsed.error || parsed.error_description;
+          if (msg && typeof msg === 'string') return msg;
+          
+          const stringified = JSON.stringify(parsed);
+          if (stringified && stringified !== '{}') return stringified;
+        }
+      } catch {
+        // Not valid JSON, treat as standard string
+      }
+    }
+    
+    if (trimmed === '{}' || trimmed === '[object Object]') {
+      return fallback;
+    }
+    
+    return rawMessage;
+  }
+
+  return fallback;
+}
+
 export default function AuthModal({ isOpen, onClose, initialView = 'login' }: AuthModalProps) {
   const [authStep, setAuthStep] = useState<AuthStep>(initialView === 'login' ? 'signin' : 'signup');
   const [mounted, setMounted] = useState(false);
@@ -120,11 +189,12 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
         setAuthStep('verify');
         toast('Verification email sent! Please check your inbox.', 'success');
       } catch (err: any) {
-        const msg = err.message?.toLowerCase() || '';
-        if (msg.includes('already registered') || msg.includes('already in use') || msg.includes('exists') || err.status === 400) {
+        const errorMsg = getErrorMessage(err, 'Registration failed. Please try again.');
+        const msgLower = errorMsg.toLowerCase();
+        if (msgLower.includes('already registered') || msgLower.includes('already in use') || msgLower.includes('exists') || err?.status === 400) {
           setError('This email is already in use. Please Sign In instead.');
         } else {
-          setError(err.message || 'Registration failed. Please try again.');
+          setError(errorMsg);
         }
       } finally {
         setIsLoading(false);
@@ -155,10 +225,11 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
           window.location.href = targetUrl;
         }, 1500);
       } catch (err: any) {
-        if (err instanceof TypeError || err.message?.includes('Failed to fetch')) {
+        const errorMsg = getErrorMessage(err, 'Invalid or expired code.');
+        if (err instanceof TypeError || errorMsg.includes('Failed to fetch')) {
           setError('Network error: Failed to connect to server.');
         } else {
-          setError(err.message || 'Invalid or expired code.');
+          setError(errorMsg);
         }
       } finally {
         setIsLoading(false);
@@ -186,11 +257,12 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
           window.location.href = '/welcome';
         }
       } catch (err: any) {
-        const msg = err.message?.toLowerCase() || '';
-        if (msg.includes('invalid login credentials') || msg.includes('credentials') || msg.includes('not found') || err.status === 400) {
+        const errorMsg = getErrorMessage(err, 'Authentication failed. Please try again.');
+        const msgLower = errorMsg.toLowerCase();
+        if (msgLower.includes('invalid login credentials') || msgLower.includes('credentials') || msgLower.includes('not found') || err?.status === 400) {
           setError('Account not found. Please create a workspace first.');
         } else {
-          setError(err.message || 'Authentication failed. Please try again.');
+          setError(errorMsg);
         }
         setIsLoading(false);
       }
@@ -217,7 +289,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
       toast('Verification code resent!', 'success');
       setResendCooldown(60);
     } catch (err: any) {
-      setError(err.message || 'Failed to resend code. Please try again.');
+      setError(getErrorMessage(err, 'Failed to resend code. Please try again.'));
     } finally {
       setIsResending(false);
     }
@@ -239,7 +311,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
 
       if (authError) throw authError;
     } catch (err: any) {
-      setError(err.message || 'Google SSO authentication failed.');
+      setError(getErrorMessage(err, 'Google SSO authentication failed.'));
     }
   };
 
