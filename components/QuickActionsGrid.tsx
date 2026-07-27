@@ -2,40 +2,45 @@
 
 import Link from "next/link";
 import { UploadCloud, Sparkles, BrainCircuit, HeartCrack } from "lucide-react";
+import { motion } from "framer-motion";
+
+const MotionLink = motion(Link);
 
 export default function QuickActionsGrid() {
+  const springTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
+
   const actions = [
     {
       title: "Upload Document",
       desc: "Import PDF to process",
       href: "/upload",
-      icon: <UploadCloud size={20} className="text-omnave-primary" />,
+      icon: <UploadCloud size={20} className="text-[#6949a8]" />,
     },
     {
       title: "Generate Quiz",
       desc: "Test your understanding",
       href: "/library",
-      icon: <Sparkles size={20} className="text-amber-500" />,
+      icon: <Sparkles size={20} className="text-[#525252]" />,
     },
     {
       title: "Review Weak Spots",
       desc: "Practice difficult cards",
       href: "/progress",
-      icon: <HeartCrack size={20} className="text-rose-500" />,
+      icon: <HeartCrack size={20} className="text-[#525252]" />,
     },
     {
       title: "Blank Flashcards",
       desc: "Start typing manual cards",
       href: "/upload",
-      icon: <BrainCircuit size={20} className="text-emerald-500" />,
+      icon: <BrainCircuit size={20} className="text-[#525252]" />,
     },
   ];
 
   return (
     <div className="w-full flex flex-col gap-4">
       {/* Header Label */}
-      <div className="flex items-center pl-2">
-        <span className="text-[10px] md:text-xs font-extrabold tracking-[0.2em] text-purple-200/50 uppercase">
+      <div className="flex items-center">
+        <span className="text-[11px] font-bold tracking-[0.2em] text-omnave-secondary-text uppercase font-poppins">
           Quick Actions
         </span>
       </div>
@@ -43,26 +48,28 @@ export default function QuickActionsGrid() {
       {/* Grid Layout */}
       <div className="grid grid-cols-2 gap-4 w-full">
         {actions.map((act, index) => (
-          <Link
+          <MotionLink
             key={index}
             href={act.href}
-            className="flex flex-col gap-3 p-4 bg-[#1A1433]/80 backdrop-blur-xl border border-white/10 rounded-2xl text-left hover:bg-[#251D4A]/90 transition-[background-color,transform] active:scale-[0.95] duration-100 cursor-pointer shadow-2xl shadow-black/50 group"
+            whileTap={{ scale: 0.95 }}
+            transition={springTransition}
+            className="flex flex-col gap-3 p-4 bg-omnave-surface border-none rounded-[15px] text-left cursor-pointer shadow-[0px_10px_10px_rgba(0,0,0,0.09)] group"
           >
             {/* Action Icon */}
-            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-100">
+            <div className="w-10 h-10 rounded-xl bg-black/[0.01] border border-omnave-border flex items-center justify-center shrink-0 transition-colors duration-200">
               {act.icon}
             </div>
 
             {/* Label Titles */}
             <div className="flex flex-col gap-0.5 min-w-0">
-              <h4 className="text-xs font-bold text-white leading-tight truncate">
+              <h4 className="text-xs font-semibold text-omnave-primary-text tracking-tight leading-tight truncate font-poppins">
                 {act.title}
               </h4>
-              <span className="text-[10px] text-purple-200/40 font-medium leading-normal truncate">
+              <span className="text-[10px] text-omnave-secondary-text font-medium leading-normal truncate font-poppins">
                 {act.desc}
               </span>
             </div>
-          </Link>
+          </MotionLink>
         ))}
       </div>
     </div>

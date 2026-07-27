@@ -6,16 +6,20 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { motion } from 'framer-motion';
 
 const ActionDrawer = dynamic(() => import('./ActionDrawer'), { ssr: false });
+const MotionLink = motion(Link);
 
 export default function BottomNav() {
   const [mounted, setMounted] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const pathname = usePathname();
+  const springTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
 
   // Ensure we only portal on the client to prevent hydration errors
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
@@ -26,8 +30,8 @@ export default function BottomNav() {
 
   const navContent = (
     <>
-      {/* Full-width, bottom-docked glass bar */}
-      <div className="fixed bottom-0 left-0 w-full h-[72px] bg-[#05030A]/60 backdrop-blur-2xl border-t border-white/10 flex items-center justify-around px-2 md:px-6 z-[9999] pb-safe">
+      {/* Full-width, bottom-docked white bar */}
+      <div className="fixed bottom-0 left-0 w-full h-[72px] bg-white border-t border-[#EBEBEB] flex items-center justify-around px-2 md:px-6 z-[9999] pb-safe shadow-[0px_-4px_10px_rgba(0,0,0,0.05)]">
         
         {/* Home */}
         <NavItem 
@@ -46,16 +50,18 @@ export default function BottomNav() {
         />
         
         {/* Center Action Button */}
-        <button 
+        <motion.button 
+          whileTap={{ scale: 0.95 }}
+          transition={springTransition}
           onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-          className="relative -translate-y-3 w-14 h-14 rounded-full bg-gradient-to-tr from-[#7C3AED] via-[#9333EA] to-[#c084fc] flex items-center justify-center text-white active:scale-[0.95] active:opacity-80 transition-[opacity,box-shadow] duration-100 shadow-[0_8px_25px_rgba(147,51,234,0.5)] border-[1.5px] border-white/20 z-50 overflow-hidden group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A]"
+          className="relative -translate-y-3 w-14 h-14 rounded-full bg-[#6949a8] hover:bg-[#563b8c] flex items-center justify-center text-white transition-all shadow-[0px_10px_10px_rgba(105,73,168,0.3)] border-none z-50 overflow-hidden group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6949a8]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
           aria-label="Open study menu"
         >
           {/* Inner glow effect */}
-          <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-full" />
+          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-full" />
           
           <Plus className="relative z-10" size={28} strokeWidth={2.5}/>
-        </button>
+        </motion.button>
         
         {/* Progress */}
         <NavItem 
@@ -83,19 +89,27 @@ export default function BottomNav() {
 }
  
 function NavItem({ icon, href, active = false, ariaLabel }: { icon: React.ReactNode, href: string, active?: boolean, ariaLabel: string }) {
+  const springTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
+
   return (
-    <Link 
-      className="relative flex items-center justify-center p-3 group active:scale-[0.95] active:opacity-80 transform-gpu focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A] rounded-xl transition-[opacity] duration-100" 
+    <MotionLink 
+      whileTap={{ scale: 0.95 }}
+      transition={springTransition}
+      className="relative flex items-center justify-center p-3 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6949a8]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white rounded-xl transition-[opacity] duration-100 cursor-pointer" 
       href={href} 
       prefetch={true}
       aria-label={ariaLabel}
     >
-      <div className={`${active ? 'text-white scale-110' : 'text-white/40 group-hover:text-white/70'} transform-gpu transition-transform duration-100 group-hover:-translate-y-1`}>
+      <div className={`${
+        active 
+          ? 'text-[#6949a8] scale-110 drop-shadow-[0px_10px_10px_#e9deff]' 
+          : 'text-[#a0a0a0] hover:text-[#6949a8]'
+      } transform-gpu transition-all duration-100 group-hover:-translate-y-1`}>
         {icon}
       </div>
       {active && (
-        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 size-1 bg-omnave-primary rounded-full shadow-[0_0_8px_rgba(127,34,254,0.8)]" />
+        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 size-1 bg-[#6949a8] rounded-full shadow-[0_0_8px_rgba(105,73,168,0.8)]" />
       )}
-    </Link>
+    </MotionLink>
   );
 }

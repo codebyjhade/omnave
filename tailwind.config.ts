@@ -12,24 +12,35 @@ const config: Config = {
     extend: {
       colors: {
         omnave: {
-          canvas: "#0A0A0A",            // Premium neutral dark canvas
-          surface: "#111111",           // Neutral dark bento cards
-          surfaceSecondary: "#111111",  // Neutral dark bento cards
-          surfaceHighlight: "#111111",  // Neutral dark bento cards
-          border: "rgba(255, 255, 255, 0.06)",
-          primary: "#7F22FE",           // Reserved strictly for primary accent actions
-          primaryHover: "#6D1CD6",
-          success: "#34D399",
+          // CSS-var driven — flips automatically between dark/light themes
+          canvas: "var(--omnave-canvas)",
+          surface: "var(--omnave-surface)",
+          surfaceSecondary: "var(--omnave-surface-secondary)",
+
+          // Primary accent stays the same in both themes
+          primary: "#6949a8",
+          primaryHover: "#563b8c",
+
+          // Semantic tokens
+          border: "var(--omnave-border)",
+          success: "#00d047",
           streak: "#F97316",
         }
       },
+      textColor: {
+        "omnave-primary-text": "var(--omnave-text-primary)",
+        "omnave-secondary-text": "var(--omnave-text-secondary)",
+        "omnave-muted-text": "var(--omnave-text-muted)",
+      },
       boxShadow: {
-        'elevation': '0 8px 40px rgba(0,0,0,0.35)',
-        'premium-glass': '0 8px 40px rgba(0,0,0,0.35)',
-        'premium-inner': 'inset 0 1px 0 0 rgba(255,255,255,0.06)',
+        // CSS-var driven shadows — lighter in light mode
+        'premium-glass': 'var(--omnave-shadow-glass)',
+        'premium-inner': 'var(--omnave-shadow-inner)',
+        // Legacy aliases
+        'elevation': 'var(--omnave-shadow-glass)',
       },
       borderRadius: {
-        'bento': '24px',
+        'bento': '15px',
       }
     },
   },

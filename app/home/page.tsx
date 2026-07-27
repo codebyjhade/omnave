@@ -14,6 +14,7 @@ import { useMemo } from "react";
 import { calculateKitProgress } from "@/hooks/useProgressStats";
 import Link from "next/link";
 import { getLocalDateString } from "@/lib/gamification";
+import { motion } from "framer-motion";
 
 export default function HomePage() {
   const router = useRouter();
@@ -187,89 +188,92 @@ export default function HomePage() {
       });
   }, [lessonsList, quizScoresList]);
 
+  const springTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
+
   return (
-    <main className="w-full max-w-5xl mx-auto px-6 md:px-8 pt-6 pb-20 flex flex-col gap-6 bg-[#0A0A0A]">
+    <div className="w-full bg-[#FFFFFF]">
       {/* 1. Header: Greeting Block */}
       <Header />
 
-      {/* ASYMMETRICAL BENTO GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
+      {/* Grounded, Friendly EdTech vertical layout wrapper */}
+      <main className="w-full max-w-5xl mx-auto px-[25px] pb-24 flex flex-col gap-[20px] bg-[#FFFFFF] -mt-8 relative z-20">
 
         {/* 1. UP NEXT HERO CARD */}
         {loading ? (
-          <div className="lg:col-start-1 lg:col-span-8 lg:row-start-1 lg:row-span-2 w-full bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-6 flex flex-col justify-between animate-pulse min-h-[180px]">
+          <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col justify-between animate-pulse min-h-[180px]">
             <div>
-              <div className="h-3 w-16 bg-white/[0.05] rounded-md mb-2" />
-              <div className="h-6 w-1/2 bg-white/[0.05] rounded-md mb-2" />
-              <div className="h-3 w-24 bg-white/[0.05] rounded-md" />
+              <div className="h-3 w-16 bg-omnave-border rounded-md mb-2" />
+              <div className="h-6 w-1/2 bg-omnave-border rounded-md mb-2" />
+              <div className="h-3 w-24 bg-omnave-border rounded-md" />
             </div>
             <div className="mt-6 flex flex-col gap-2">
-              <div className="w-full h-[2px] bg-white/[0.05] rounded-full" />
+              <div className="w-full h-[2px] bg-omnave-border rounded-full" />
             </div>
           </div>
         ) : !currentLesson ? (
           /* Empty State Hero */
-          <div 
+          <motion.div 
             onClick={() => router.push("/library")}
-            className="lg:col-start-1 lg:col-span-8 lg:row-start-1 lg:row-span-2 w-full bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-6 flex flex-col justify-between min-h-[180px] transition-all duration-500 ease-out hover:border-white/[0.15] hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)] cursor-pointer select-none"
+            whileTap={{ scale: 0.95 }}
+            transition={springTransition}
+            className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col justify-between min-h-[180px] cursor-pointer select-none"
           >
             <div>
-              <span className="text-[11px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-2 block">UP NEXT</span>
-              <h2 className="text-xl font-semibold tracking-tight text-white leading-tight">Your workspace is empty</h2>
-              <p className="text-xs text-zinc-400 mt-1.5">Upload a PDF to get started!</p>
+              <span className="text-[11px] font-bold tracking-[0.2em] text-omnave-secondary-text uppercase mb-2 block font-poppins">UP NEXT</span>
+              <h2 className="text-xl font-bold tracking-tight text-omnave-primary-text leading-tight font-poppins">Your workspace is empty</h2>
+              <p className="text-xs text-omnave-secondary-text mt-1.5 font-poppins">Upload a PDF to get started!</p>
             </div>
-            <div className="flex items-center gap-1 text-xs font-semibold text-purple-400 mt-4">
+            <div className="flex items-center gap-1 text-xs font-semibold text-[#6949a8] mt-4 font-poppins">
               <span>Go to Library</span>
               <ArrowRight size={14} />
             </div>
-          </div>
+          </motion.div>
         ) : (
           /* Active State Hero */
-          <div 
+          <motion.div 
             onClick={() => router.push(`/lesson/${currentLesson.id}`)}
-            className="lg:col-start-1 lg:col-span-8 lg:row-start-1 lg:row-span-2 w-full bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-6 flex flex-col justify-between min-h-[180px] transition-all duration-500 ease-out hover:border-white/[0.15] hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)] cursor-pointer relative group select-none"
+            whileTap={{ scale: 0.95 }}
+            transition={springTransition}
+            className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col justify-between min-h-[180px] cursor-pointer relative group select-none"
           >
-            {/* Ambient Spotlight Glow */}
-            <div className="absolute -top-12 -right-12 w-48 h-48 bg-purple-600/10 blur-3xl rounded-full pointer-events-none" />
-            
             <div>
-              <span className="text-[11px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-2 block">UP NEXT</span>
-              <h2 className="text-2xl font-semibold tracking-tight text-white leading-tight">
+              <span className="text-[11px] font-bold tracking-[0.2em] text-omnave-secondary-text uppercase mb-2 block font-poppins">UP NEXT</span>
+              <h2 className="text-2xl font-bold tracking-tight text-omnave-primary-text leading-tight font-poppins">
                 {displayTitle}
               </h2>
-              <p className="text-xs text-zinc-400 mt-1">
+              <p className="text-xs text-omnave-secondary-text mt-1 font-poppins">
                 {flashcardCount} cards • {quizCount} quizzes
               </p>
             </div>
 
             <div className="mt-6 flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs text-zinc-500">
+              <div className="flex items-center justify-between text-xs text-omnave-secondary-text font-poppins">
                 <span>Course Progress</span>
-                <span className="font-semibold text-purple-400">{progress}%</span>
+                <span className="font-semibold text-[#6949a8]">{progress}%</span>
               </div>
-              {/* Razor-Thin Progress Bar */}
-              <div className="w-full h-[2px] bg-white/5 rounded-full overflow-hidden">
+              {/* Razor-Thin Progress Bar — gradient per ODL gamification rule */}
+              <div className="w-full h-[2px] bg-omnave-border rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-purple-500 transition-all duration-500" 
+                  className="h-full bg-gradient-to-r from-[#6949a8] to-[#86d1ff] transition-all duration-500" 
                   style={{ width: `${progress}%` }}
                 />
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* 2. AI ASSISTANT INSIGHT STRIP */}
         {loading ? (
-          <div className="lg:col-start-1 lg:col-span-8 lg:row-start-3 lg:row-span-1 w-full bg-white/[0.03] border border-white/[0.08] rounded-3xl p-4 animate-pulse min-h-[64px]" />
+          <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[64px]" />
         ) : (
-          <div className="lg:col-start-1 lg:col-span-8 lg:row-start-3 lg:row-span-1 w-full bg-white/[0.03] backdrop-blur-md border border-white/[0.08] shadow-inner rounded-3xl p-4 flex flex-row items-center justify-between gap-4 transition-all duration-500 ease-out hover:border-white/[0.15] hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
+          <div className="w-full bg-omnave-surface border-none shadow-[0px_10px_10px_rgba(0,0,0,0.09)] rounded-[15px] p-[20px] flex flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-[#6949a8]/10 border border-[#6949a8]/20 flex items-center justify-center text-[#6949a8] shrink-0">
                 <Sparkles size={16} strokeWidth={1.5} />
               </div>
               <div className="min-w-0 flex-1">
-                <span className="text-[9px] font-bold tracking-[0.15em] text-purple-400 uppercase block leading-none mb-1">AI Assistant</span>
-                <p className="text-xs text-zinc-300 leading-normal truncate">
+                <span className="text-[9px] font-bold tracking-[0.15em] text-[#6949a8] uppercase block leading-none mb-1 font-poppins">AI Assistant</span>
+                <p className="text-xs text-omnave-secondary-text leading-normal truncate font-poppins">
                   {!currentLesson 
                     ? "Upload a PDF to get started!"
                     : recommendation.text}
@@ -277,91 +281,102 @@ export default function HomePage() {
               </div>
             </div>
             
-            <button 
+            <motion.button 
+              whileTap={{ scale: 0.95 }}
+              transition={springTransition}
               onClick={!currentLesson ? () => router.push("/upload") : recommendation.onClick} 
-              className="inline-flex items-center justify-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold text-[10px] uppercase tracking-wider rounded-lg transition-all shadow-[0_0_10px_rgba(147,51,234,0.3)] shrink-0 select-none group"
+              className="inline-flex items-center justify-center gap-1 px-4 py-2 bg-[#6949a8] hover:bg-[#563b8c] text-white font-semibold text-[10px] uppercase tracking-wider rounded-full transition-all shrink-0 select-none group cursor-pointer border-none"
             >
               <span>{!currentLesson ? "Upload" : recommendation.actionLabel}</span>
               <ArrowRight size={10} className="transition-transform group-hover:translate-x-0.5" />
-            </button>
+            </motion.button>
           </div>
         )}
 
         {/* 3. PROGRESS MINI-GRID (Level & Streak Squares) */}
         {loading ? (
-          <div className="lg:col-start-9 lg:col-span-4 lg:row-start-1 lg:row-span-1 grid grid-cols-2 gap-4 w-full">
-            <div className="bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-5 animate-pulse min-h-[110px]" />
-            <div className="bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-5 animate-pulse min-h-[110px]" />
+          <div className="grid grid-cols-2 gap-[20px] w-full">
+            <div className="bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[110px]" />
+            <div className="bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[110px]" />
           </div>
         ) : (
-          <div className="lg:col-start-9 lg:col-span-4 lg:row-start-1 lg:row-span-1 grid grid-cols-2 gap-4 w-full">
+          <div className="grid grid-cols-2 gap-[20px] w-full">
             {/* LEVEL CARD */}
-            <div className="bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-5 flex flex-col justify-between transition-all duration-500 ease-out hover:border-white/[0.15] hover:bg-[#151515] hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)] select-none">
+            <motion.div 
+              whileTap={{ scale: 0.95 }}
+              transition={springTransition}
+              className="bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col justify-between select-none cursor-pointer"
+            >
               <div>
-                <span className="text-[10px] font-bold tracking-[0.2em] text-zinc-500 uppercase block mb-1">LEVEL</span>
-                <span className="text-3xl font-semibold tracking-tight text-white leading-none">
+                <span className="text-[10px] font-bold tracking-[0.2em] text-omnave-secondary-text uppercase block mb-1 font-poppins">LEVEL</span>
+                <span className="text-3xl font-bold tracking-tight text-omnave-primary-text leading-none font-poppins">
                   {gamificationStats?.currentLevel || 1}
                 </span>
               </div>
               <div className="mt-2">
-                <span className="text-[9px] font-bold text-zinc-500 block">
+                <span className="text-[9px] font-bold text-omnave-secondary-text block font-poppins">
                   {gamificationStats?.currentXp || 0} / {(gamificationStats?.currentXp || 0) + (gamificationStats?.xpNeeded || 100)} XP
                 </span>
-                <div className="w-full h-[2px] bg-white/5 rounded-full overflow-hidden mt-1.5">
+                {/* XP Bar — gradient per ODL gamification rule */}
+                <div className="w-full h-[2px] bg-omnave-border rounded-full overflow-hidden mt-1.5">
                   <div 
-                    className="h-full bg-purple-500 transition-all duration-300"
+                    className="h-full bg-gradient-to-r from-[#6949a8] to-[#86d1ff] transition-all duration-300"
                     style={{ width: `${gamificationStats?.xpProgress || 0}%` }}
                   />
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* STREAK CARD */}
-            <div className="bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-5 flex flex-col justify-between transition-all duration-500 ease-out hover:border-white/[0.15] hover:bg-[#151515] hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)] select-none">
+            <motion.div 
+              whileTap={{ scale: 0.95 }}
+              transition={springTransition}
+              className="bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col justify-between select-none cursor-pointer"
+            >
               <div>
-                <span className="text-[10px] font-bold tracking-[0.2em] text-zinc-500 uppercase block mb-1">STREAK</span>
+                <span className="text-[10px] font-bold tracking-[0.2em] text-omnave-secondary-text uppercase block mb-1 font-poppins">STREAK</span>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-3xl font-semibold tracking-tight text-white leading-none">
+                  <span className="text-3xl font-bold tracking-tight text-omnave-primary-text leading-none font-poppins">
                     {streak || 0}d
                   </span>
                   <Flame 
                     size={20} 
                     strokeWidth={1.5} 
                     className={`transition-colors duration-300 ${
-                      streak > 0 && studiedToday ? "text-purple-400 fill-purple-400/20" : "text-zinc-500"
+                      streak > 0 && studiedToday ? "text-[#6949a8] fill-[#6949a8]/20" : "text-omnave-secondary-text"
                     }`}
                   />
                 </div>
               </div>
               <div className="mt-2">
-                <span className="text-[9px] font-bold text-zinc-500 block leading-tight">
+                <span className="text-[9px] font-bold text-omnave-secondary-text block leading-tight font-poppins">
                   {studiedToday ? "Keep it up!" : "Study today to extend"}
                 </span>
               </div>
-            </div>
+            </motion.div>
           </div>
         )}
 
         {/* 4. DAILY GOALS CARD */}
         {loading ? (
-          <div className="lg:col-start-9 lg:col-span-4 lg:row-start-2 lg:row-span-2 w-full bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-6 animate-pulse min-h-[220px]">
+          <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[220px]">
             <div className="flex justify-between items-center mb-4">
-              <div className="h-3.5 w-24 bg-white/[0.05] rounded-md" />
-              <div className="h-4 w-12 bg-white/[0.05] rounded-full" />
+              <div className="h-3.5 w-24 bg-omnave-border rounded-md" />
+              <div className="h-4 w-12 bg-omnave-border rounded-full" />
             </div>
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-14 w-full bg-white/[0.03] border border-white/[0.04] rounded-2xl" />
+                <div key={i} className="h-14 w-full bg-omnave-surface border border-omnave-border rounded-2xl" />
               ))}
             </div>
           </div>
         ) : (
-          <div className="lg:col-start-9 lg:col-span-4 lg:row-start-2 lg:row-span-2 w-full bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-6 transition-all duration-500 ease-out hover:border-white/[0.15] hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)] flex flex-col justify-between">
+          <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-4">
-                <span className="text-[11px] font-bold tracking-[0.2em] text-zinc-500 uppercase">Daily Goals</span>
+                <span className="text-[11px] font-bold tracking-[0.2em] text-omnave-secondary-text uppercase font-poppins">Daily Goals</span>
                 <span 
-                  className="text-[10px] font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full"
+                  className="text-[10px] font-semibold text-[#6949a8] bg-[#6949a8]/10 px-2 py-0.5 rounded-full font-poppins"
                   aria-label={`${completedGoalsCount} of ${totalGoalsCount} goals completed`}
                 >
                   {completedGoalsCount}/{totalGoalsCount} Done
@@ -378,10 +393,12 @@ export default function HomePage() {
                   ]
                   : dailyGoals.slice(0, 3)
                 ).map((goal) => (
-                  <li 
+                  <motion.li 
                     key={goal.id}
                     onClick={() => handleGoalClick(goal.id)}
-                    className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-colors cursor-pointer select-none"
+                    whileTap={{ scale: 0.98 }}
+                    transition={springTransition}
+                    className={`flex items-center gap-3 p-3 rounded-[15px] bg-black/[0.02] border border-omnave-border cursor-pointer select-none`}
                   >
                     {/* Circular Checkbox button (44px touch target) */}
                     <button
@@ -389,14 +406,14 @@ export default function HomePage() {
                         e.stopPropagation();
                         handleGoalClick(goal.id);
                       }}
-                      className="w-11 h-11 flex items-center justify-center -ml-3 shrink-0 rounded-full hover:bg-white/[0.04] focus:outline-none transition-colors"
+                      className="w-11 h-11 flex items-center justify-center -ml-3 shrink-0 rounded-full hover:bg-black/[0.04] focus:outline-none transition-colors border-none bg-transparent cursor-pointer"
                       aria-label={goal.completed ? `Mark ${goal.title} as incomplete` : `Mark ${goal.title} as completed`}
                     >
                       <div
                         className={`w-5 h-5 rounded-full flex items-center justify-center border transition-all ${
                           goal.completed
-                            ? "bg-purple-600 border-purple-600 text-white"
-                            : "border-white/20 bg-white/[0.02] hover:border-purple-500/50"
+                            ? "bg-[#6949a8] border-[#6949a8] text-white"
+                            : "border-omnave-border bg-transparent hover:border-[#6949a8]/50"
                         }`}
                       >
                         {goal.completed && <Check size={12} strokeWidth={3} />}
@@ -405,17 +422,17 @@ export default function HomePage() {
 
                     <div className="flex flex-col text-left min-w-0">
                       <span
-                        className={`text-xs font-semibold block ${
-                          goal.completed ? "text-zinc-500 line-through" : "text-zinc-200"
+                        className={`text-xs font-bold block font-poppins ${
+                          goal.completed ? "text-omnave-muted-text line-through" : "text-omnave-primary-text"
                         }`}
                       >
                         {goal.title}
                       </span>
-                      <span className="text-[10px] text-zinc-500 leading-tight mt-0.5">
+                      <span className="text-[10px] text-omnave-secondary-text leading-tight mt-0.5 font-poppins">
                         {goal.description}
                       </span>
                     </div>
-                  </li>
+                  </motion.li>
                 ))}
               </ul>
             </div>
@@ -424,16 +441,16 @@ export default function HomePage() {
 
         {/* 5. RECENT MATERIALS CARD */}
         {loading ? (
-          <div className="lg:col-span-12 w-full bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-6 animate-pulse min-h-[160px]" />
+          <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[160px]" />
         ) : (
-          <div className="lg:col-span-12 w-full bg-[#111111] border border-white/[0.06] border-t-white/[0.12] rounded-3xl p-6 transition-all duration-500 ease-out hover:border-white/[0.15] hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)] flex flex-col gap-5">
+          <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col gap-5">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold tracking-[0.2em] text-zinc-500 uppercase">
+              <span className="text-[11px] font-bold tracking-[0.2em] text-omnave-secondary-text uppercase font-poppins">
                 Recent Materials
               </span>
               <Link
                 href="/library"
-                className="inline-flex items-center gap-1 text-[11px] font-semibold text-zinc-500 hover:text-zinc-300 transition-colors uppercase tracking-[0.05em] select-none"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#6949a8] hover:text-[#563b8c] transition-colors uppercase tracking-[0.05em] select-none font-poppins"
               >
                 <span>View All</span>
                 <ArrowRight size={12} strokeWidth={2} />
@@ -442,50 +459,53 @@ export default function HomePage() {
 
             {/* Responsive grid container: grid on Desktop/Tablet, horizontal overflow scrolling on Mobile */}
             {displayMaterials.length === 0 ? (
-              <div className="py-6 text-center text-xs text-zinc-500 font-medium border border-dashed border-white/10 rounded-2xl bg-white/[0.01]">
+              <div className="py-6 text-center text-xs text-omnave-secondary-text font-medium border border-dashed border-omnave-border rounded-[15px] bg-black/[0.01] font-poppins">
                 No study materials found. Upload your first document to populate your library.
               </div>
             ) : (
               <div className="flex sm:grid sm:grid-cols-2 overflow-x-auto sm:overflow-x-visible gap-4 pb-2 sm:pb-0 snap-x hide-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 {displayMaterials.map((item) => (
-                  <div
+                  <motion.div
                     key={item.id}
                     onClick={() => router.push(`/lesson/${item.id}`)}
-                    className="min-w-[240px] sm:min-w-0 snap-start shrink-0 sm:shrink flex flex-col justify-between gap-4 p-4 bg-white/[0.02] border border-white/[0.04] rounded-2xl transition-colors hover:bg-white/[0.04] hover:border-white/10 group cursor-pointer select-none"
+                    whileTap={{ scale: 0.95 }}
+                    transition={springTransition}
+                    className="min-w-[240px] sm:min-w-0 snap-start shrink-0 sm:shrink flex flex-col justify-between gap-4 p-4 bg-black/[0.01] border border-omnave-border rounded-[15px] group cursor-pointer select-none"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-white/[0.03] border border-white/[0.04] flex items-center justify-center shrink-0 text-zinc-400">
+                      <div className="w-8 h-8 rounded-lg bg-black/[0.03] border border-omnave-border flex items-center justify-center shrink-0 text-omnave-secondary-text">
                         <FileText size={16} strokeWidth={1.5} />
                       </div>
                       <div className="flex flex-col gap-0.5 min-w-0 text-left">
-                        <h3 className="text-xs font-semibold text-zinc-100 truncate group-hover:text-white">
+                        <h3 className="text-xs font-bold tracking-tight text-omnave-primary-text truncate group-hover:text-[#6949a8] font-poppins">
                           {item.title}
                         </h3>
-                        <p className="text-[10px] text-zinc-500 font-normal">
+                        <p className="text-[10px] text-omnave-secondary-text font-normal font-poppins">
                           {item.cardCount} cards
                         </p>
                       </div>
                     </div>
 
                     <div className="w-full flex flex-col gap-1.5">
-                      <div className="w-full h-[2px] bg-white/10 rounded-full overflow-hidden">
+                      {/* Progress Bar — gradient per ODL gamification rule */}
+                      <div className="w-full h-[2px] bg-omnave-border rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-purple-600 rounded-full transition-all duration-300"
+                          className="h-full bg-gradient-to-r from-[#6949a8] to-[#86d1ff] rounded-full transition-all duration-300"
                           style={{ width: `${Math.max(item.progress, 5)}%` }}
                         />
                       </div>
-                      <span className="text-[9px] text-zinc-500 text-left font-medium">
+                      <span className="text-[9px] text-omnave-secondary-text text-left font-medium font-poppins">
                         {item.progress}% completed
                       </span>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}
           </div>
         )}
 
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }

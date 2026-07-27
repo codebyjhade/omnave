@@ -11,6 +11,7 @@ export default function Header() {
   const [formattedDate, setFormattedDate] = useState("");
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
 
     const localHour = new Date().getHours();
@@ -36,21 +37,27 @@ export default function Header() {
 
   if (!mounted) {
     return (
-      <header className="flex flex-col items-start w-full mb-4 animate-pulse">
-        <div className="h-4 w-32 bg-white/[0.06] rounded mb-1" />
-        <div className="h-8 w-64 bg-white/[0.06] rounded" />
+      <header className="flex items-center justify-between w-full mb-4 animate-pulse">
+        <div>
+          <div className="h-3 w-32 bg-omnave-border rounded mb-2" />
+          <div className="h-8 w-64 bg-omnave-border rounded" />
+        </div>
+        {/* Toggle placeholder to prevent layout shift */}
+        <div className="w-9 h-9 rounded-xl bg-omnave-border" />
       </header>
     );
   }
 
   return (
-    <header className="flex flex-col items-start w-full mb-4">
-      <span className="text-[11px] font-bold tracking-[0.15em] text-zinc-500 uppercase mb-1">
-        {formattedDate}
-      </span>
-      <h1 className="text-2xl font-semibold text-zinc-100 tracking-tight">
-        {greeting}, {firstName} 👋
-      </h1>
+    <header className="w-full bg-[#6949a8]">
+      <div className="max-w-5xl mx-auto px-[25px] pt-2 pb-16 flex flex-col items-start select-none">
+        <span className="text-[11px] font-medium tracking-[0.2em] text-[#e9deff] uppercase mb-1.5 font-poppins">
+          {formattedDate}
+        </span>
+        <h1 className="text-3xl font-semibold text-white tracking-tight leading-none font-poppins">
+          {greeting}, {firstName}
+        </h1>
+      </div>
     </header>
   );
 }
