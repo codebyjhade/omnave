@@ -429,41 +429,42 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* 4. AI ASSISTANT — "Get Smarter" two-column layout */}
+        {/* 4. OMNAVE AI CARD — Flat brand purple with logo + sparkle watermark */}
         {loading ? (
           <div className="w-full h-[167px] bg-[#6949a8]/20 rounded-[15px] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] animate-pulse" />
         ) : (
           <div className="w-full h-[167px] bg-[#6949a8] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] rounded-[15px] p-[20px] flex flex-row justify-between items-center overflow-hidden relative">
 
-            {/* Left column: icon + title + description + button — w-[65%] keeps text from overflowing into the graphic */}
-            <div className="flex flex-col items-start gap-[10px] z-10 w-[65%]">
+            {/* Left column: logo + title + description + CTA */}
+            <div className="flex flex-col items-start gap-[10px] z-10 w-[60%]">
 
-              {/* Header row: white icon circle + title */}
+              {/* Header row: Omnave logo + title */}
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center text-[#6949a8] shrink-0">
-                  <Sparkles size={16} strokeWidth={1.5} />
-                </div>
-                {/* Title Case, NOT uppercase per spec */}
-                <span className="text-[#FFFFFF] font-poppins font-semibold text-[18px] leading-[27px]">
-                  AI Assistant
+                <img
+                  src="/omnave.png"
+                  alt="Omnave AI"
+                  className="w-9 h-9 rounded-full object-cover shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"
+                />
+                <span className="text-white font-poppins font-semibold text-[18px] leading-[27px]">
+                  Omnave AI
                 </span>
               </div>
 
               {/* Description */}
-              <p className="text-[#FFFFFF] font-poppins font-normal text-[12px] leading-[20px]">
+              <p className="text-white/80 font-poppins font-normal text-[12px] leading-[20px]">
                 {!currentLesson
                   ? "Upload a PDF to get started!"
                   : recommendation.text}
               </p>
 
-              {/* Tight pill CTA button — w-fit so it hugs its content */}
+              {/* Left-aligned CTA button */}
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 transition={springTransition}
                 onClick={!currentLesson ? () => router.push("/upload") : recommendation.onClick}
-                className="w-fit h-[40px] px-[16px] bg-white rounded-full flex items-center justify-center gap-[8px] transition-all hover:bg-white/90 select-none cursor-pointer border-none"
+                className="mt-1 bg-white text-[#6949a8] font-poppins font-semibold px-5 py-2.5 rounded-full transition-all hover:bg-white/90 flex items-center gap-2 w-max shadow-sm select-none cursor-pointer border-none"
               >
-                <span className="text-[#6949a8] font-poppins font-medium text-[13px] leading-[20px]">
+                <span className="text-[13px] leading-[20px]">
                   {!currentLesson ? "Get Started" : recommendation.actionLabel}
                 </span>
                 <ArrowRight size={13} className="text-[#6949a8]" />
@@ -471,15 +472,11 @@ export default function HomePage() {
 
             </div>
 
-            {/*
-              Right visual anchor — large decorative Sparkle graphic to balance the card,
-              mirroring the character/illustration placement in the reference "Get Smarter" design.
-              Absolute positioned so it bleeds to the card edge without affecting layout.
-            */}
+            {/* Watermark: large faded sparkle — vertically centered on right to fill the void */}
             <Sparkles
-              size={80}
-              strokeWidth={1}
-              className="absolute -right-4 -bottom-4 z-0 text-white opacity-20 pointer-events-none"
+              size={120}
+              strokeWidth={0.75}
+              className="absolute top-1/2 -translate-y-1/2 -right-4 w-32 h-32 text-white opacity-10 pointer-events-none z-0"
             />
 
           </div>
