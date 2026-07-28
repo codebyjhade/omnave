@@ -7,7 +7,9 @@ import {
   ArrowRight, 
   Check, 
   FileText,
-  Flame
+  Flame,
+  BookOpen,
+  ChevronRight
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
@@ -15,6 +17,7 @@ import { calculateKitProgress } from "@/hooks/useProgressStats";
 import Link from "next/link";
 import { getLocalDateString } from "@/lib/gamification";
 import { motion } from "framer-motion";
+import TodaysGoal from "@/components/TodaysGoal";
 
 export default function HomePage() {
   const router = useRouter();
@@ -54,9 +57,7 @@ export default function HomePage() {
     ? currentLesson.title 
     : (currentLesson ? getCleanTitle(currentLesson.file_path) : "");
 
-  const quizCount = currentLesson?.quizzes?.length ?? 0;
   const flashcardCount = currentLesson?.flashcards?.length ?? 0;
-  const progress = currentLesson ? calculateKitProgress(currentLesson, quizScoresList) : 0;
 
   // AI Recommendation Logic
   const recommendation = useMemo(() => {
@@ -198,100 +199,73 @@ export default function HomePage() {
       {/* Grounded, Friendly EdTech vertical layout wrapper with curved canvas */}
       <main className="w-full max-w-5xl mx-auto px-[25px] pt-8 pb-24 rounded-t-[40px] flex flex-col gap-[20px] bg-[#FFFFFF] -mt-10 relative z-20">
 
-        {/* 1. UP NEXT HERO CARD */}
+        {/* 1. TODAY'S GOAL */}
         {loading ? (
-          <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col justify-between animate-pulse min-h-[180px]">
-            <div>
-              <div className="h-3 w-16 bg-omnave-border rounded-md mb-2" />
-              <div className="h-6 w-1/2 bg-omnave-border rounded-md mb-2" />
-              <div className="h-3 w-24 bg-omnave-border rounded-md" />
-            </div>
-            <div className="mt-6 flex flex-col gap-2">
-              <div className="w-full h-[2px] bg-omnave-border rounded-full" />
-            </div>
-          </div>
-        ) : !currentLesson ? (
-          /* Empty State Hero */
-          <motion.div 
-            onClick={() => router.push("/library")}
-            whileTap={{ scale: 0.95 }}
-            transition={springTransition}
-            className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col justify-between min-h-[180px] cursor-pointer select-none"
-          >
-            <div>
-              <span className="text-[11px] font-bold tracking-[0.2em] text-omnave-secondary-text uppercase mb-2 block font-poppins">UP NEXT</span>
-              <h2 className="text-xl font-bold tracking-tight text-omnave-primary-text leading-tight font-poppins">Your workspace is empty</h2>
-              <p className="text-xs text-omnave-secondary-text mt-1.5 font-poppins">Upload a PDF to get started!</p>
-            </div>
-            <div className="flex items-center gap-1 text-xs font-semibold text-[#6949a8] mt-4 font-poppins">
-              <span>Go to Library</span>
-              <ArrowRight size={14} />
-            </div>
-          </motion.div>
+          <div className="w-full bg-[#FFFFFF] rounded-[15px] p-5 shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[80px]" />
         ) : (
-          /* Active State Hero */
-          <motion.div 
-            onClick={() => router.push(`/lesson/${currentLesson.id}`)}
-            whileTap={{ scale: 0.95 }}
-            transition={springTransition}
-            className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col justify-between min-h-[180px] cursor-pointer relative group select-none"
-          >
-            <div>
-              <span className="text-[11px] font-bold tracking-[0.2em] text-omnave-secondary-text uppercase mb-2 block font-poppins">UP NEXT</span>
-              <h2 className="text-2xl font-bold tracking-tight text-omnave-primary-text leading-tight font-poppins">
-                {displayTitle}
-              </h2>
-              <p className="text-xs text-omnave-secondary-text mt-1 font-poppins">
-                {flashcardCount} cards • {quizCount} quizzes
-              </p>
-            </div>
-
-            <div className="mt-6 flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs text-omnave-secondary-text font-poppins">
-                <span>Course Progress</span>
-                <span className="font-semibold text-[#6949a8]">{progress}%</span>
-              </div>
-              {/* Razor-Thin Progress Bar — gradient per ODL gamification rule */}
-              <div className="w-full h-[2px] bg-omnave-border rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-[#6949a8] to-[#86d1ff] transition-all duration-500" 
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
-          </motion.div>
+          <TodaysGoal completed={completedGoalsCount} total={totalGoalsCount} />
         )}
 
-        {/* 2. AI ASSISTANT INSIGHT STRIP */}
-        {loading ? (
-          <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[64px]" />
-        ) : (
-          <div className="w-full bg-omnave-surface border-none shadow-[0px_10px_10px_rgba(0,0,0,0.09)] rounded-[15px] p-[20px] flex flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="w-8 h-8 rounded-xl bg-[#6949a8]/10 border border-[#6949a8]/20 flex items-center justify-center text-[#6949a8] shrink-0">
-                <Sparkles size={16} strokeWidth={1.5} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-[9px] font-bold tracking-[0.15em] text-[#6949a8] uppercase block leading-none mb-1 font-poppins">AI Assistant</span>
-                <p className="text-xs text-omnave-secondary-text leading-normal truncate font-poppins">
-                  {!currentLesson 
-                    ? "Upload a PDF to get started!"
-                    : recommendation.text}
-                </p>
-              </div>
-            </div>
-            
-            <motion.button 
+        {/* 2. UP NEXT — Compact Purple Card */}
+        <div className="flex flex-col">
+          {/* Figma: font-medium text-[18px] leading-[27px] — NOT uppercase */}
+          <h2 className="text-[#000000] font-poppins font-medium text-[18px] leading-[27px] mb-[10px]">
+            Up Next
+          </h2>
+          {loading ? (
+            <div className="w-full h-[90px] bg-[#6949a8]/20 rounded-[15px] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] animate-pulse" />
+          ) : !currentLesson ? (
+            <motion.div
+              onClick={() => router.push("/library")}
               whileTap={{ scale: 0.95 }}
               transition={springTransition}
-              onClick={!currentLesson ? () => router.push("/upload") : recommendation.onClick} 
-              className="inline-flex items-center justify-center gap-1 px-4 py-2 bg-[#6949a8] hover:bg-[#563b8c] text-white font-semibold text-[10px] uppercase tracking-wider rounded-full transition-all shrink-0 select-none group cursor-pointer border-none"
+              className="w-full h-[90px] bg-[#6949a8] rounded-[15px] p-[20px] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] flex flex-row items-center justify-between gap-4 cursor-pointer select-none"
             >
-              <span>{!currentLesson ? "Upload" : recommendation.actionLabel}</span>
-              <ArrowRight size={10} className="transition-transform group-hover:translate-x-0.5" />
-            </motion.button>
-          </div>
-        )}
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shrink-0">
+                  <BookOpen size={18} strokeWidth={2} className="text-[#6949a8]" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  {/* Figma: font-semibold text-[18px] leading-[27px] */}
+                  <span className="text-[#FFFFFF] font-poppins font-semibold text-[18px] leading-[27px] truncate">
+                    No lessons yet
+                  </span>
+                  {/* Figma: font-normal text-[13px] leading-[20px] */}
+                  <span className="text-white/80 font-poppins font-normal text-[13px] leading-[20px]">
+                    Upload a PDF to get started
+                  </span>
+                </div>
+              </div>
+              <ChevronRight size={20} strokeWidth={2} className="text-white shrink-0" />
+            </motion.div>
+          ) : (
+            <motion.div
+              onClick={() => router.push(`/lesson/${currentLesson.id}`)}
+              whileTap={{ scale: 0.95 }}
+              transition={springTransition}
+              className="w-full h-[90px] bg-[#6949a8] rounded-[15px] p-[20px] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] flex flex-row items-center justify-between gap-4 cursor-pointer select-none"
+            >
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shrink-0">
+                  <BookOpen size={18} strokeWidth={2} className="text-[#6949a8]" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  {/* Figma: font-semibold text-[18px] leading-[27px] */}
+                  <span className="text-[#FFFFFF] font-poppins font-semibold text-[18px] leading-[27px] truncate">
+                    {displayTitle}
+                  </span>
+                  {/* Figma: font-normal text-[13px] leading-[20px] */}
+                  <span className="text-white/80 font-poppins font-normal text-[13px] leading-[20px]">
+                    {flashcardCount > 0
+                      ? `~${Math.ceil(flashcardCount * 0.5)} min left in today's lesson`
+                      : "Continue your lesson"}
+                  </span>
+                </div>
+              </div>
+              <ChevronRight size={20} strokeWidth={2} className="text-white shrink-0" />
+            </motion.div>
+          )}
+        </div>
 
         {/* 3. PROGRESS MINI-GRID (Level & Streak Squares) */}
         {loading ? (
@@ -357,7 +331,63 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* 4. DAILY GOALS CARD */}
+        {/* 4. AI ASSISTANT — "Get Smarter" two-column layout */}
+        {loading ? (
+          <div className="w-full h-[167px] bg-[#6949a8]/20 rounded-[15px] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] animate-pulse" />
+        ) : (
+          <div className="w-full h-[167px] bg-[#6949a8] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] rounded-[15px] p-[20px] flex flex-row justify-between items-center overflow-hidden relative">
+
+            {/* Left column: icon + title + description + button — w-[65%] keeps text from overflowing into the graphic */}
+            <div className="flex flex-col items-start gap-[10px] z-10 w-[65%]">
+
+              {/* Header row: white icon circle + title */}
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center text-[#6949a8] shrink-0">
+                  <Sparkles size={16} strokeWidth={1.5} />
+                </div>
+                {/* Title Case, NOT uppercase per spec */}
+                <span className="text-[#FFFFFF] font-poppins font-semibold text-[18px] leading-[27px]">
+                  AI Assistant
+                </span>
+              </div>
+
+              {/* Description */}
+              <p className="text-[#FFFFFF] font-poppins font-normal text-[12px] leading-[20px]">
+                {!currentLesson
+                  ? "Upload a PDF to get started!"
+                  : recommendation.text}
+              </p>
+
+              {/* Tight pill CTA button — w-fit so it hugs its content */}
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                transition={springTransition}
+                onClick={!currentLesson ? () => router.push("/upload") : recommendation.onClick}
+                className="w-fit h-[40px] px-[16px] bg-white rounded-full flex items-center justify-center gap-[8px] transition-all hover:bg-white/90 select-none cursor-pointer border-none"
+              >
+                <span className="text-[#6949a8] font-poppins font-medium text-[13px] leading-[20px]">
+                  {!currentLesson ? "Get Started" : recommendation.actionLabel}
+                </span>
+                <ArrowRight size={13} className="text-[#6949a8]" />
+              </motion.button>
+
+            </div>
+
+            {/*
+              Right visual anchor — large decorative Sparkle graphic to balance the card,
+              mirroring the character/illustration placement in the reference "Get Smarter" design.
+              Absolute positioned so it bleeds to the card edge without affecting layout.
+            */}
+            <Sparkles
+              size={80}
+              strokeWidth={1}
+              className="absolute -right-4 -bottom-4 z-0 text-white opacity-20 pointer-events-none"
+            />
+
+          </div>
+        )}
+
+        {/* 5. DAILY GOALS CARD */}
         {loading ? (
           <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[220px]">
             <div className="flex justify-between items-center mb-4">
@@ -439,7 +469,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* 5. RECENT MATERIALS CARD */}
+        {/* 6. RECENT MATERIALS CARD */}
         {loading ? (
           <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[160px]" />
         ) : (
