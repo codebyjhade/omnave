@@ -53,7 +53,7 @@ export default function RootLayout({
     // React hydrates, which would cause a mismatch. This tells React to accept
     // the DOM as-is for this element (per Next.js preventing-flash docs).
     <html lang="en" suppressHydrationWarning className={`${poppins.variable} bg-[#6949a8]`}>
-      <body className={`${poppins.className} bg-[#6949a8] text-omnave-primary-text antialiased min-h-screen relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}>
+      <body className={`${poppins.className} bg-[#6949a8] text-omnave-primary-text antialiased min-h-screen relative overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}>
         <ThemeProvider>
           <PWAProvider>
             <ToastProvider>
