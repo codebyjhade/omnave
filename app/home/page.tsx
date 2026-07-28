@@ -192,7 +192,7 @@ export default function HomePage() {
   const springTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
 
   return (
-    <div className="w-full bg-[#FFFFFF]">
+    <div className="w-full bg-[#6949a8]">
       {/* 1. Header: Greeting Block */}
       <Header />
 

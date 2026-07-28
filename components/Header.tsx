@@ -48,7 +48,9 @@ export default function Header() {
     if (nameFirst === "Learner" || nameFirst === "Bryan" || nameFirst === "Aven") {
       nameFirst = "Jhade";
     }
-    setFirstName(nameFirst);
+    // Capitalize first letter
+    const capitalizedName = nameFirst.charAt(0).toUpperCase() + nameFirst.slice(1);
+    setFirstName(capitalizedName);
 
     // Format current date: e.g. "Monday, July 27"
     const dateOptions: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
@@ -94,7 +96,7 @@ export default function Header() {
   if (!mounted) {
     return (
       <header className="w-full bg-[#6949a8] pt-12 pb-20 animate-pulse">
-        <div className="max-w-5xl mx-auto px-[25px] flex justify-between items-center select-none">
+        <div className="max-w-5xl mx-auto px-[25px] flex justify-between items-center gap-4 select-none">
           <div>
             <div className="h-6 w-48 bg-white/20 rounded mb-2" />
             <div className="h-3 w-32 bg-white/20 rounded" />
@@ -110,11 +112,11 @@ export default function Header() {
 
   return (
     <header className="w-full bg-[#6949a8] pt-12 pb-20 relative">
-      <div className="max-w-5xl mx-auto px-[25px] flex justify-between items-center select-none relative z-30">
+      <div className="max-w-5xl mx-auto px-[25px] flex justify-between items-center gap-4 select-none relative z-30">
         
         {/* Left Column: Greeting & Date */}
-        <div className="flex flex-col items-start text-left">
-          <h1 className="text-2xl font-semibold text-white tracking-tight leading-none font-poppins">
+        <div className="flex flex-col items-start text-left min-w-0">
+          <h1 className="text-[22px] leading-[33px] font-poppins font-semibold text-white truncate w-full">
             {greeting}, {firstName}
           </h1>
           <span className="text-[13px] font-medium text-white/80 mt-2 font-poppins uppercase tracking-wider">

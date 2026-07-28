@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 
@@ -35,12 +35,11 @@ export const metadata: Metadata = {
   },
 }
 
-export const viewport: Viewport = {
-  themeColor: "#0A0A0A",
-  width: "device-width",
+export const viewport = {
+  themeColor: '#6949a8',
+  width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  userScalable: false, // Prevents mobile scaling
 };
 
 export default function RootLayout({
