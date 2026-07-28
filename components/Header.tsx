@@ -95,7 +95,7 @@ export default function Header() {
 
   if (!mounted) {
     return (
-      <header className="w-full bg-[#6949a8] pt-12 pb-20 animate-pulse">
+      <header className="w-full bg-[#6949a8] pt-0 pb-12 animate-pulse">
         <div className="max-w-5xl mx-auto px-[25px] flex justify-between items-center gap-4 select-none">
           <div>
             <div className="h-6 w-48 bg-white/20 rounded mb-2" />
@@ -111,7 +111,7 @@ export default function Header() {
   }
 
   return (
-    <header className="w-full bg-[#6949a8] pt-12 pb-20 relative">
+    <header className="w-full bg-[#6949a8] pt-0 pb-12 relative">
       <div className="max-w-5xl mx-auto px-[25px] flex justify-between items-center gap-4 select-none relative z-30">
         
         {/* Left Column: Greeting & Date */}
