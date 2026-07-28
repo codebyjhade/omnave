@@ -115,13 +115,13 @@ export default function Header() {
       <div className="max-w-5xl mx-auto px-[25px] flex justify-between items-center gap-4 select-none relative z-30">
         
         {/* Left Column: Greeting & Date */}
-        <div className="flex flex-col items-start text-left min-w-0">
-          <h1 className="text-[22px] leading-[33px] font-poppins font-semibold text-white truncate w-full">
-            {greeting}, {firstName}
+        <div className="flex-1 min-w-0">
+          <h1 className="text-[18px] leading-[27px] font-poppins font-semibold text-white truncate">
+            Good Afternoon, Bryan
           </h1>
-          <span className="text-[13px] font-medium text-white/80 mt-2 font-poppins uppercase tracking-wider">
-            {formattedDate}
-          </span>
+          <p className="text-white/80 font-poppins text-[12px] uppercase tracking-wider mt-1">
+            TUESDAY, JULY 28
+          </p>
         </div>
 
         {/* Right Column: Actions (White Circle Buttons) */}

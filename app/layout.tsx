@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    statusBarStyle: 'default',
     title: 'Omnave',
   },
   formatDetection: {
@@ -52,7 +52,7 @@ export default function RootLayout({
     // React hydrates, which would cause a mismatch. This tells React to accept
     // the DOM as-is for this element (per Next.js preventing-flash docs).
     <html lang="en" suppressHydrationWarning className={poppins.variable}>
-      <body className={`${poppins.className} bg-omnave-canvas text-omnave-primary-text antialiased min-h-screen relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}>
+      <body className={`${poppins.className} bg-[#6949a8] text-omnave-primary-text antialiased min-h-screen relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}>
         <ThemeProvider>
           <PWAProvider>
             <ToastProvider>
