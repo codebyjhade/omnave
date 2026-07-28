@@ -72,11 +72,17 @@ export default function HomePage() {
       setIsRefreshing(true);
       setPullDistance(60); // Retain at threshold during refresh state
       
-      // Perform soft data refresh without full-page reloads to preserve scroll positions
-      refreshUser()
+      const refreshPromise = refreshUser();
+      const delayPromise = new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Perform soft data refresh with a minimum spinner duration for solid UX feedback
+      Promise.all([refreshPromise, delayPromise])
         .then(() => {
           setPullDistance(0);
           setIsRefreshing(false);
+          if (typeof window !== "undefined" && navigator.vibrate) {
+            navigator.vibrate(40); // Subtle native haptic bump
+          }
         })
         .catch((err) => {
           console.error("Refresh error:", err);
