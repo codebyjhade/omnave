@@ -12,7 +12,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState, useRef } from "react";
 import { calculateKitProgress } from "@/hooks/useProgressStats";
 import Link from "next/link";
 import { getLocalDateString } from "@/lib/gamification";
@@ -30,6 +30,53 @@ export default function HomePage() {
     tasks,
     insights
   } = useUserContext();
+
+  // Custom Pull-To-Refresh (PTR) states for native PWA user experience
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const startY = useRef(0);
+  const isPulling = useRef(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (window.scrollY === 0 && !isRefreshing) {
+      startY.current = e.touches[0].pageY;
+      isPulling.current = true;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isPulling.current) return;
+    const currentY = e.touches[0].pageY;
+    const diff = currentY - startY.current;
+
+    if (diff > 0) {
+      // Springy dampening scale to make the pulling gesture feel tactile
+      const dampenedDiff = Math.min(120, Math.pow(diff, 0.85));
+      setPullDistance(dampenedDiff);
+      
+      // Prevent browser default overscroll effect when pulling down at scroll top
+      if (diff > 10 && e.cancelable) {
+        e.preventDefault();
+      }
+    } else {
+      setPullDistance(0);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!isPulling.current) return;
+    isPulling.current = false;
+
+    if (pullDistance > 60) {
+      setIsRefreshing(true);
+      setPullDistance(60); // Retain at threshold during refresh state
+      setTimeout(() => {
+        window.location.reload();
+      }, 800);
+    } else {
+      setPullDistance(0);
+    }
+  };
 
   const lessonsList = lessons || [];
   const quizScoresList = quizScores || [];
@@ -192,7 +239,42 @@ export default function HomePage() {
   const springTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
 
   return (
-    <main className="w-full min-h-screen bg-[#6949a8] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+    <main 
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      className="w-full min-h-screen bg-[#6949a8] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] relative"
+    >
+      {/* Custom PWA Pull-to-Refresh Spinner UI */}
+      <div 
+        className="fixed left-0 right-0 z-[9999] flex justify-center pointer-events-none transition-all duration-150 ease-out"
+        style={{ 
+          transform: `translateY(${pullDistance - 50}px)`, 
+          top: '20px',
+          opacity: pullDistance > 10 ? 1 : 0
+        }}
+      >
+        <div className="bg-white rounded-full p-2.5 shadow-[0px_4px_10px_rgba(0,0,0,0.15)] flex items-center justify-center w-10 h-10 border border-[#EBEBEB]">
+          <svg 
+            width="20" 
+            height="20" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="#6949a8" 
+            strokeWidth="3" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+            className={`${isRefreshing ? 'animate-spin' : ''}`}
+            style={{ 
+              transform: isRefreshing ? 'none' : `rotate(${pullDistance * 4}deg)`,
+              transition: isRefreshing ? 'none' : 'transform 0.1s ease-out'
+            }}
+          >
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+          </svg>
+        </div>
+      </div>
+
       {/* 1. Header: Greeting Block */}
       <Header />
 
