@@ -243,7 +243,7 @@ export default function HomePage() {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className="w-full min-h-screen bg-[#6949a8] pt-[calc(env(safe-area-inset-top)+16px)] pb-[env(safe-area-inset-bottom)] relative flex flex-col"
+      className="w-full min-h-screen bg-[#6949a8] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] relative flex flex-col"
     >
       {/* Custom PWA Pull-to-Refresh Spinner UI */}
       <div 
@@ -279,7 +279,7 @@ export default function HomePage() {
       <Header />
 
       {/* Grounded, Friendly EdTech vertical layout wrapper with curved canvas */}
-      <div className="flex-1 w-full max-w-5xl mx-auto px-[25px] pt-8 pb-[120px] rounded-t-[40px] flex flex-col gap-[20px] bg-[#FFFFFF] -mt-14 relative z-20">
+      <div className="flex-1 w-full max-w-5xl mx-auto px-[25px] pt-8 pb-[120px] rounded-t-[40px] flex flex-col gap-[20px] bg-[#FFFFFF] -mt-12 relative z-20">
 
         {/* 1. TODAY'S GOAL */}
         {loading ? (
