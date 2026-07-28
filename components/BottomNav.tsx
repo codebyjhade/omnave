@@ -25,7 +25,7 @@ export default function BottomNav() {
   if (pathname === '/' || pathname === '/welcome' || pathname?.startsWith('/lesson/')) return null;
 
   const navContent = (
-    <div className="fixed bottom-0 left-0 w-full h-[76px] bg-[#FFFFFF] border-t border-[#EBEBEB] flex items-start justify-center z-[9999] pb-safe shadow-[0px_-4px_10px_rgba(0,0,0,0.05)]">
+    <div className="fixed bottom-0 left-0 w-full z-50 bg-white border-t border-gray-100 flex items-start justify-center pb-[env(safe-area-inset-bottom)] shadow-[0px_-4px_10px_rgba(0,0,0,0.05)]">
       <nav className="w-full max-w-5xl flex justify-around items-start px-2" aria-label="Bottom navigation">
         
         {/* Home */}

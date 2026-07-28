@@ -243,14 +243,14 @@ export default function HomePage() {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className="w-full min-h-screen bg-[#6949a8] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] relative"
+      className="w-full min-h-screen bg-[#6949a8] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] relative flex flex-col"
     >
       {/* Custom PWA Pull-to-Refresh Spinner UI */}
       <div 
         className="fixed left-0 right-0 z-[9999] flex justify-center pointer-events-none transition-all duration-150 ease-out"
         style={{ 
           transform: `translateY(${pullDistance - 50}px)`, 
-          top: '20px',
+          top: 'calc(env(safe-area-inset-top) + 20px)',
           opacity: pullDistance > 10 ? 1 : 0
         }}
       >
@@ -279,7 +279,7 @@ export default function HomePage() {
       <Header />
 
       {/* Grounded, Friendly EdTech vertical layout wrapper with curved canvas */}
-      <div className="w-full max-w-5xl mx-auto px-[25px] pt-8 pb-24 rounded-t-[40px] flex flex-col gap-[20px] bg-[#FFFFFF] -mt-10 relative z-20">
+      <div className="flex-1 w-full max-w-5xl mx-auto px-[25px] pt-8 pb-[120px] rounded-t-[40px] flex flex-col gap-[20px] bg-[#FFFFFF] -mt-10 relative z-20">
 
         {/* 1. TODAY'S GOAL */}
         {loading ? (
