@@ -192,12 +192,12 @@ export default function HomePage() {
   const springTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
 
   return (
-    <div className="w-full bg-[#6949a8]">
+    <main className="w-full min-h-screen bg-[#6949a8] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       {/* 1. Header: Greeting Block */}
       <Header />
 
       {/* Grounded, Friendly EdTech vertical layout wrapper with curved canvas */}
-      <main className="w-full max-w-5xl mx-auto px-[25px] pt-8 pb-24 rounded-t-[40px] flex flex-col gap-[20px] bg-[#FFFFFF] -mt-10 relative z-20">
+      <div className="w-full max-w-5xl mx-auto px-[25px] pt-8 pb-24 rounded-t-[40px] flex flex-col gap-[20px] bg-[#FFFFFF] -mt-10 relative z-20">
 
         {/* 1. TODAY'S GOAL */}
         {loading ? (
@@ -535,7 +535,7 @@ export default function HomePage() {
           </div>
         )}
 
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }
