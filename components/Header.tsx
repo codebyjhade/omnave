@@ -111,7 +111,7 @@ export default function Header() {
   }
 
   return (
-    <header className="w-full bg-[#6949a8] pt-12 pb-20 relative">
+    <header className="w-full bg-[#6949a8] pt-10 pb-22 relative">
       <div className="max-w-5xl mx-auto px-[25px] flex justify-between items-center gap-4 select-none relative z-30">
         
         {/* Left Column: Greeting & Date */}
