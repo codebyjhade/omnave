@@ -114,7 +114,6 @@ body::-webkit-scrollbar,
 @layer base {
   html, body {
     background-color: #6949a8 !important;
-    /* Allow scrolling but prepare the canvas color */
-    overscroll-behavior-y: auto; 
+    overscroll-behavior-y: none !important;
   }
 }
