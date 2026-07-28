@@ -28,7 +28,8 @@ export default function HomePage() {
     loading, 
     gamificationStats,
     tasks,
-    insights
+    insights,
+    refreshUser
   } = useUserContext();
 
   // Custom Pull-To-Refresh (PTR) states for native PWA user experience
@@ -71,12 +72,17 @@ export default function HomePage() {
       setIsRefreshing(true);
       setPullDistance(60); // Retain at threshold during refresh state
       
-      // Force viewport scroll to absolute top to lock scroll state prior to reload
-      window.scrollTo(0, 0);
-
-      setTimeout(() => {
-        window.location.reload();
-      }, 800);
+      // Perform soft data refresh without full-page reloads to preserve scroll positions
+      refreshUser()
+        .then(() => {
+          setPullDistance(0);
+          setIsRefreshing(false);
+        })
+        .catch((err) => {
+          console.error("Refresh error:", err);
+          setPullDistance(0);
+          setIsRefreshing(false);
+        });
     } else {
       setPullDistance(0);
     }
@@ -247,9 +253,7 @@ export default function HomePage() {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className={`w-full min-h-screen bg-[#6949a8] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] relative flex flex-col ${
-        isRefreshing ? "overflow-hidden touch-none pointer-events-none" : "overflow-y-auto"
-      }`}
+      className="w-full min-h-screen bg-[#6949a8] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] relative flex flex-col overflow-y-auto"
     >
       {/* Custom PWA Pull-to-Refresh Spinner UI */}
       <div 
