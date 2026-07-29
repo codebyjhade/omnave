@@ -1,21 +1,14 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { createBrowserClient } from "@supabase/ssr";
-import { RefreshCw } from "lucide-react";
-import { LibraryHeader } from "@/components/library/LibraryHeader";
-import { LibrarySearch } from "@/components/library/LibrarySearch";
-import { FilterChips, FilterId } from "@/components/library/FilterChips";
-import { ContinueLearning } from "@/components/library/ContinueLearning";
-import { LessonCard } from "@/components/library/LessonCard";
-import { EmptyLibrary } from "@/components/library/EmptyLibrary";
-import { LoadingSkeleton } from "@/components/library/LoadingSkeleton";
+import { Search, RefreshCw, Play, FileText, MoreVertical } from "lucide-react";
 import { useLessons } from "@/hooks/useLessons";
 import { useProgress } from "@/hooks/useProgress";
 import { calculateKitProgress } from "@/hooks/useProgressStats";
 import dynamic from "next/dynamic";
 import { useToast } from "@/components/ToastProvider";
 import { useUploadContext } from "@/context/UploadContext";
+import { useRouter } from "next/navigation";
 
 const DeleteLessonDialog = dynamic(
   () => import("@/components/library/DeleteLessonDialog").then((mod) => mod.DeleteLessonDialog),
@@ -23,6 +16,7 @@ const DeleteLessonDialog = dynamic(
 );
 
 export default function LibraryPage() {
+  const router = useRouter();
   const { lessons: notes, loading, refreshLessons, deleteLesson } = useLessons();
   const { quizScores } = useProgress();
   const { toast } = useToast();
@@ -31,7 +25,7 @@ export default function LibraryPage() {
   const [localNotes, setLocalNotes] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
-  const [activeFilter, setActiveFilter] = useState<FilterId>("all");
+  const [activeFilter, setActiveFilter] = useState<"all" | "recent" | "ready">("all");
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -56,7 +50,6 @@ export default function LibraryPage() {
 
   const visibleNotes = useMemo(() => {
     return localNotes.filter((note) => {
-      // If a note is not processed, it must be in the activeQueue to be displayed
       if (note.is_processed === false && !activeQueue.includes(note.id)) {
         return false;
       }
@@ -75,24 +68,11 @@ export default function LibraryPage() {
     return calculateKitProgress(note, quizScores);
   }, [quizScores]);
 
-  const stats = useMemo(() => {
-    const total = visibleNotes.length;
-    const ready = visibleNotes.filter((note) => note.is_processed !== false).length;
-    let avgProgress = 0;
-    if (total > 0) {
-      const totalProgress = localNotes.reduce((acc, note) => {
-        return acc + getNoteProgress(note);
-      }, 0);
-      avgProgress = Math.round(totalProgress / total);
-    }
-    return { total, ready, avgProgress };
-  }, [localNotes, getNoteProgress]);
-
   const getNoteStudyTime = useCallback((summaryText: string) => {
     if (!summaryText) return "5 mins";
     const wordCount = summaryText.split(/\s+/).length;
     const readingTime = Math.ceil(wordCount / 200); 
-    return `${readingTime + 4} mins`;
+    return `${readingTime + 4} mins remaining`;
   }, []);
 
   const handleDeleteConfirm = async () => {
@@ -106,16 +86,15 @@ export default function LibraryPage() {
       return;
     }
 
-    // 1. Optimistic UI: Remove card instantly
     setLocalNotes((prev) => prev.filter((note) => note.id !== deleteTargetId));
     setDeleteTargetId(null);
 
     try {
       await deleteLesson(target.id);
+      toast("Study kit deleted successfully", "success");
     } catch (err) {
       console.error("Failed to delete lesson:", err);
       toast("Failed to delete the study lesson. Please try again.", "error");
-      // Revert to original notes
       setLocalNotes(notes);
     } finally {
       setIsDeleting(false);
@@ -141,96 +120,235 @@ export default function LibraryPage() {
 
       const progress = getNoteProgress(note);
       switch (activeFilter) {
-        case "recent": return true;
-        case "ready": return true;
-        case "in-progress": return progress > 0 && progress < 100;
-        case "completed": return progress === 100;
-        case "favorites": return false;
-        default: return true;
+        case "recent":
+          return true;
+        case "ready":
+          return note.is_processed !== false;
+        default:
+          return true;
       }
     });
   }, [visibleNotes, debouncedSearchTerm, activeFilter, getNoteProgress]);
 
   const continueLearningNote = useMemo(() => {
     if (!notes || notes.length === 0) return null;
-    return [...notes].sort(
-      (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-    )[0];
+    return [...notes]
+      .filter((note) => note.is_processed !== false)
+      .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0];
   }, [notes]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin w-8 h-8 border-4 border-omnave-primary border-t-transparent rounded-full" />
-      </div>
+      <main className="w-full h-[100dvh] flex flex-col bg-[#6949a8] overflow-hidden relative touch-none">
+        <div className="absolute inset-0 top-[140px] z-10 bg-white rounded-t-[40px] flex items-center justify-center">
+          <div className="animate-spin w-8 h-8 border-4 border-[#6949a8] border-t-transparent rounded-full" />
+        </div>
+      </main>
     );
   }
 
   return (
-    <div className="relative min-h-screen">
- 
-      <main className="relative z-10 w-full max-w-[1200px] mx-auto pt-6 pb-24 lg:px-10 xl:px-12">
-        <header className="px-6 md:px-10 lg:px-0 mb-6 flex justify-between items-end">
-          <div>
-            <p className="text-[11px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-2 m-0 leading-none">
-              Knowledge Vault
-            </p>
-            <div className="flex items-center min-h-[32px] gap-3">
-              <h1 className="text-3xl font-bold tracking-tight text-white leading-none m-0">Your Library</h1>
-              <LibraryHeader totalLessons={stats.total} />
-            </div>
+    <main className="w-full h-[100dvh] flex flex-col bg-[#6949a8] overflow-hidden relative touch-none pt-[env(safe-area-inset-top)]">
+      {/* 1. FIXED PURPLE HEADER */}
+      <header className="w-full bg-[#6949a8] pt-7 pb-23 relative">
+        <div className="max-w-5xl mx-auto px-[25px] flex items-center gap-3 relative z-30">
+          {/* Pill-shaped white Search Bar */}
+          <div className="flex-1 relative">
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search study kits..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-white text-black pl-11 pr-4 py-3 rounded-full text-sm outline-none border-none shadow-[0px_4px_10px_rgba(0,0,0,0.05)] font-poppins"
+            />
           </div>
+          {/* Circular white Filter Button */}
           <button
             onClick={handleRefresh}
-            className="flex items-center justify-center p-2.5 rounded-xl bg-white/5 border border-white/10 text-zinc-450 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all select-none cursor-pointer group active:scale-95 disabled:opacity-50 disabled:pointer-events-none mb-1"
-            title="Refresh Library"
             disabled={isRefreshing}
+            className="w-11 h-11 bg-white rounded-full flex items-center justify-center shrink-0 border-none cursor-pointer shadow-[0px_4px_10px_rgba(0,0,0,0.05)] hover:bg-gray-50 active:scale-95 transition-all"
+            title="Refresh Library"
           >
-            <RefreshCw 
-              size={18} 
-              className={`transition-all ${isRefreshing ? "animate-spin text-purple-400" : ""}`} 
-            />
+            <RefreshCw size={18} className={`text-[#6949a8] ${isRefreshing ? "animate-spin" : ""}`} />
           </button>
-        </header>
+        </div>
+      </header>
 
-        <div className="flex flex-col w-full animate-in fade-in duration-500 space-y-8 pb-16 px-6 md:px-10 lg:px-0">
-          {visibleNotes.length === 0 ? (
-            <EmptyLibrary onDemoClick={() => alert("Interactive demo triggered")} />
-          ) : (
-            <>
-              <div className="flex flex-col gap-4 w-full">
-                <LibrarySearch value={searchTerm} onChange={setSearchTerm} />
-                <FilterChips activeFilter={activeFilter} onFilterChange={setActiveFilter} />
-              </div>
-
-              {continueLearningNote && activeFilter === "all" && !searchTerm && (
-                <ContinueLearning noteId={continueLearningNote.id} filename={getNoteRawFilename(continueLearningNote.file_path)} ai_title={continueLearningNote.is_processed ? continueLearningNote.title : null} progress={getNoteProgress(continueLearningNote)} studyTimeRemaining="12 mins left" />
-              )}
-
-              {filteredNotes.length > 0 && (
-                <h2 className="text-[11px] font-bold tracking-[0.2em] text-zinc-500 uppercase mb-4">All Study Kits</h2>
-              )}
-
-              {filteredNotes.length === 0 && (
-                <div className="text-center py-16 border border-dashed border-white/10 rounded-[32px] bg-white/[0.02] backdrop-blur-md">
-                  <p className="text-sm font-semibold text-white/60">No matching study materials found.</p>
-                  <button onClick={() => { setSearchTerm(""); setActiveFilter("all"); }} className="mt-3 text-xs font-bold text-omnave-primary hover:text-white transition-colors">
-                    Clear search and filter chips
+      {/* 2. THE SCROLLABLE WHITE CANVAS */}
+      <div className="flex-1 w-full max-w-5xl mx-auto px-[25px] pt-8 pb-[120px] rounded-t-[40px] flex flex-col gap-[20px] bg-[#FFFFFF] -mt-12 relative z-20 overflow-y-auto">
+        {visibleNotes.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center py-20 text-center gap-4">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-[#6949a8]">
+              <FileText size={28} strokeWidth={1.5} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <h3 className="text-base font-bold text-[#1c1c1c] font-poppins">Your Vault is Empty</h3>
+              <p className="text-xs text-gray-400 font-poppins max-w-xs leading-relaxed">
+                Upload study materials in the Upload tab, and they will appear here as processed kits.
+              </p>
+            </div>
+            <button 
+              onClick={() => router.push("/upload")}
+              className="mt-2 bg-[#6949a8] text-white px-5 py-2.5 rounded-full text-xs font-semibold shadow-sm hover:bg-[#563b8c] active:scale-95 transition-all border-none cursor-pointer font-poppins"
+            >
+              Upload PDF
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Horizontal Filter Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 shrink-0 scrollbar-none">
+              {(["all", "recent", "ready"] as const).map((filter) => {
+                const isActive = activeFilter === filter;
+                const label = filter === "all" ? "All" : filter === "recent" ? "Recent" : "Ready";
+                return (
+                  <button
+                    key={filter}
+                    onClick={() => setActiveFilter(filter)}
+                    className={`px-5 py-2 rounded-full text-xs font-semibold tracking-wide font-poppins transition-colors border-none cursor-pointer shrink-0 ${
+                      isActive 
+                        ? "bg-[#6949a8] text-white" 
+                        : "bg-[#F3F4F6] text-gray-500 hover:bg-gray-200"
+                    }`}
+                  >
+                    {label}
                   </button>
+                );
+              })}
+            </div>
+
+            {/* Continue Learning Section */}
+            {continueLearningNote && activeFilter === "all" && !searchTerm && (
+              <div className="flex flex-col gap-2.5">
+                <h2 className="text-[16px] font-bold text-gray-800 font-poppins m-0 text-left">
+                  Continue Learning
+                </h2>
+                <div 
+                  onClick={() => router.push(`/lesson/${continueLearningNote.id}`)}
+                  className="w-full bg-white rounded-[20px] p-5 shadow-[0px_10px_10px_rgba(0,0,0,0.09)] border border-gray-100 flex flex-col gap-4 cursor-pointer hover:border-gray-200 transition-colors relative font-poppins"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      {/* Premium Glow Play Button */}
+                      <div className="w-14 h-14 rounded-full bg-[#6949a8] flex items-center justify-center text-white shrink-0 shadow-[0_4px_15px_rgba(105,73,168,0.4)]">
+                        <Play size={20} fill="white" className="ml-1" />
+                      </div>
+                      <div className="flex flex-col min-w-0 text-left">
+                        <span className="font-bold text-[16px] text-gray-900 leading-snug line-clamp-2 font-poppins">
+                          {continueLearningNote.is_processed ? continueLearningNote.title : getNoteRawFilename(continueLearningNote.file_path)}
+                        </span>
+                        <span className="text-[11px] text-gray-400 font-poppins mt-1">
+                          Ready to study • {getNoteStudyTime(continueLearningNote.summary || "")}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Purple Progress Bar */}
+                  <div className="flex flex-col gap-1.5 w-full">
+                    <div className="flex justify-between items-center text-xs font-medium text-gray-500 font-poppins">
+                      <span>{getNoteProgress(continueLearningNote)}% completed</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-[#6949a8] rounded-full transition-all duration-500"
+                        style={{ width: `${Math.max(5, getNoteProgress(continueLearningNote))}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* All Study Kits Section */}
+            <div className="flex flex-col gap-3">
+              {filteredNotes.length > 0 && (
+                <h2 className="text-[16px] font-bold text-gray-800 font-poppins m-0 text-left">
+                  All Study Kits
+                </h2>
+              )}
+              
+              {filteredNotes.length === 0 ? (
+                <div className="text-center py-16 border border-dashed border-gray-200 rounded-[32px] bg-gray-50/50">
+                  <p className="text-sm font-semibold text-gray-500 font-poppins">No study materials found.</p>
+                  {(searchTerm || activeFilter !== "all") && (
+                    <button 
+                      onClick={() => { setSearchTerm(""); setActiveFilter("all"); }} 
+                      className="mt-3 text-xs font-bold text-[#6949a8] bg-transparent border-none cursor-pointer hover:underline font-poppins"
+                    >
+                      Clear search and filters
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 w-full">
+                  {filteredNotes.map((note) => {
+                    const cleanTitle = note.is_processed && note.title ? note.title : getCleanTitle(note.file_path);
+                    const filename = getNoteRawFilename(note.file_path);
+                    const progress = getNoteProgress(note);
+                    const flashcardsCount = Array.isArray(note.flashcards) ? note.flashcards.length : 0;
+                    return (
+                      <div 
+                        key={note.id}
+                        onClick={() => router.push(`/lesson/${note.id}`)}
+                        className="bg-white rounded-[15px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] border-none flex flex-row items-center p-4 cursor-pointer hover:bg-gray-50/50 transition-colors relative"
+                      >
+                        {/* Left: Document/PDF Icon with dynamic color highlight */}
+                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                          progress > 0 
+                            ? "bg-[#6949a8]/10 text-[#6949a8]" 
+                            : "bg-gray-50 text-gray-500"
+                        }`}>
+                          <FileText size={20} strokeWidth={1.5} />
+                        </div>
+
+                        {/* Middle: Text Container (Flex-1) */}
+                        <div className="flex-1 flex flex-col min-w-0 text-left pl-3.5 pr-2">
+                          <h3 className="font-semibold text-[#1c1c1c] text-sm truncate w-full font-poppins block">
+                            {cleanTitle}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-1 min-w-0">
+                            {progress === 0 && (
+                              <span className="bg-purple-50 text-[#6949a8] text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide shrink-0">
+                                READY
+                              </span>
+                            )}
+                            <span className="text-[11px] text-gray-400 font-poppins truncate block flex-1">
+                              {progress}% done • {flashcardsCount} cards
+                            </span>
+                          </div>
+                          {/* Reintegrated Sleek Progress Indicator */}
+                          <div className="w-full h-1 bg-gray-100 rounded-full mt-2 overflow-hidden shrink-0">
+                            <div 
+                              className="h-full bg-[#6949a8] rounded-full transition-all duration-350"
+                              style={{ width: `${Math.max(5, progress)}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Right: 3-dot vertical menu */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTargetId(note.id);
+                          }}
+                          className="p-2 text-gray-400 hover:text-gray-655 rounded-full hover:bg-gray-100 transition-all border-none bg-transparent cursor-pointer z-20 shrink-0"
+                          title="Delete study kit"
+                        >
+                          <MoreVertical size={18} />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
-
-              <div className="grid grid-cols-2 gap-3 w-full">
-                {filteredNotes.map((note) => (
-                  <LessonCard key={note.id} id={note.id} filename={getNoteRawFilename(note.file_path)} ai_title={note.is_processed ? note.title : null} createdAt={note.created_at || new Date().toISOString()} flashcardsCount={Array.isArray(note.flashcards) ? note.flashcards.length : 0} quizzesCount={Array.isArray(note.quizzes) ? note.quizzes.length : 0} progress={getNoteProgress(note)} onDeleteClick={setDeleteTargetId} highlightText={searchTerm} isProcessed={note.is_processed !== false} />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </main>
+            </div>
+          </>
+        )}
+      </div>
 
       <DeleteLessonDialog isOpen={deleteTargetId !== null} onClose={() => setDeleteTargetId(null)} onConfirm={handleDeleteConfirm} isDeleting={isDeleting} />
-    </div>
+    </main>
   );
 }

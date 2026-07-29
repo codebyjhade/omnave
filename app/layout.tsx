@@ -8,7 +8,6 @@ const poppins = Poppins({
   variable: "--font-poppins",
 });
 import BottomNav from "@/components/BottomNav";
-import TopRightActions from "@/components/TopRightActions";
 import TabScrollRestorer from "@/components/TabScrollRestorer";
 import { UserProvider } from "@/context/UserContext";
 import { AssessmentProvider } from "@/context/AssessmentContext";
@@ -63,7 +62,6 @@ export default function RootLayout({
                     <AssessmentProvider>
                       {/* PAGE CONTENT */}
                       <div className="relative z-10 w-full min-h-screen flex flex-col">
-                        <TopRightActions/>
                         <div className="flex-1 w-full">
                           {children}
                         </div>
