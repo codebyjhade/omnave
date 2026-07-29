@@ -116,6 +116,7 @@ body::-webkit-scrollbar,
   html, body {
     background-color: #6949a8 !important;
     overscroll-behavior-x: none !important;
+    touch-action: pan-y !important;
   }
 }
 

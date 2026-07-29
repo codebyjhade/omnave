@@ -12,7 +12,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { calculateKitProgress } from "@/hooks/useProgressStats";
 import Link from "next/link";
 import { getLocalDateString } from "@/lib/gamification";
@@ -38,6 +38,41 @@ export default function HomePage() {
   const startY = useRef(0);
   const isPulling = useRef(false);
 
+  // Global horizontal swipe lock to prevent iOS swipe-back history navigation
+  useEffect(() => {
+    let startX = 0;
+    let startY = 0;
+
+    const handleGlobalTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+      }
+    };
+
+    const handleGlobalTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        const deltaX = e.touches[0].clientX - startX;
+        const deltaY = e.touches[0].clientY - startY;
+
+        // Block horizontal swipe gestures
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+          if (e.cancelable) {
+            e.preventDefault();
+          }
+        }
+      }
+    };
+
+    document.addEventListener("touchstart", handleGlobalTouchStart, { passive: true });
+    document.addEventListener("touchmove", handleGlobalTouchMove, { passive: false });
+
+    return () => {
+      document.removeEventListener("touchstart", handleGlobalTouchStart);
+      document.removeEventListener("touchmove", handleGlobalTouchMove);
+    };
+  }, []);
+
   const handleTouchStart = (e: React.TouchEvent) => {
     if (window.scrollY <= 0 && !isRefreshing) {
       startY.current = e.touches[0].pageY;
@@ -54,7 +89,8 @@ export default function HomePage() {
       if (e.cancelable) {
         e.preventDefault();
       }
-      const boundedY = Math.min(Math.max(0, diff * 0.25), 85);
+      // Heavy friction (0.2) and a very tight clamp limit of 50px
+      const boundedY = Math.min(Math.max(0, diff * 0.2), 50);
       setPullDistance(boundedY);
     } else {
       isPulling.current = false;
@@ -66,9 +102,10 @@ export default function HomePage() {
     if (!isPulling.current) return;
     isPulling.current = false;
 
-    if (pullDistance >= 60) {
+    // Trigger threshold set to 35px for highly responsive pull trigger
+    if (pullDistance >= 35) {
       setIsRefreshing(true);
-      setPullDistance(60);
+      setPullDistance(35);
       
       const refreshPromise = refreshUser();
       const delayPromise = new Promise((resolve) => setTimeout(resolve, 1000));
@@ -293,7 +330,7 @@ export default function HomePage() {
       <motion.div
         animate={{ y: pullDistance }}
         transition={isRefreshing ? { type: "tween", duration: 0.15 } : { type: "spring", stiffness: 300, damping: 30 }}
-        className="z-10 bg-[#6949a8] relative flex-1 flex flex-col min-h-screen"
+        className="z-10 bg-transparent relative flex-1 flex flex-col min-h-screen"
       >
         <Header />
 
