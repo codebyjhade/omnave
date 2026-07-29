@@ -39,7 +39,7 @@ export default function HomePage() {
   const isPulling = useRef(false);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (window.scrollY === 0 && !isRefreshing) {
+    if (window.scrollY <= 0 && !isRefreshing) {
       startY.current = e.touches[0].pageY;
       isPulling.current = true;
     }
@@ -51,13 +51,13 @@ export default function HomePage() {
     const diff = currentY - startY.current;
 
     if (diff > 0) {
-      // Track pull distance for spinner rotation animation only.
-      // We do NOT call e.preventDefault() here — native OS physics
-      // handles the rubber-band overscroll; suppressing default would
-      // re-introduce the "trapped" scroll feeling we are removing.
-      const dampenedDiff = Math.min(120, Math.pow(diff, 0.85));
-      setPullDistance(dampenedDiff);
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+      const boundedY = Math.min(diff * 0.4, 120);
+      setPullDistance(boundedY);
     } else {
+      isPulling.current = false;
       setPullDistance(0);
     }
   };
@@ -66,20 +66,19 @@ export default function HomePage() {
     if (!isPulling.current) return;
     isPulling.current = false;
 
-    if (pullDistance > 60) {
+    if (pullDistance >= 60) {
       setIsRefreshing(true);
-      setPullDistance(60); // Retain at threshold during refresh state
+      setPullDistance(60);
       
       const refreshPromise = refreshUser();
       const delayPromise = new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Perform soft data refresh with a minimum spinner duration for solid UX feedback
       Promise.all([refreshPromise, delayPromise])
         .then(() => {
           setPullDistance(0);
           setIsRefreshing(false);
           if (typeof window !== "undefined" && navigator.vibrate) {
-            navigator.vibrate(40); // Subtle native haptic bump
+            navigator.vibrate(40);
           }
         })
         .catch((err) => {
@@ -257,17 +256,16 @@ export default function HomePage() {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className="w-full min-h-screen bg-[#6949a8] pt-[env(safe-area-inset-top)] relative flex flex-col"
+      className="w-full min-h-screen pt-[env(safe-area-inset-top)] relative flex flex-col overflow-x-hidden"
     >
-      {/* IG/FB-style Pull-to-Refresh Spinner */}
+      {/* Fixed Purple Top-Half (The PTR Backdrop) */}
+      <div className="fixed top-0 left-0 w-full h-[50vh] bg-[#6949a8] -z-10" />
+
+      {/* Background Layer (Refresh Indicator) */}
       <div 
-        className={`w-full flex justify-center items-start pointer-events-none transition-all duration-300 z-50 ${
-          isRefreshing 
-            ? 'fixed top-[calc(env(safe-area-inset-top)+20px)] left-0' 
-            : 'absolute top-0 left-0 -mt-16'
-        }`}
-        style={{ 
-          opacity: pullDistance > 10 || isRefreshing ? 1 : 0 
+        className="fixed top-0 left-0 w-full flex justify-center items-start pt-[calc(env(safe-area-inset-top)+20px)] z-0 pointer-events-none"
+        style={{
+          opacity: isRefreshing ? 1 : Math.min(1, pullDistance / 40)
         }}
       >
         <div className="bg-white rounded-full p-2.5 shadow-[0px_4px_10px_rgba(0,0,0,0.15)] flex items-center justify-center w-10 h-10 border border-[#EBEBEB]">
@@ -282,7 +280,7 @@ export default function HomePage() {
             strokeLinejoin="round"
             className={isRefreshing ? 'animate-spin' : ''}
             style={{ 
-              transform: isRefreshing ? 'none' : `rotate(${pullDistance * 4}deg)`,
+              transform: isRefreshing ? 'none' : `rotate(${pullDistance * 6}deg)`,
               transition: isRefreshing ? 'none' : 'transform 0.1s ease-out'
             }}
           >
@@ -291,7 +289,13 @@ export default function HomePage() {
         </div>
       </div>
 
-      <Header />
+      {/* Foreground Layer (Main Content) */}
+      <motion.div
+        animate={{ y: pullDistance }}
+        transition={isRefreshing ? { type: "tween", duration: 0.15 } : { type: "spring", stiffness: 300, damping: 30 }}
+        className="z-10 bg-[#6949a8] relative flex-1 flex flex-col min-h-screen"
+      >
+        <Header />
 
       {/* Grounded, Friendly EdTech vertical layout wrapper with curved canvas */}
       <div className="flex-1 w-full max-w-5xl mx-auto px-[25px] pt-8 pb-[120px] rounded-t-[40px] flex flex-col gap-[20px] bg-[#FFFFFF] -mt-12 relative z-20">
@@ -630,6 +634,7 @@ export default function HomePage() {
         )}
 
       </div>
+      </motion.div>
     </main>
   );
 }

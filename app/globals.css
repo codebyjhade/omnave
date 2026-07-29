@@ -113,7 +113,7 @@ body::-webkit-scrollbar,
 
 @layer base {
   html, body {
-    background-color: #6949a8 !important;
+    background-color: #ffffff !important;
     overflow-y: auto !important;
   }
 }
