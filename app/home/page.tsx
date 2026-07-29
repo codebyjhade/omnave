@@ -74,7 +74,7 @@ export default function HomePage() {
   }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (window.scrollY <= 0 && !isRefreshing) {
+    if (window.scrollY === 0 && !isRefreshing) {
       startY.current = e.touches[0].pageY;
       isPulling.current = true;
     }
@@ -86,14 +86,15 @@ export default function HomePage() {
     const diff = currentY - startY.current;
 
     if (diff > 0) {
-      if (e.cancelable) {
+      // Springy dampening scale to make the pulling gesture feel tactile
+      const dampenedDiff = Math.min(120, Math.pow(diff, 0.85));
+      setPullDistance(dampenedDiff);
+      
+      // Prevent browser default overscroll effect when pulling down at scroll top
+      if (diff > 10 && e.cancelable) {
         e.preventDefault();
       }
-      // Heavy friction (0.2) and a very tight clamp limit of 50px
-      const boundedY = Math.min(Math.max(0, diff * 0.2), 50);
-      setPullDistance(boundedY);
     } else {
-      isPulling.current = false;
       setPullDistance(0);
     }
   };
@@ -102,10 +103,9 @@ export default function HomePage() {
     if (!isPulling.current) return;
     isPulling.current = false;
 
-    // Trigger threshold set to 35px for highly responsive pull trigger
-    if (pullDistance >= 35) {
+    if (pullDistance > 60) {
       setIsRefreshing(true);
-      setPullDistance(35);
+      setPullDistance(60); // Retain at threshold during refresh state
       
       const refreshPromise = refreshUser();
       const delayPromise = new Promise((resolve) => setTimeout(resolve, 1000));
@@ -293,16 +293,15 @@ export default function HomePage() {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className="w-full min-h-screen pt-[env(safe-area-inset-top)] pwa-safe-root flex flex-col"
+      className="w-full min-h-screen bg-[#6949a8] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] relative flex flex-col overflow-y-auto pwa-safe-root"
     >
-      {/* Fixed White Bottom Layer (The Split-BG Trick) */}
-      <div className="fixed bottom-0 left-0 w-full h-[60vh] bg-white -z-10 pointer-events-none" />
-
-      {/* Background Layer (Refresh Indicator) */}
+      {/* Custom PWA Pull-to-Refresh Spinner UI */}
       <div 
-        className="fixed top-0 left-0 w-full flex justify-center items-start pt-[calc(env(safe-area-inset-top)+20px)] z-0 pointer-events-none"
-        style={{
-          opacity: isRefreshing ? 1 : Math.min(1, pullDistance / 40)
+        className="fixed left-0 right-0 z-[9999] flex justify-center pointer-events-none transition-all duration-150 ease-out"
+        style={{ 
+          transform: `translateY(${pullDistance - 50}px)`, 
+          top: 'calc(env(safe-area-inset-top) + 20px)',
+          opacity: pullDistance > 10 ? 1 : 0
         }}
       >
         <div className="bg-white rounded-full p-2.5 shadow-[0px_4px_10px_rgba(0,0,0,0.15)] flex items-center justify-center w-10 h-10 border border-[#EBEBEB]">
@@ -317,7 +316,7 @@ export default function HomePage() {
             strokeLinejoin="round"
             className={isRefreshing ? 'animate-spin' : ''}
             style={{ 
-              transform: isRefreshing ? 'none' : `rotate(${pullDistance * 6}deg)`,
+              transform: isRefreshing ? 'none' : `rotate(${pullDistance * 4}deg)`,
               transition: isRefreshing ? 'none' : 'transform 0.1s ease-out'
             }}
           >
@@ -326,13 +325,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Foreground Layer (Main Content) */}
-      <motion.div
-        animate={{ y: pullDistance }}
-        transition={isRefreshing ? { type: "tween", duration: 0.15 } : { type: "spring", stiffness: 300, damping: 30 }}
-        className="z-10 bg-transparent relative flex-1 flex flex-col min-h-screen"
-      >
-        <Header />
+      <Header />
 
       {/* Grounded, Friendly EdTech vertical layout wrapper with curved canvas */}
       <div className="flex-1 w-full max-w-5xl mx-auto px-[25px] pt-8 pb-[120px] rounded-t-[40px] flex flex-col gap-[20px] bg-[#FFFFFF] -mt-12 relative z-20">
@@ -671,7 +664,6 @@ export default function HomePage() {
         )}
 
       </div>
-      </motion.div>
     </main>
   );
 }
