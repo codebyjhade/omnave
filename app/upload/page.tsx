@@ -118,7 +118,7 @@ export default function UploadPage() {
         <div className="w-full max-w-lg mx-auto flex flex-col items-center">
           
           {/* AI Pill relocated inside white canvas */}
-          <div className="inline-flex items-center justify-center bg-purple-50 text-[#6949a8] text-[10px] font-bold tracking-widest uppercase px-4 py-1.5 rounded-full border border-purple-100 mb-4 select-none">
+          <div className="inline-flex items-center justify-center bg-purple-50 text-[#6949a8] text-[10px] font-bold tracking-widest uppercase px-4 py-1.5 rounded-full border border-purple-100 mb-6 select-none">
             ✨ AI ENGINE READY
           </div>
 
@@ -271,9 +271,9 @@ export default function UploadPage() {
                 </div>
               </div>
             ) : (
-              <div className="bg-[#F9F9FB] rounded-[16px] p-5 border border-gray-100 flex flex-col items-center justify-center text-center gap-2 font-poppins">
-                <div className="w-9 h-9 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center shrink-0">
-                  <FileText size={16} strokeWidth={2} />
+              <div className="bg-transparent border-2 border-dashed border-gray-200 rounded-[16px] p-6 flex flex-col items-center justify-center text-center gap-2 font-poppins">
+                <div className="w-9 h-9 text-gray-400 flex items-center justify-center shrink-0">
+                  <FileText size={20} strokeWidth={1.5} />
                 </div>
                 <span className="text-sm font-semibold text-gray-400">No active documents in queue</span>
               </div>
