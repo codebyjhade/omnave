@@ -115,14 +115,12 @@ body::-webkit-scrollbar,
 @layer base {
   html, body {
     background-color: #6949a8 !important;
-    overflow-y: auto !important;
     overscroll-behavior-x: none !important;
   }
 }
 
-/* ─────────────────────────────────────────────────────────────────
-   PWA STANDALONE — Native bounce intentionally preserved.
-   The html/body background (#6949a8) ensures the rubber-band
-   overscroll zone matches the purple header, exactly like Instagram.
-   DO NOT restore overscroll-behavior-y: none here — it breaks PTR.
-   ──────────────────────────────────────────────────────────────── */
+.pwa-safe-root {
+  touch-action: pan-y !important;
+  overflow-x: hidden;
+  position: relative;
+}

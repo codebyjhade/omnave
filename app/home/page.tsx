@@ -54,7 +54,7 @@ export default function HomePage() {
       if (e.cancelable) {
         e.preventDefault();
       }
-      const boundedY = Math.min(diff * 0.35, 100);
+      const boundedY = Math.min(Math.max(0, diff * 0.25), 85);
       setPullDistance(boundedY);
     } else {
       isPulling.current = false;
@@ -256,10 +256,10 @@ export default function HomePage() {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className="w-full min-h-screen pt-[env(safe-area-inset-top)] relative flex flex-col overflow-x-hidden"
+      className="w-full min-h-screen pt-[env(safe-area-inset-top)] pwa-safe-root flex flex-col"
     >
       {/* Fixed White Bottom Layer (The Split-BG Trick) */}
-      <div className="fixed bottom-0 left-0 w-full h-[50vh] bg-white -z-10" />
+      <div className="fixed bottom-0 left-0 w-full h-[60vh] bg-white -z-10 pointer-events-none" />
 
       {/* Background Layer (Refresh Indicator) */}
       <div 
