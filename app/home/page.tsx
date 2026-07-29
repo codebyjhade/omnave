@@ -51,14 +51,12 @@ export default function HomePage() {
     const diff = currentY - startY.current;
 
     if (diff > 0) {
-      // Springy dampening scale to make the pulling gesture feel tactile
+      // Track pull distance for spinner rotation animation only.
+      // We do NOT call e.preventDefault() here — native OS physics
+      // handles the rubber-band overscroll; suppressing default would
+      // re-introduce the "trapped" scroll feeling we are removing.
       const dampenedDiff = Math.min(120, Math.pow(diff, 0.85));
       setPullDistance(dampenedDiff);
-      
-      // Prevent browser default overscroll effect when pulling down at scroll top
-      if (diff > 10 && e.cancelable) {
-        e.preventDefault();
-      }
     } else {
       setPullDistance(0);
     }
@@ -255,19 +253,21 @@ export default function HomePage() {
   const springTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
 
   return (
-    <main 
+    <main
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className="w-full min-h-screen bg-[#6949a8] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] relative flex flex-col overflow-y-auto"
+      className="w-full min-h-screen bg-[#6949a8] pt-[env(safe-area-inset-top)] relative flex flex-col"
     >
-      {/* Custom PWA Pull-to-Refresh Spinner UI */}
+      {/* IG/FB-style Pull-to-Refresh Spinner */}
       <div 
-        className="fixed left-0 right-0 z-[9999] flex justify-center pointer-events-none transition-all duration-150 ease-out"
+        className={`w-full flex justify-center items-start pointer-events-none transition-all duration-300 z-50 ${
+          isRefreshing 
+            ? 'fixed top-[calc(env(safe-area-inset-top)+20px)] left-0' 
+            : 'absolute top-0 left-0 -mt-16'
+        }`}
         style={{ 
-          transform: `translateY(${pullDistance - 50}px)`, 
-          top: 'calc(env(safe-area-inset-top) + 20px)',
-          opacity: pullDistance > 10 ? 1 : 0
+          opacity: pullDistance > 10 || isRefreshing ? 1 : 0 
         }}
       >
         <div className="bg-white rounded-full p-2.5 shadow-[0px_4px_10px_rgba(0,0,0,0.15)] flex items-center justify-center w-10 h-10 border border-[#EBEBEB]">
@@ -280,7 +280,7 @@ export default function HomePage() {
             strokeWidth="3" 
             strokeLinecap="round" 
             strokeLinejoin="round"
-            className={`${isRefreshing ? 'animate-spin' : ''}`}
+            className={isRefreshing ? 'animate-spin' : ''}
             style={{ 
               transform: isRefreshing ? 'none' : `rotate(${pullDistance * 4}deg)`,
               transition: isRefreshing ? 'none' : 'transform 0.1s ease-out'
@@ -291,7 +291,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* 1. Header: Greeting Block */}
       <Header />
 
       {/* Grounded, Friendly EdTech vertical layout wrapper with curved canvas */}

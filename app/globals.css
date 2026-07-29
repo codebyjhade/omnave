@@ -118,8 +118,9 @@ body::-webkit-scrollbar,
   }
 }
 
-@media (display-mode: standalone) {
-  html, body {
-    overscroll-behavior-y: none !important;
-  }
-}
+/* ─────────────────────────────────────────────────────────────────
+   PWA STANDALONE — Native bounce intentionally preserved.
+   The html/body background (#6949a8) ensures the rubber-band
+   overscroll zone matches the purple header, exactly like Instagram.
+   DO NOT restore overscroll-behavior-y: none here — it breaks PTR.
+   ──────────────────────────────────────────────────────────────── */
