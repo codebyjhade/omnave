@@ -139,8 +139,9 @@ export default function LibraryPage() {
 
   if (loading) {
     return (
-      <main className="w-full h-[100dvh] flex flex-col bg-[#6949a8] overflow-hidden relative touch-none">
-        <div className="absolute inset-0 top-[140px] z-10 bg-white rounded-t-[40px] flex items-center justify-center">
+      <main className="w-full min-h-screen bg-[#6949a8] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] relative flex flex-col overflow-y-auto pwa-safe-root">
+        <header className="w-full bg-[#6949a8] pt-7 pb-23 relative flex-none" />
+        <div className="flex-1 w-full max-w-5xl mx-auto px-[25px] pt-8 pb-[120px] rounded-t-[40px] flex flex-col bg-[#FFFFFF] -mt-12 relative z-20 items-center justify-center min-h-[300px]">
           <div className="animate-spin w-8 h-8 border-4 border-[#6949a8] border-t-transparent rounded-full" />
         </div>
       </main>
@@ -148,10 +149,10 @@ export default function LibraryPage() {
   }
 
   return (
-    <main className="w-full h-[100dvh] flex flex-col bg-[#6949a8] overflow-hidden relative touch-none pt-[env(safe-area-inset-top)]">
+    <main className="w-full min-h-screen bg-[#6949a8] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] relative flex flex-col overflow-y-auto pwa-safe-root">
       {/* 1. FIXED PURPLE HEADER */}
-      <header className="w-full bg-[#6949a8] pt-7 pb-23 relative">
-        <div className="max-w-5xl mx-auto px-[25px] flex items-center gap-3 relative z-30">
+      <header className="w-full bg-[#6949a8] pt-7 pb-23 relative flex-none">
+        <div className="max-w-5xl mx-auto px-[25px] flex items-center gap-3 relative z-30 select-none">
           {/* Pill-shaped white Search Bar */}
           <div className="flex-1 relative">
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -176,7 +177,7 @@ export default function LibraryPage() {
       </header>
 
       {/* 2. THE SCROLLABLE WHITE CANVAS */}
-      <div className="flex-1 w-full max-w-5xl mx-auto px-[25px] pt-8 pb-[120px] rounded-t-[40px] flex flex-col gap-[20px] bg-[#FFFFFF] -mt-12 relative z-20 overflow-y-auto">
+      <div className="flex-1 w-full max-w-5xl mx-auto px-[25px] pt-8 pb-[120px] rounded-t-[40px] flex flex-col gap-[20px] bg-[#FFFFFF] -mt-12 relative z-20">
         {visibleNotes.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center py-20 text-center gap-4">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-[#6949a8]">
