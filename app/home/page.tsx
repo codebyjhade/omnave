@@ -54,7 +54,7 @@ export default function HomePage() {
       if (e.cancelable) {
         e.preventDefault();
       }
-      const boundedY = Math.min(diff * 0.4, 120);
+      const boundedY = Math.min(diff * 0.35, 100);
       setPullDistance(boundedY);
     } else {
       isPulling.current = false;
@@ -258,8 +258,8 @@ export default function HomePage() {
       onTouchEnd={handleTouchEnd}
       className="w-full min-h-screen pt-[env(safe-area-inset-top)] relative flex flex-col overflow-x-hidden"
     >
-      {/* Fixed Purple Top-Half (The PTR Backdrop) */}
-      <div className="fixed top-0 left-0 w-full h-[50vh] bg-[#6949a8] -z-10" />
+      {/* Fixed White Bottom Layer (The Split-BG Trick) */}
+      <div className="fixed bottom-0 left-0 w-full h-[50vh] bg-white -z-10" />
 
       {/* Background Layer (Refresh Indicator) */}
       <div 
