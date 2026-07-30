@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { GlassInput } from '@/components/ui/GlassInput';
@@ -102,6 +102,8 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
   const [isResending, setIsResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
   // Real-time password criteria
   const hasMinLength = password.length >= 8;
   const hasNumber = /\d/.test(password);
@@ -156,6 +158,31 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
     }
   }, [otpToken, authStep, isLoading]);
 
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+    const newToken = otpToken.split('');
+    newToken[index] = value.slice(-1); 
+    const updatedToken = newToken.join('');
+    setOtpToken(updatedToken);
+    if (value && index < 7) otpRefs.current[index + 1]?.focus();
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otpToken[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 8);
+    if (pastedData) {
+      setOtpToken(pastedData);
+      const focusIndex = Math.min(pastedData.length, 7);
+      otpRefs.current[focusIndex]?.focus();
+    }
+  };
+
   const handleAuthSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -189,12 +216,25 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
         setAuthStep('verify');
         toast('Verification email sent! Please check your inbox.', 'success');
       } catch (err: any) {
-        const errorMsg = getErrorMessage(err, 'Registration failed. Please try again.');
-        const msgLower = errorMsg.toLowerCase();
-        if (msgLower.includes('already registered') || msgLower.includes('already in use') || msgLower.includes('exists') || err?.status === 400) {
+        console.error("Supabase SignUp Error:", err);
+        
+        // Sanitize empty object strings
+        let exactMessage = err?.message || err?.error_description || '';
+        if (exactMessage === '{}' || exactMessage === '[object Object]') {
+          exactMessage = '';
+        }
+        
+        const msgLower = exactMessage.toLowerCase();
+        
+        // Handle specific network/fetch failures
+        if (err?.name === 'AuthRetryableFetchError' || msgLower.includes('fetch') || !exactMessage) {
+          setError('Network error: Cannot connect to server. Please check your connection.');
+        } else if (msgLower.includes('already registered') || msgLower.includes('already in use') || msgLower.includes('exists')) {
           setError('This email is already in use. Please Sign In instead.');
+        } else if (msgLower.includes('rate limit')) {
+          setError('Too many requests. Please wait a moment and try again.');
         } else {
-          setError(errorMsg);
+          setError(exactMessage);
         }
       } finally {
         setIsLoading(false);
@@ -225,11 +265,20 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
           window.location.href = targetUrl;
         }, 1500);
       } catch (err: any) {
-        const errorMsg = getErrorMessage(err, 'Invalid or expired code.');
-        if (err instanceof TypeError || errorMsg.includes('Failed to fetch')) {
-          setError('Network error: Failed to connect to server.');
+        console.error("Supabase Verify Error:", err);
+        
+        // Sanitize empty object strings
+        let exactMessage = err?.message || err?.error_description || '';
+        if (exactMessage === '{}' || exactMessage === '[object Object]') {
+          exactMessage = '';
+        }
+        
+        const msgLower = exactMessage.toLowerCase();
+
+        if (err?.name === 'AuthRetryableFetchError' || err instanceof TypeError || msgLower.includes('fetch') || !exactMessage) {
+          setError('Network error: Cannot connect to server. Please check your connection.');
         } else {
-          setError(errorMsg);
+          setError(exactMessage);
         }
       } finally {
         setIsLoading(false);
@@ -257,12 +306,22 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
           window.location.href = '/welcome';
         }
       } catch (err: any) {
-        const errorMsg = getErrorMessage(err, 'Authentication failed. Please try again.');
-        const msgLower = errorMsg.toLowerCase();
-        if (msgLower.includes('invalid login credentials') || msgLower.includes('credentials') || msgLower.includes('not found') || err?.status === 400) {
-          setError('Account not found. Please create a workspace first.');
+        console.error("Supabase SignIn Error:", err);
+        
+        // Sanitize empty object strings
+        let exactMessage = err?.message || err?.error_description || '';
+        if (exactMessage === '{}' || exactMessage === '[object Object]') {
+          exactMessage = '';
+        }
+        
+        const msgLower = exactMessage.toLowerCase();
+
+        if (err?.name === 'AuthRetryableFetchError' || msgLower.includes('fetch') || !exactMessage) {
+          setError('Network error: Cannot connect to server. Please check your connection.');
+        } else if (msgLower.includes('invalid login credentials')) {
+          setError('Incorrect email or password. Please try again.');
         } else {
-          setError(errorMsg);
+          setError(exactMessage);
         }
         setIsLoading(false);
       }
@@ -334,7 +393,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
         exit={{ opacity: 0 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
         onClick={authStep === 'success' ? undefined : onClose}
-        className="absolute inset-0 bg-omnave-canvas/80 backdrop-blur-[3px] cursor-pointer pointer-events-auto"
+        className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm cursor-pointer pointer-events-auto"
       />
 
       <motion.div
@@ -347,15 +406,15 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
         animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
         exit={{ opacity: 0, y: 12, scale: 0.98, filter: 'blur(8px)' }}
         transition={{ type: 'spring', bounce: 0, duration: 0.45 }}
-        className="relative z-10 w-full max-w-[560px] overflow-hidden rounded-[28px] border border-white/10 bg-[#120F20]/96 shadow-[0_30px_80px_rgba(0,0,0,0.72),0_0_40px_rgba(127,34,254,0.12)] backdrop-blur-2xl p-6 sm:p-8 pointer-events-auto"
+        className="relative z-10 w-full max-w-[560px] overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-2xl p-6 sm:p-8 pointer-events-auto"
       >
-        <div className="absolute inset-0 shadow-premium-inner pointer-events-none rounded-[28px]" />
+        <div className="absolute inset-0 pointer-events-none rounded-[28px]" />
 
         {authStep !== 'success' && (
           <button
             type="button"
             onClick={onClose}
-            className="absolute right-4 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white"
+            className="absolute right-4 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-gray-55 text-gray-400 hover:bg-gray-100 hover:text-gray-900 border border-gray-200 transition-colors"
             aria-label="Close authentication dialog"
           >
             <X className="h-4 w-4" />
@@ -373,22 +432,22 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
               className="flex flex-col items-center justify-center text-center py-10 px-4"
             >
               {/* Glowing success checkmark */}
-              <div className="relative w-16 h-16 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.25)] mb-6 select-none animate-bounce">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-green-400">
+              <div className="relative w-16 h-16 rounded-full bg-green-50 border border-green-200 flex items-center justify-center mb-6 select-none animate-bounce">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-green-500">
                   <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
 
-              <h2 className="text-2xl font-extrabold tracking-tight text-white mb-2">
+              <h2 className="text-2xl font-extrabold tracking-tight text-gray-900 mb-2">
                 Workspace created.
               </h2>
-              <p className="text-sm text-white/45 max-w-[340px] leading-relaxed">
+              <p className="text-sm text-gray-550 max-w-[340px] leading-relaxed">
                 Your premium study environment is ready. Redirecting you now...
               </p>
             </motion.div>
           ) : (
             <motion.div
-              key={authStep}
+              key="form-screen"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -396,14 +455,14 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
             >
               <div className="mb-6 flex flex-col items-center text-center">
                 <Image alt="Omnave Logo" className="drop-shadow-2xl" height={48} src="/omnave.png" width={48} />
-                <h2 id="auth-modal-title" className="mt-3 text-2xl font-extrabold tracking-tight text-white">
+                <h2 id="auth-modal-title" className="mt-3 text-2xl font-extrabold tracking-tight text-gray-900">
                   {authStep === 'signin'
                     ? 'Welcome back.'
                     : authStep === 'verify'
                       ? 'Confirm email.'
                       : 'Create workspace.'}
                 </h2>
-                <p id="auth-modal-description" className="mt-2 text-sm text-white/45 max-w-[420px]">
+                <p id="auth-modal-description" className="mt-2 text-sm text-gray-500 max-w-[420px]">
                   {authStep === 'signin'
                     ? 'Pick up your learning flow exactly where you left off.'
                     : authStep === 'verify'
@@ -412,7 +471,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                 </p>
               </div>
 
-              <div className="mb-4 h-1 w-full rounded-full bg-progress-gradient/80" />
+              <div className="mb-4 h-1 w-full rounded-full bg-[#6949a8]/20" />
 
               <form onSubmit={handleAuthSubmit} className="flex flex-col gap-4">
                 {authStep === 'signup' || authStep === 'signin' ? (
@@ -454,7 +513,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                         <button
                           type="button"
                           onClick={() => setShowPassword((prev) => !prev)}
-                          className="text-white/40 hover:text-white transition-colors focus:outline-none cursor-pointer flex items-center justify-center p-1"
+                          className="text-gray-400 hover:text-gray-900 transition-colors focus:outline-none cursor-pointer flex items-center justify-center p-1"
                           aria-label="Toggle password visibility"
                         >
                           {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -463,41 +522,51 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                     />
 
                     {/* Password Real-time Checklist */}
-                    {authStep === 'signup' && (
-                      <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-white/40 select-none pb-1">
-                        <div className={`flex items-center gap-1 transition-colors duration-200 ${hasMinLength ? 'text-green-400 font-semibold' : ''}`}>
-                          {hasMinLength ? (
-                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0"><path d="M2.5 6L4.5 8L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          ) : (
-                            <span className="w-1.5 h-1.5 rounded-full bg-white/20 shrink-0" />
-                          )}
-                          8+ characters
-                        </div>
-                        <div className={`flex items-center gap-1 transition-colors duration-200 ${hasNumber ? 'text-green-400 font-semibold' : ''}`}>
-                          {hasNumber ? (
-                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0"><path d="M2.5 6L4.5 8L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          ) : (
-                            <span className="w-1.5 h-1.5 rounded-full bg-white/20 shrink-0" />
-                          )}
-                          1 number
-                        </div>
-                        <div className={`flex items-center gap-1 transition-colors duration-200 ${hasSpecial ? 'text-green-400 font-semibold' : ''}`}>
-                          {hasSpecial ? (
-                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0"><path d="M2.5 6L4.5 8L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          ) : (
-                            <span className="w-1.5 h-1.5 rounded-full bg-white/20 shrink-0" />
-                          )}
-                          1 special char
-                        </div>
-                      </div>
-                    )}
+                    <AnimatePresence mode="popLayout">
+                      {authStep === 'signup' && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0, filter: 'blur(4px)' }}
+                          animate={{ opacity: 1, height: 'auto', filter: 'blur(0px)' }}
+                          exit={{ opacity: 0, height: 0, filter: 'blur(4px)' }}
+                          transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-gray-400 select-none pb-1">
+                            <div className={`flex items-center gap-1 transition-colors duration-200 ${hasMinLength ? 'text-green-600 font-semibold' : ''}`}>
+                              {hasMinLength ? (
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0"><path d="M2.5 6L4.5 8L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              ) : (
+                                <span className="w-1.5 h-1.5 rounded-full bg-gray-200 shrink-0" />
+                              )}
+                              8+ characters
+                            </div>
+                            <div className={`flex items-center gap-1 transition-colors duration-200 ${hasNumber ? 'text-green-600 font-semibold' : ''}`}>
+                              {hasNumber ? (
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0"><path d="M2.5 6L4.5 8L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              ) : (
+                                <span className="w-1.5 h-1.5 rounded-full bg-gray-200 shrink-0" />
+                              )}
+                              1 number
+                            </div>
+                            <div className={`flex items-center gap-1 transition-colors duration-200 ${hasSpecial ? 'text-green-600 font-semibold' : ''}`}>
+                              {hasSpecial ? (
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0"><path d="M2.5 6L4.5 8L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              ) : (
+                                <span className="w-1.5 h-1.5 rounded-full bg-gray-200 shrink-0" />
+                              )}
+                              1 special char
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
                     {typeof error === 'string' && error.length > 0 && (
                       <motion.div
                         layout
                         initial={{ opacity: 0, scale: 0.98 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="rounded-2xl border border-red-900/50 bg-red-950/40 px-3 py-2.5 text-center text-xs font-medium text-red-400"
+                        className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-center text-xs font-medium text-red-600"
                       >
                         {error}
                       </motion.div>
@@ -506,7 +575,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                     <button
                       type="submit"
                       disabled={isSubmitDisabled}
-                      className="mt-1 w-full rounded-2xl bg-button-gradient py-4 font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_20px_rgba(127,34,254,0.4)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                      className="mt-1 w-full rounded-2xl bg-[#6949a8] hover:bg-[#5a3d94] py-4 font-semibold text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isLoading
                         ? 'Authenticating...'
@@ -516,16 +585,16 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                     </button>
 
                     <div className="my-1 flex items-center gap-3">
-                      <div className="h-px flex-1 bg-white/10" />
-                      <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/35">Or</span>
-                      <div className="h-px flex-1 bg-white/10" />
+                      <div className="h-px flex-1 bg-gray-200" />
+                      <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-gray-400">Or</span>
+                      <div className="h-px flex-1 bg-gray-200" />
                     </div>
 
                     <button
                       type="button"
                       onClick={handleGoogleLogin}
                       disabled={isLoading}
-                      className="flex w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] py-3.5 font-semibold text-white shadow-premium-glass transition-colors hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex w-full items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white py-3.5 font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -537,18 +606,16 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                     </button>
 
                     {authStep === 'signup' && (
-                      <div className="mt-6 text-center text-sm text-white/60">
+                      <div className="mt-6 text-center text-sm text-gray-500">
                         Already have an account?{' '}
                         <button
                           type="button"
                           onClick={() => {
-                            startTransition(() => {
-                              setAuthStep('signin');
-                              setOtpToken('');
-                              setError(null);
-                            });
+                            setAuthStep('signin');
+                            setOtpToken('');
+                            setError(null);
                           }}
-                          className="text-purple-400 hover:text-purple-300 transition-colors font-medium cursor-pointer"
+                          className="text-[#6949a8] hover:text-[#5a3d94] transition-colors font-medium cursor-pointer"
                         >
                           Sign In
                         </button>
@@ -556,18 +623,16 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                     )}
 
                     {authStep === 'signin' && (
-                      <div className="mt-6 text-center text-sm text-white/60">
+                      <div className="mt-6 text-center text-sm text-gray-500">
                         Don't have an account?{' '}
                         <button
                           type="button"
                           onClick={() => {
-                            startTransition(() => {
-                              setAuthStep('signup');
-                              setOtpToken('');
-                              setError(null);
-                            });
+                            setAuthStep('signup');
+                            setOtpToken('');
+                            setError(null);
                           }}
-                          className="text-purple-400 hover:text-purple-300 transition-colors font-medium cursor-pointer"
+                          className="text-[#6949a8] hover:text-[#5a3d94] transition-colors font-medium cursor-pointer"
                         >
                           Create workspace
                         </button>
@@ -582,15 +647,26 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                       animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                       transition={{ type: 'spring', duration: 0.35 }}
                     >
-                      <GlassInput
-                        label="Verification Code"
-                        placeholder="12345678"
-                        type="text"
-                        maxLength={8}
-                        value={otpToken}
-                        onChange={(event) => setOtpToken(event.target.value.replace(/\D/g, ''))}
-                        disabled={isLoading}
-                      />
+                      <div className="flex flex-col items-center gap-3 w-full">
+                        <label className="text-sm font-bold text-gray-700 self-start">Verification Code</label>
+                        <div className="flex justify-between w-full gap-1.5 sm:gap-2">
+                          {[...Array(8)].map((_, index) => (
+                            <input
+                              key={index}
+                              ref={(el) => { otpRefs.current[index] = el; }}
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={1}
+                              value={otpToken[index] || ''}
+                              onChange={(e) => handleOtpChange(index, e.target.value)}
+                              onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                              onPaste={handleOtpPaste}
+                              disabled={isLoading}
+                              className="w-full aspect-[4/5] text-center text-lg sm:text-xl font-black text-[#6949a8] bg-white border border-gray-200 rounded-xl focus:border-[#6949a8] focus:ring-2 focus:ring-purple-100 shadow-sm transition-all outline-none disabled:opacity-50 disabled:bg-gray-50"
+                            />
+                          ))}
+                        </div>
+                      </div>
                     </motion.div>
 
                     {typeof error === 'string' && error.length > 0 && (
@@ -598,7 +674,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                         layout
                         initial={{ opacity: 0, scale: 0.98 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="rounded-2xl border border-red-900/50 bg-red-950/40 px-3 py-2.5 text-center text-xs font-medium text-red-400"
+                        className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-center text-xs font-medium text-red-600"
                       >
                         {error}
                       </motion.div>
@@ -607,7 +683,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                     <button
                       type="submit"
                       disabled={isSubmitDisabled}
-                      className="mt-1 w-full rounded-2xl bg-button-gradient py-4 font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_20px_rgba(127,34,254,0.4)] transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                      className="mt-1 w-full rounded-2xl bg-[#6949a8] hover:bg-[#5a3d94] py-4 font-semibold text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isLoading ? 'Authenticating...' : 'Verify Account'}
                     </button>
@@ -616,13 +692,13 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="text-center text-xs mt-2"
+                        className="text-center text-xs mt-2 text-gray-500"
                       >
                         <button
                           type="button"
                           disabled={isResending || resendCooldown > 0}
                           onClick={handleResendCode}
-                          className="font-bold text-omnave-primary transition-colors hover:text-omnave-primaryHover disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                          className="font-bold text-[#6949a8] transition-colors hover:text-[#5a3d94] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                         >
                           {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Didn't receive code? Resend"}
                         </button>

@@ -1,152 +1,184 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { createBrowserClient } from '@supabase/ssr';
-import { useUserContext } from '@/context/UserContext';
-import { Bell, Check, ArrowRight } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import { createBrowserClient } from "@supabase/ssr";
+import dynamic from "next/dynamic";
+import { 
+  FileText, 
+  Sparkles, 
+  BrainCircuit, 
+  Layers
+} from "lucide-react";
 
-export default function OnboardingPage() {
+const AuthModal = dynamic(() => import("@/components/AuthModal"), { ssr: false });
+
+export default function WelcomePage() {
   const router = useRouter();
-  const { user, completeOnboarding, loading } = useUserContext();
-  const [notificationStatus, setNotificationStatus] = useState<string>('default');
-  const [isLaunching, setIsLaunching] = useState(false);
+  const [hasSession, setHasSession] = useState<boolean | null>(null);
+  
+  // Auth Modal State
+  const [authConfig, setAuthConfig] = useState<{ isOpen: boolean; mode: 'login' | 'signup' }>({
+    isOpen: false,
+    mode: 'signup'
+  });
 
-  // Sync notification status on mount
+  // Session Check & Redirect
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setNotificationStatus(Notification.permission);
-    }
-  }, []);
-
-  const requestNotifications = async () => {
-    if ('Notification' in window) {
-      const permission = await Notification.requestPermission();
-      setNotificationStatus(permission);
-      if (permission === 'granted') {
-        new Notification("Welcome to Omnave!", {
-          body: "Let's lock in and master your concepts.",
-          icon: "/icon.png"
-        });
+    const checkSession = async () => {
+      try {
+        const supabase = createBrowserClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          router.replace('/home');
+        } else {
+          setHasSession(false);
+        }
+      } catch (err) {
+        setHasSession(false);
       }
-    }
+    };
+    checkSession();
+  }, [router]);
+
+  const openAuth = (mode: 'login' | 'signup') => {
+    setAuthConfig({ isOpen: true, mode });
   };
 
-  const handleLaunch = async () => {
-    try {
-      setIsLaunching(true);
-      
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-      
-      await supabase.auth.updateUser({
-        data: { onboarding_complete: true }
-      });
-      
-      await completeOnboarding(); // Updates context state and refreshes context
-      router.push('/home');
-    } catch (err) {
-      console.error('[Onboarding] Error launching workspace:', err);
-      setIsLaunching(false);
-    }
-  };
-
-  if (loading || !user) {
+  if (hasSession === null) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-omnave-canvas">
-        <div className="animate-spin w-8 h-8 border-4 border-omnave-primary border-t-transparent rounded-full" />
-      </div>
+      <main className="min-h-[100dvh] bg-white flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-[#6949a8] border-t-transparent rounded-full" />
+      </main>
     );
   }
 
-  const fullName = user?.user_metadata?.full_name || user?.user_metadata?.nickname || user?.email?.split('@')[0] || "Learner";
-  const firstName = fullName.split(' ')[0] || "Learner";
-
   return (
-    <div className="min-h-screen bg-omnave-canvas flex flex-col justify-center items-center relative overflow-hidden select-none px-6 py-8 md:py-12">
-      {/* Background radial overlays */}
-      <div className="absolute inset-0 z-0 pointer-events-none" aria-hidden="true">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:48px_48px] [mask-image:radial-gradient(ellipse_100%_100%_at_50%_40%,#000_10%,transparent_100%)]" />
-        <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-omnave-primary/10 blur-[150px] rounded-full" />
-      </div>
-
-      {/* Main Single Welcome Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="w-full max-w-md z-10 relative"
-      >
-        <div className="bg-[#0f0a1c]/80 border border-white/10 backdrop-blur-md shadow-2xl rounded-3xl p-6 sm:p-8 text-center flex flex-col items-center gap-6 relative overflow-hidden">
-          {/* Subtle background glow inside the card */}
-          <div className="absolute -top-10 -left-10 w-48 h-48 bg-omnave-primary/20 blur-[80px] pointer-events-none" />
-
-          {/* Icon */}
-          <div className="w-14 h-14 bg-omnave-primary/20 text-omnave-primary rounded-2xl flex items-center justify-center relative">
-            <div className="absolute inset-0 bg-omnave-primary/35 blur-xl rounded-full animate-pulse" />
-            <Bell size={28} className="relative z-10" />
+    <main className="min-h-[100dvh] bg-white relative flex flex-col justify-between px-6 pt-12 pb-8 overflow-hidden font-sans antialiased">
+      
+      {/* Top Section: The Hero Graphic Container */}
+      <div className="w-full flex-1 flex flex-col items-center justify-center max-h-[50vh] mt-4">
+        <div className="relative border border-white/10 bg-[#0f0a1c]/70 backdrop-blur-md rounded-3xl p-6 shadow-2xl flex flex-col gap-5 overflow-hidden w-full max-w-sm aspect-[4/3] justify-center select-none">
+          {/* Top Bar Circles */}
+          <div className="flex gap-1.5 absolute top-4 left-5">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500/40" />
+            <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/40" />
+            <div className="w-2.5 h-2.5 rounded-full bg-green-500/40" />
           </div>
 
-          {/* Header */}
-          <div className="flex flex-col gap-2">
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
-              Welcome to Omnave, {firstName}.
-            </h1>
-            <p className="text-xs sm:text-sm text-white/50 leading-relaxed max-w-xs mx-auto">
-              Let's finalize your workspace.
-            </p>
-          </div>
+          {/* Simulated file conversion pipeline */}
+          <div className="flex flex-row items-center justify-between gap-4 mt-4 select-none relative">
+            {/* PDF Icon container */}
+            <motion.div 
+              animate={{ y: [-4, 4, -4] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="w-20 h-24 bg-[#1C112C] border border-purple-500/30 rounded-xl flex flex-col items-center justify-center gap-2 shadow-lg shrink-0 relative"
+            >
+              <div className="absolute -inset-[1px] bg-gradient-to-b from-purple-500/20 to-transparent rounded-xl" />
+              <FileText className="text-purple-400" size={32} />
+              <span className="text-[9px] font-black tracking-wider text-purple-400/80 uppercase font-poppins">Study.pdf</span>
+            </motion.div>
 
-          {/* Action Card: Sync & Remind */}
-          <div className="w-full flex flex-col gap-3 mt-1 text-left">
-            <div className="flex items-center gap-3 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-emerald-400">
-              <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
-                <Check size={14} />
+            {/* Glowing animated transfer streams */}
+            <div className="flex-1 flex flex-col gap-3 relative h-16 justify-center items-center overflow-hidden">
+              <div className="w-full h-[1px] bg-gradient-to-r from-purple-500/10 via-purple-500/50 to-emerald-500/10 relative">
+                <motion.div 
+                  initial={{ x: "-100%" }}
+                  animate={{ x: ["-100%", "1100%"] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                  className="absolute h-[3px] w-[10%] bg-[#6949a8] blur-[2px] -top-[1px] left-0 transform-gpu"
+                />
               </div>
-              <div>
-                <p className="text-xs font-black uppercase tracking-wider">Sync Enabled</p>
-                <p className="text-[10px] text-emerald-400/70 truncate max-w-[240px]">Connected as {user.email}</p>
+              <div className="w-full h-[1px] bg-gradient-to-r from-purple-500/10 via-purple-500/50 to-amber-500/10 relative">
+                <motion.div 
+                  initial={{ x: "-100%" }}
+                  animate={{ x: ["-100%", "1100%"] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 0.5 }}
+                  className="absolute h-[3px] w-[10%] bg-[#6949a8] blur-[2px] -top-[1px] left-0 transform-gpu"
+                />
               </div>
             </div>
 
-            {/* Notification button */}
-            <button
-              onClick={requestNotifications}
-              className={`w-full py-4 rounded-2xl border text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                notificationStatus === 'granted'
-                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 pointer-events-none'
-                  : 'bg-white/5 hover:bg-white/10 border-white/10 text-white'
-              }`}
-            >
-              {notificationStatus === 'granted' ? (
-                <>
-                  <Check size={14} /> Reminders Enabled
-                </>
-              ) : (
-                <>
-                  🔔 Enable Study Reminders
-                </>
-              )}
-            </button>
+            {/* Conversion Outputs Container */}
+            <div className="flex flex-col gap-2 shrink-0">
+              {/* Quiz card */}
+              <motion.div 
+                animate={{ x: [0, 4, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                className="flex items-center gap-2 py-2 px-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-400 text-[10px] font-extrabold shadow-sm w-36"
+              >
+                <BrainCircuit size={14} />
+                <span className="font-poppins">Interactive Quiz</span>
+              </motion.div>
+              {/* Flashcard card */}
+              <motion.div 
+                animate={{ x: [0, 4, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+                className="flex items-center gap-2 py-2 px-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400 text-[10px] font-extrabold shadow-sm w-36"
+              >
+                <Layers size={14} />
+                <span className="font-poppins">Spaced Flashcard</span>
+              </motion.div>
+              {/* Assistant card */}
+              <motion.div 
+                animate={{ x: [0, 4, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
+                className="flex items-center gap-2 py-2 px-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 text-[10px] font-extrabold shadow-sm w-36"
+              >
+                <Sparkles size={14} />
+                <span className="font-poppins">AI Study Guide</span>
+              </motion.div>
+            </div>
           </div>
-
-          {/* CTA Button */}
-          <button
-            onClick={handleLaunch}
-            disabled={isLaunching}
-            className="w-full py-4 mt-2 bg-omnave-primary hover:bg-omnave-primary/95 text-white font-extrabold rounded-2xl shadow-[0_0_15px_rgba(127,34,254,0.4)] hover:shadow-[0_0_25px_rgba(127,34,254,0.6)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer text-sm disabled:opacity-50 animate-pulse-subtle"
-          >
-            {isLaunching ? "Launching..." : (
-              <>
-                Launch Workspace <ArrowRight size={16} />
-              </>
-            )}
-          </button>
         </div>
-      </motion.div>
-    </div>
+      </div>
+
+      {/* Bottom Section: Typography & Actions */}
+      <div className="w-full flex flex-col gap-4 mt-8 pb-[env(safe-area-inset-bottom)]">
+        
+        {/* Typography */}
+        <h1 className="text-4xl font-black text-gray-900 tracking-tighter leading-[1.1] text-center font-poppins">
+          Learn anything.<br />
+          <span className="bg-gradient-to-r from-[#6949a8] to-indigo-500 bg-clip-text text-transparent">
+            Forget nothing.
+          </span>
+        </h1>
+        
+        <p className="text-[15px] text-gray-500 font-medium text-center leading-relaxed px-2 mb-4 font-poppins">
+          Omnave uses AI to instantly generate interactive quizzes, spaced flashcards, and study guides in under 10 seconds.
+        </p>
+
+        {/* Action Buttons */}
+        <button 
+          onClick={() => openAuth('signup')} 
+          className="w-full bg-[#6949a8] hover:bg-[#5a3d94] text-white py-4 rounded-2xl text-[16px] font-bold shadow-[0px_8px_16px_rgba(105,73,168,0.25)] transition-all cursor-pointer"
+        >
+          Get Started Free
+        </button>
+        
+        <button 
+          onClick={() => openAuth('login')} 
+          className="w-full bg-purple-50 hover:bg-purple-100 text-[#6949a8] py-4 rounded-2xl text-[16px] font-bold transition-all cursor-pointer"
+        >
+          I already have an account
+        </button>
+      </div>
+
+      {/* Auth Modal Overlay */}
+      <AnimatePresence>
+        {authConfig.isOpen && (
+          <AuthModal
+            isOpen={authConfig.isOpen}
+            initialView={authConfig.mode}
+            onClose={() => setAuthConfig((current) => ({ ...current, isOpen: false }))}
+          />
+        )}
+      </AnimatePresence>
+
+    </main>
   );
 }
