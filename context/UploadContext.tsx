@@ -13,14 +13,26 @@ import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 import { useUserContext } from '@/context/UserContext';
 import { useToast } from '@/components/ToastProvider';
-import BackgroundProcessingWidget from '@/components/BackgroundProcessingWidget';
 import UpgradeModal from '@/components/UpgradeModal';
+
+export interface ProcessingJob {
+  id: string;
+  title: string;
+  status: 'queued' | 'uploading' | 'parsing' | 'extracting' | 'generating' | 'finalizing' | 'completed' | 'failed' | string;
+  progress: number;
+  targetProgress: number;
+  message: string;
+  elapsedTime: number;
+  estimatedTime?: string;
+  materialId?: string;
+}
 
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
 
 interface UploadContextValue {
   processBackgroundUpload: (file: File) => Promise<void>;
   cancelUpload: () => void;
+  cancelJob: (jobId: string) => Promise<void>;
   uploadStatus: UploadStatus;
   uploadMessage: string | null;
   uploadProgress: number;
@@ -28,178 +40,468 @@ interface UploadContextValue {
   activeQueue: string[];
   showUpgradeModal: boolean;
   setShowUpgradeModal: (show: boolean) => void;
+  jobs: ProcessingJob[];
+  removeJob: (id: string) => void;
 }
 
 const UploadContext = createContext<UploadContextValue | undefined>(undefined);
 
 export function UploadProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { user, refreshUser, addNotification, removeNotification, updateNotification, addLessonToState, removeLessonFromState } = useUserContext();
+  const { 
+    user, 
+    refreshUser, 
+    addNotification, 
+    removeNotification, 
+    addLessonToState, 
+    removeLessonFromState 
+  } = useUserContext();
   const { toast } = useToast();
-  const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
-  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
-  const targetProgressRef = useRef<number>(0);
-  const [activeQueue, setActiveQueue] = useState<string[]>([]);
+  
+  const [jobs, setJobs] = useState<ProcessingJob[]>([]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const activeMaterialIdRef = useRef<string | null>(null);
-  const displayedProgressRef = useRef<number>(0);
+  const [activeQueue, setActiveQueue] = useState<string[]>([]);
 
+  const abortControllersRef = useRef<Record<string, AbortController>>({});
+  const intervalsRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const elapsedIntervalsRef = useRef<Record<string, NodeJS.Timeout>>({});
+
+  // Ticker for interpolating progress bar fills for all active jobs
   useEffect(() => {
-    displayedProgressRef.current = uploadProgress;
-  }, [uploadProgress]);
-
-  // Interpolated progress bar ticker
-  useEffect(() => {
-    if (uploadStatus !== 'uploading') return;
-
     const ticker = setInterval(() => {
-      setUploadProgress((prev) => {
-        const target = targetProgressRef.current;
-        if (prev < target) {
-          return prev + 1;
-        } else if (prev < 90 && target < 100) {
-          // Slow tick up to 90% cap
-          return prev + 1;
-        }
-        return prev;
+      setJobs((prevJobs) => {
+        let changed = false;
+        const nextJobs = prevJobs.map((job) => {
+          if (job.status === 'completed' || job.status === 'failed') return job;
+          
+          if (job.progress < job.targetProgress) {
+            changed = true;
+            return { ...job, progress: job.progress + 1 };
+          } else if (job.progress < 99 && job.targetProgress < 100) {
+            // Slow tick when target is not yet reached
+            if (Math.random() > 0.75) {
+              changed = true;
+              return { ...job, progress: job.progress + 1 };
+            }
+          }
+          return job;
+        });
+        return changed ? nextJobs : prevJobs;
       });
-    }, 150); // Tick every 150ms
+    }, 200);
 
     return () => clearInterval(ticker);
-  }, [uploadStatus]);
-
-  // Decoupled notification sync effect (avoids setState-in-render warning)
-  useEffect(() => {
-    const activeId = activeMaterialIdRef.current;
-    if (activeId && uploadProgress > 0 && uploadStatus === 'uploading') {
-      updateNotification(`processing-${activeId}`, { progress: uploadProgress });
-    }
-  }, [uploadProgress, uploadStatus, updateNotification]);
-
-  const clearUploadState = useCallback(() => {
-    setUploadStatus('idle');
-    setUploadMessage(null);
-    setUploadProgress(0);
   }, []);
 
-  // Auto-hide the widget after success or error
+  // Real-time Database Polling function
+  const startPollingForMaterial = useCallback((materialId: string, cleanTitle: string) => {
+    if (intervalsRef.current[materialId]) return;
+
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    const STATUS_PROGRESS: Record<string, number> = {
+      'PARSING_DOCUMENT': 35,
+      'GENERATING_SUMMARY': 65,
+      'BUILDING_ASSESSMENTS': 95,
+      'COMPLETED': 100,
+    };
+
+    const STATUS_TEXT: Record<string, string> = {
+      'PARSING_DOCUMENT': 'Parsing document text...',
+      'GENERATING_SUMMARY': 'AI generating study flashcards...',
+      'BUILDING_ASSESSMENTS': 'Assembling practice assessments...',
+      'COMPLETED': 'Study kit ready!',
+    };
+
+    // Estimations based on average process duration (total: ~45-60s)
+    const getEstimatedRemainingTime = (status: string, elapsed: number): string => {
+      if (status === 'PARSING_DOCUMENT') return `~${Math.max(30 - elapsed, 10)}s remaining`;
+      if (status === 'GENERATING_SUMMARY') return `~${Math.max(15 - (elapsed - 15), 5)}s remaining`;
+      if (status === 'BUILDING_ASSESSMENTS') return '~5s remaining';
+      return 'Finishing up...';
+    };
+
+    // Increment elapsed time count
+    const elapsedInterval = setInterval(() => {
+      setJobs((prev) =>
+        prev.map((j) => {
+          if (j.id === materialId) {
+            const newElapsed = j.elapsedTime + 1;
+            const currentStatusText = j.status.toUpperCase();
+            return { 
+              ...j, 
+              elapsedTime: newElapsed,
+              estimatedTime: getEstimatedRemainingTime(currentStatusText, newElapsed)
+            };
+          }
+          return j;
+        })
+      );
+    }, 1000);
+    elapsedIntervalsRef.current[materialId] = elapsedInterval;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const { data: checkData, error: checkError } = await supabase
+          .from('materials')
+          .select('is_processed, status')
+          .eq('id', materialId)
+          .single();
+
+        if (checkError) {
+          console.error('[UploadContext] polling check error:', checkError.message);
+          return;
+        }
+
+        if (checkData) {
+          const status = checkData.status || 'PROCESSING';
+          
+          if (status === 'failed' || status === 'FAILED') {
+            clearInterval(pollInterval);
+            clearInterval(elapsedInterval);
+            delete intervalsRef.current[materialId];
+            delete elapsedIntervalsRef.current[materialId];
+
+            removeLessonFromState(materialId);
+            removeNotification(`processing-${materialId}`);
+            setActiveQueue((prev) => prev.filter((id) => id !== materialId));
+
+            setJobs((prev) =>
+              prev.map((j) =>
+                j.id === materialId
+                  ? {
+                      ...j,
+                      status: 'failed',
+                      progress: 0,
+                      targetProgress: 0,
+                      message: 'AI generation failed. Please try again.',
+                      estimatedTime: 'Failed'
+                    }
+                  : j
+              )
+            );
+            toast(`AI generation failed for "${cleanTitle}".`, 'error');
+            return;
+          }
+
+          const progressNum = STATUS_PROGRESS[status] || 25;
+          const statusMsg = STATUS_TEXT[status] || 'Extracting core data...';
+
+          setJobs((prev) =>
+            prev.map((j) =>
+              j.id === materialId
+                ? {
+                    ...j,
+                    status: status.toLowerCase(),
+                    targetProgress: progressNum,
+                    message: statusMsg,
+                  }
+                : j
+            )
+          );
+
+          if (checkData.is_processed || status === 'COMPLETED') {
+            clearInterval(pollInterval);
+            clearInterval(elapsedInterval);
+            delete intervalsRef.current[materialId];
+            delete elapsedIntervalsRef.current[materialId];
+            setActiveQueue((prev) => prev.filter((id) => id !== materialId));
+
+            // Small delay to let progress hit 100 before transition
+            setTimeout(async () => {
+              removeNotification(`processing-${materialId}`);
+
+              // Fetch completed lesson
+              const { data: fullLesson } = await supabase
+                .from('materials')
+                .select('*')
+                .eq('id', materialId)
+                .single();
+
+              if (fullLesson) {
+                addLessonToState(fullLesson);
+              }
+              
+              addNotification({
+                id: `processed-${materialId}`,
+                type: 'lesson',
+                title: 'Material Processed',
+                desc: `"${cleanTitle}" is ready.`,
+                time: 'Just now',
+              });
+
+              setJobs((prev) =>
+                prev.map((j) =>
+                  j.id === materialId
+                    ? {
+                        ...j,
+                        status: 'completed',
+                        progress: 100,
+                        targetProgress: 100,
+                        message: 'Study kit ready!',
+                        estimatedTime: 'Completed'
+                      }
+                    : j
+                )
+              );
+
+              toast(`"${cleanTitle}" processed successfully!`, 'success');
+              await refreshUser();
+              router.refresh();
+            }, 1000);
+          }
+        }
+      } catch (pollErr) {
+        console.error('[UploadContext] polling catch error:', pollErr);
+      }
+    }, 3500);
+
+    intervalsRef.current[materialId] = pollInterval;
+
+    // Timeout safety at 180s
+    setTimeout(() => {
+      if (intervalsRef.current[materialId]) {
+        clearInterval(intervalsRef.current[materialId]);
+        clearInterval(elapsedIntervalsRef.current[materialId]);
+        delete intervalsRef.current[materialId];
+        delete elapsedIntervalsRef.current[materialId];
+        setActiveQueue((prev) => prev.filter((id) => id !== materialId));
+        
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.id === materialId && j.status !== 'completed' && j.status !== 'failed'
+              ? {
+                  ...j,
+                  status: 'failed',
+                  message: 'Processing timed out. Please retry.',
+                  estimatedTime: 'Timeout'
+                }
+              : j
+          )
+        );
+      }
+    }, 180000);
+  }, [addLessonToState, addNotification, removeNotification, removeLessonFromState, toast, refreshUser, router]);
+
+  // Poll DB for re-connecting active jobs on mount or authentication
   useEffect(() => {
-    if (uploadStatus === 'idle' || uploadStatus === 'uploading') return;
-
-    const timer = window.setTimeout(() => {
-      clearUploadState();
-    }, 4000);
-
-    return () => window.clearTimeout(timer);
-  }, [clearUploadState, uploadStatus]);
-
-  const cancelUpload = useCallback(async () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-
-    const targetId = activeMaterialIdRef.current;
-    if (targetId) {
-      activeMaterialIdRef.current = null;
-      // 1. Remove the pending item from the global active queue array
-      setActiveQueue((prev) => prev.filter((id) => id !== targetId));
-
-      // 2. Optimistically remove from context state instantly
-      removeLessonFromState(targetId);
-
-      // 3. Fire background delete request to Supabase
+    if (!user) return;
+    const fetchActiveMaterials = async () => {
       const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
       try {
-        await supabase.from('materials').delete().eq('id', targetId);
+        const { data, error } = await supabase
+          .from('materials')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('is_processed', false);
+
+        if (error) {
+          console.error('[UploadContext] Error fetching active materials on mount:', error);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          data.forEach((material) => {
+            setJobs((prev) => {
+              if (prev.some(j => j.id === material.id)) return prev;
+              
+              // Set initial target progress based on DB status
+              let initProgress = 30;
+              if (material.status === 'GENERATING_SUMMARY') initProgress = 60;
+              if (material.status === 'BUILDING_ASSESSMENTS') initProgress = 90;
+
+              startPollingForMaterial(material.id, material.title);
+              
+              return [
+                ...prev,
+                {
+                  id: material.id,
+                  title: material.title,
+                  status: 'parsing', // fallback label
+                  progress: initProgress - 10,
+                  targetProgress: initProgress,
+                  message: 'Reconnected to ongoing generation...',
+                  elapsedTime: 0,
+                  materialId: material.id
+                }
+              ];
+            });
+          });
+        }
       } catch (err) {
-        console.error('[UploadContext] cancelUpload db delete error:', err);
+        console.error('[UploadContext] Unexpected error fetching active materials:', err);
+      }
+    };
+    fetchActiveMaterials();
+  }, [user, startPollingForMaterial]);
+
+  const removeJob = useCallback((id: string) => {
+    setJobs((prev) => prev.filter((j) => j.id !== id));
+  }, []);
+
+  const cancelJob = useCallback(async (jobId: string) => {
+    // Abort HTTP upload request
+    if (abortControllersRef.current[jobId]) {
+      abortControllersRef.current[jobId].abort();
+      delete abortControllersRef.current[jobId];
+    }
+
+    // Clear timers
+    if (intervalsRef.current[jobId]) {
+      clearInterval(intervalsRef.current[jobId]);
+      delete intervalsRef.current[jobId];
+    }
+    
+    if (elapsedIntervalsRef.current[jobId]) {
+      clearInterval(elapsedIntervalsRef.current[jobId]);
+      delete elapsedIntervalsRef.current[jobId];
+    }
+
+    // Remove from local and user states
+    setActiveQueue((prev) => prev.filter((id) => id !== jobId));
+    removeLessonFromState(jobId);
+    removeNotification(`processing-${jobId}`);
+
+    // If registered, delete from Supabase
+    if (!jobId.startsWith('temp-')) {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      try {
+        await supabase.from('materials').delete().eq('id', jobId);
+      } catch (err) {
+        console.error('[UploadContext] cancelJob db delete error:', err);
       }
     }
 
-    setUploadStatus('idle');
-    setUploadMessage(null);
-    setUploadProgress(0);
+    setJobs((prev) => prev.filter((job) => job.id !== jobId));
     toast('Processing cancelled.', 'info');
-  }, [toast, removeLessonFromState]);
+  }, [removeLessonFromState, removeNotification, toast]);
 
+  // Backward compatible cancelUpload trigger (cancels latest active job)
+  const cancelUpload = useCallback(async () => {
+    const activeJob = jobs.find(j => j.status !== 'completed' && j.status !== 'failed');
+    if (activeJob) {
+      await cancelJob(activeJob.id);
+    }
+  }, [jobs, cancelJob]);
+
+  // Main Background Upload orchestrator
   const processBackgroundUpload = useCallback(
     async (file: File) => {
-      // Reset progress state immediately to prevent stale visual jumps
-      setUploadProgress(0);
-      targetProgressRef.current = 0;
-      displayedProgressRef.current = 0;
+      const tempJobId = `temp-${Date.now()}`;
+      
+      const newJob: ProcessingJob = {
+        id: tempJobId,
+        title: file.name,
+        status: 'uploading',
+        progress: 5,
+        targetProgress: 15,
+        message: 'Initializing connection...',
+        elapsedTime: 0,
+        estimatedTime: 'Calculating...'
+      };
+      setJobs((prev) => [...prev, newJob]);
+
+      // Temporary local elapsed counter before DB registration
+      const tempElapsedInterval = setInterval(() => {
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.id === tempJobId
+              ? { ...j, elapsedTime: j.elapsedTime + 1 }
+              : j
+          )
+        );
+      }, 1000);
 
       const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
 
-      // Initialize AbortController for cancelable requests
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      abortControllerRef.current = new AbortController();
-      const signal = abortControllerRef.current.signal;
+      const abortController = new AbortController();
+      abortControllersRef.current[tempJobId] = abortController;
+      const signal = abortController.signal;
 
-      // Guard Check: MB Limit based on user's plan
       const planType = user?.plan_type || 'free';
       const fileSizeMB = file.size / (1024 * 1024);
 
-      // Pre-flight Quota Limit Check: Bypasses optimistic updates completely if limit reached
+      // Pre-flight check
       const generationCount = user?.generation_count || 0;
       if (user && planType === 'free' && generationCount >= 3) {
+        clearInterval(tempElapsedInterval);
         setShowUpgradeModal(true);
-        setUploadStatus('error');
-        setUploadMessage('Free plan upload limit of 3 files reached.');
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.id === tempJobId
+              ? { ...j, status: 'failed', progress: 0, targetProgress: 0, message: 'Free tier upload limit of 3 files reached.', estimatedTime: 'Limit' }
+              : j
+          )
+        );
         return;
       }
 
       if (planType === 'free' && fileSizeMB > 15) {
+        clearInterval(tempElapsedInterval);
         setShowUpgradeModal(true);
-        setUploadStatus('error');
-        setUploadMessage('Free tier limit is 15MB. Please upgrade to Pro.');
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.id === tempJobId
+              ? { ...j, status: 'failed', progress: 0, targetProgress: 0, message: 'Free tier limit is 15MB. Please upgrade.', estimatedTime: 'Limit' }
+              : j
+          )
+        );
         return;
       }
 
       if (planType === 'pro' && fileSizeMB > 50) {
-        alert('You exceeded the 50MB absolute limit.');
-        setUploadStatus('error');
-        setUploadMessage('Pro tier limit is 50MB.');
+        clearInterval(tempElapsedInterval);
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.id === tempJobId
+              ? { ...j, status: 'failed', progress: 0, targetProgress: 0, message: 'Pro limit is 50MB.', estimatedTime: 'Limit' }
+              : j
+          )
+        );
         toast('Pro tier limit is 50MB.', 'error');
         return;
       }
 
-      setUploadStatus('uploading');
-      setUploadProgress(10);
-      setUploadMessage('Initializing secure connection...');
-
       const fileExt = file.name.split('.').pop();
       const cleanTitle = file.name.replace(`.${fileExt}`, '');
+      const safeFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+      const filePath = `${user?.id}/${Date.now()}_${safeFileName}`;
 
       try {
         const {
-          data: { user },
+          data: { user: currentUser },
           error: authError,
         } = await supabase.auth.getUser();
 
-        if (authError || !user) {
-          throw new Error('Please sign in to upload study material.');
+        if (authError || !currentUser) {
+          throw new Error('Please sign in to upload.');
         }
 
-        if (signal.aborted) return;
+        if (signal.aborted) {
+          clearInterval(tempElapsedInterval);
+          return;
+        }
 
-        // STEP 1: Upload to Storage
-        setUploadProgress(30);
-        setUploadMessage('Uploading PDF to cloud storage...');
-        
-        const safeFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-        const filePath = `${user.id}/${Date.now()}_${safeFileName}`;
+        // STEP 1: Upload to Storage bucket
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.id === tempJobId
+              ? { ...j, targetProgress: 25, message: 'Uploading PDF to cloud storage...' }
+              : j
+          )
+        );
 
         const { error: uploadError } = await supabase.storage
           .from('study_materials')
@@ -207,29 +509,38 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
 
         if (uploadError) throw uploadError;
 
-        if (signal.aborted) return;
-
-        // 1. Generate the temporary signed URL for the background worker to download
-        const { data: signedData, error: signedError } = await supabase.storage
-          .from('study_materials')
-          .createSignedUrl(filePath, 60 * 15); // 15 minutes is more than enough for the queue to pick it up
-
-        if (signedError) {
-          console.error("Failed to generate signed URL:", signedError);
-          throw signedError;
+        if (signal.aborted) {
+          clearInterval(tempElapsedInterval);
+          return;
         }
 
+        // Create temporary signed link
+        const { data: signedData, error: signedError } = await supabase.storage
+          .from('study_materials')
+          .createSignedUrl(filePath, 60 * 15);
+
+        if (signedError) throw signedError;
         const fileUrl = signedData.signedUrl;
 
-        // STEP 2: Database Registration
-        setUploadProgress(50);
-        setUploadMessage('Registering study material...');
-        
+        if (signal.aborted) {
+          clearInterval(tempElapsedInterval);
+          return;
+        }
+
+        // STEP 2: Database registration
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.id === tempJobId
+              ? { ...j, targetProgress: 35, message: 'Registering study material...' }
+              : j
+          )
+        );
+
         const { data: newMaterial, error: dbError } = await supabase
           .from('materials')
           .insert([
             {
-              user_id: user.id,
+              user_id: currentUser.id,
               title: cleanTitle,
               material_type: 'pdf',
               content_url: filePath,
@@ -243,59 +554,73 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           throw dbError ?? new Error('Unable to register the study material.');
         }
 
-        activeMaterialIdRef.current = newMaterial.id;
-        setActiveQueue((prev) => [...prev, newMaterial.id]);
+        // Swap key registers from temp ID to registered material ID
+        clearInterval(tempElapsedInterval);
+        
+        const finalMaterialId = newMaterial.id;
+        abortControllersRef.current[finalMaterialId] = abortController;
+        delete abortControllersRef.current[tempJobId];
+
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.id === tempJobId
+              ? { ...j, id: finalMaterialId, materialId: finalMaterialId, status: 'parsing', targetProgress: 45, message: 'Connecting to AI generator...' }
+              : j
+          )
+        );
+        setActiveQueue((prev) => [...prev, finalMaterialId]);
 
         if (signal.aborted) return;
-
         await refreshUser();
 
-        // STEP 3: AI Generation Process
-        setUploadProgress(70);
-        setUploadMessage('AI is analyzing content and generating flashcards...');
-        
+        // STEP 3: API Pipeline Initiation
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.id === finalMaterialId
+              ? { ...j, targetProgress: 55, message: 'Initiating AI generation...' }
+              : j
+          )
+        );
+
         const response = await fetch('/api/process-material', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            materialId: newMaterial.id,
+            materialId: finalMaterialId,
             fileUrl: fileUrl,
           }),
           signal,
         });
 
-        let finalMaterialId = newMaterial.id;
-        let finalStatus = 'PROCESSING';
+        let apiStatus = 'PROCESSING';
         if (!response.ok) {
-          let errMsg = 'The AI processing could not complete.';
+          let apiErrMsg = 'AI processing request failed.';
           try {
-            const json = await response.json();
-            if (json?.message) errMsg = json.message;
-            else if (json?.error) errMsg = json.error;
+            const errJson = await response.json();
+            if (errJson?.message) apiErrMsg = errJson.message;
+            else if (errJson?.error) apiErrMsg = errJson.error;
           } catch {}
-          throw new Error(errMsg);
+          throw new Error(apiErrMsg);
         } else {
           try {
-            const json = await response.json();
-            if (json?.materialId) {
-              finalMaterialId = json.materialId;
-              activeMaterialIdRef.current = finalMaterialId;
-            }
-            if (json?.status) {
-              finalStatus = json.status;
-            }
+            const succJson = await response.json();
+            if (succJson?.status) apiStatus = succJson.status;
           } catch {}
         }
 
         if (signal.aborted) return;
 
-        if (finalStatus === 'COMPLETED') {
-          // STEP 4: Success (Cache Hit)
-          setUploadProgress(100);
-          setUploadStatus('success');
-          setUploadMessage('Your study kit is explore-ready!');
+        if (apiStatus === 'COMPLETED') {
+          // Success (Cache hit)
+          setJobs((prev) =>
+            prev.map((j) =>
+              j.id === finalMaterialId
+                ? { ...j, status: 'completed', progress: 100, targetProgress: 100, message: 'Study kit ready!', estimatedTime: 'Completed' }
+                : j
+            )
+          );
+          setActiveQueue((prev) => prev.filter((id) => id !== finalMaterialId));
 
-          // Dispatch a triumphant notification to the user's notification center
           addNotification({
             id: `processed-${finalMaterialId}`,
             type: 'lesson',
@@ -303,217 +628,77 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
             desc: `"${cleanTitle}" is ready.`,
             time: 'Just now',
           });
-          
+
+          // Fetch completed lesson
+          const { data: fullLesson } = await supabase
+            .from('materials')
+            .select('*')
+            .eq('id', finalMaterialId)
+            .single();
+
+          if (fullLesson) {
+            addLessonToState(fullLesson);
+          }
+
+          toast(`"${cleanTitle}" processed successfully!`, 'success');
           await refreshUser();
-          router.refresh(); 
+          router.refresh();
         } else {
-          // Background Processing (Cache Miss / New upload)
-          setUploadProgress(0);
-          targetProgressRef.current = 20;
-          setUploadMessage('Parsing document text...');
-
-          // Add a non-clickable processing notification in the dropdown
-          addNotification({
-            id: `processing-${finalMaterialId}`,
-            type: 'processing',
-            title: 'Analyzing Material',
-            desc: `AI is analyzing "${cleanTitle}"...`,
-            time: 'In progress',
-            progress: 0,
-            progressStatus: 'Parsing document text...'
-          });
-
-          const STATUS_PROGRESS: Record<string, number> = {
-            'PARSING_DOCUMENT': 20,
-            'GENERATING_SUMMARY': 50,
-            'BUILDING_ASSESSMENTS': 90,
-            'COMPLETED': 100,
-          };
-
-          const STATUS_TEXT: Record<string, string> = {
-            'PARSING_DOCUMENT': 'Parsing document text...',
-            'GENERATING_SUMMARY': 'Generating markdown summary...',
-            'BUILDING_ASSESSMENTS': 'Building flashcards & quizzes...',
-            'COMPLETED': 'Study kit ready!',
-          };
-
-          // Start polling the database
-          const pollInterval = setInterval(async () => {
-            if (signal.aborted) {
-              clearInterval(pollInterval);
-              return;
-            }
-
-            try {
-              const { data: checkData, error: checkError } = await supabase
-                .from('materials')
-                .select('is_processed, status')
-                .eq('id', finalMaterialId)
-                .single();
-
-              if (checkError) {
-                console.error('[UploadContext] polling check error:', checkError.message);
-                return;
-              }
-
-              if (checkData) {
-                const status = checkData.status || 'PROCESSING';
-
-                if (status === 'failed' || status === 'FAILED') {
-                  clearInterval(pollInterval);
-                  removeLessonFromState(finalMaterialId);
-                  removeNotification(`processing-${finalMaterialId}`);
-                  setUploadStatus('error');
-                  setUploadMessage('AI generation failed. Please try again.');
-                  toast('AI generation failed. Please try again.', 'error');
-                  return;
-                }
-
-                const progressNum = STATUS_PROGRESS[status] || 20;
-                const statusMsg = STATUS_TEXT[status] || 'AI is analyzing content...';
-
-                // Sync the target milestone progress and status message
-                targetProgressRef.current = progressNum;
-                setUploadMessage(statusMsg);
-
-                updateNotification(`processing-${finalMaterialId}`, {
-                  progressStatus: statusMsg,
-                });
-
-                if (checkData.is_processed || status === 'COMPLETED') {
-                  targetProgressRef.current = 100;
-
-                  // Double-interval/wait logic: Wait for displayedProgress to hit 100
-                  const checkCompletionInterval = setInterval(async () => {
-                    if (displayedProgressRef.current >= 100) {
-                      clearInterval(checkCompletionInterval);
-                      clearInterval(pollInterval);
-
-                      // Wait 500ms and transition to final completed state
-                      setTimeout(async () => {
-                        removeNotification(`processing-${finalMaterialId}`);
-
-                        // Fetch the fully populated row for the completed material
-                        const { data: fullLesson } = await supabase
-                          .from('materials')
-                          .select('*')
-                          .eq('id', finalMaterialId)
-                          .single();
-
-                        if (fullLesson) {
-                          addLessonToState(fullLesson);
-                        }
-                        
-                        addNotification({
-                          id: `processed-${finalMaterialId}`,
-                          type: 'lesson',
-                          title: 'Material Processed',
-                          desc: `"${cleanTitle}" is ready.`,
-                          time: 'Just now',
-                        });
-
-                        setUploadProgress(100);
-                        setUploadStatus('success');
-                        setUploadMessage('Your study kit is ready to explore!');
-
-                        await refreshUser();
-                        router.refresh();
-                      }, 500);
-                    }
-                  }, 100);
-                  return;
-                }
-              }
-            } catch (pollErr) {
-              console.error('[UploadContext] polling catch error:', pollErr);
-            }
-          }, 3000);
-
-          // Safe timeout to stop polling after 90 seconds
-          setTimeout(() => {
-            clearInterval(pollInterval);
-            setUploadStatus((current) => {
-              if (current === 'uploading') {
-                return 'idle';
-              }
-              return current;
-            });
-          }, 90000);
+          // Start live DB polling queue for document worker
+          startPollingForMaterial(finalMaterialId, cleanTitle);
         }
 
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
-          console.log('[UploadContext] processBackgroundUpload aborted by user');
+          console.log('[UploadContext] processing aborted');
           return;
         }
-        console.error('[UploadContext] processBackgroundUpload error:', error);
         
-        const errMsg = error instanceof Error ? error.message : 'Failed to process the document. Please try again.';
-        const isQuotaError = 
-          errMsg.toLowerCase().includes('quota reached') || 
-          errMsg.toLowerCase().includes('limit exceeded');
+        const errMsg = error instanceof Error ? error.message : 'Error processing document.';
+        const activeId = activeQueue.includes(tempJobId) ? tempJobId : null; // fallback check
 
-        if (isQuotaError) {
-          const targetId = activeMaterialIdRef.current;
-          if (targetId) {
-            removeLessonFromState(targetId);
-            removeNotification(`processing-${targetId}`);
-            try {
-              await supabase.from('materials').delete().eq('id', targetId);
-              // Force database sync to ensure the deleted draft is immediately removed from local state
-              await refreshUser();
-            } catch (dbErr) {
-              console.error('[UploadContext] db delete error inside catch:', dbErr);
-            }
-          }
-          setShowUpgradeModal(true);
-          // Set status to idle to completely hide background processing error states
-          setUploadStatus('idle');
-          setUploadMessage(null);
-          return;
-        }
-
-        const targetId = activeMaterialIdRef.current;
-        if (targetId) {
-          removeLessonFromState(targetId);
-          removeNotification(`processing-${targetId}`);
-          try {
-            await supabase.from('materials').delete().eq('id', targetId);
-          } catch (dbErr) {
-            console.error('[UploadContext] db delete error inside catch:', dbErr);
-          }
-        }
-
-        setUploadStatus('error');
-        setUploadMessage(errMsg);
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.id === tempJobId || (activeId && j.id === activeId)
+              ? { ...j, status: 'failed', progress: 0, targetProgress: 0, message: errMsg, estimatedTime: 'Failed' }
+              : j
+          )
+        );
         toast(errMsg, 'error');
-      } finally {
-        abortControllerRef.current = null;
-        const targetId = activeMaterialIdRef.current;
-        if (targetId) {
-          setActiveQueue((prev) => prev.filter((id) => id !== targetId));
-        }
-        activeMaterialIdRef.current = null;
       }
     },
-    [
-      refreshUser,
-      router,
-      addNotification,
-      removeNotification,
-      removeLessonFromState,
-      toast,
-      setShowUpgradeModal,
-      addLessonToState,
-      updateNotification,
-      user
-    ]
+    [user, refreshUser, addNotification, addLessonToState, startPollingForMaterial, activeQueue, toast, router]
   );
+
+  // Compute overall status variables for backwards compatibility
+  const activeJobs = useMemo(() => jobs.filter(j => j.status !== 'completed' && j.status !== 'failed'), [jobs]);
+  
+  const uploadStatus = useMemo<UploadStatus>(() => {
+    if (activeJobs.length === 0) return 'idle';
+    if (activeJobs.some(j => j.status === 'failed')) return 'error';
+    return 'uploading';
+  }, [activeJobs]);
+
+  const uploadProgress = useMemo(() => {
+    if (activeJobs.length === 0) return 0;
+    const totalProgress = activeJobs.reduce((acc, j) => acc + j.progress, 0);
+    return Math.round(totalProgress / activeJobs.length);
+  }, [activeJobs]);
+
+  const uploadMessage = useMemo(() => {
+    if (activeJobs.length === 0) return null;
+    return activeJobs[activeJobs.length - 1].message;
+  }, [activeJobs]);
+
+  const clearUploadState = useCallback(() => {
+    setJobs([]);
+  }, []);
 
   const value = useMemo(
     () => ({
       processBackgroundUpload,
       cancelUpload,
+      cancelJob,
       uploadStatus,
       uploadMessage,
       uploadProgress,
@@ -521,22 +706,28 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       activeQueue,
       showUpgradeModal,
       setShowUpgradeModal,
+      jobs,
+      removeJob
     }),
-    [clearUploadState, processBackgroundUpload, cancelUpload, uploadMessage, uploadStatus, uploadProgress, activeQueue, showUpgradeModal]
+    [
+      clearUploadState,
+      processBackgroundUpload,
+      cancelUpload,
+      cancelJob,
+      uploadMessage,
+      uploadStatus,
+      uploadProgress,
+      activeQueue,
+      showUpgradeModal,
+      jobs,
+      removeJob
+    ]
   );
 
   return (
     <UploadContext.Provider value={value}>
       {children}
       
-      {/* Background Processing Manager Widget */}
-      <BackgroundProcessingWidget
-        uploadStatus={uploadStatus}
-        uploadMessage={uploadMessage}
-        uploadProgress={uploadProgress}
-        onDismiss={clearUploadState}
-      />
-
       {/* Psychological Upgrade Modal Paywall */}
       <UpgradeModal
         isOpen={showUpgradeModal}

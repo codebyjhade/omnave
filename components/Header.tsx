@@ -35,19 +35,16 @@ export default function Header() {
     setMounted(true);
 
     const localHour = new Date().getHours();
-    let currentGreeting = "Good morning";
+    let currentGreeting = "Good Morning";
     if (localHour >= 12 && localHour < 18) {
-      currentGreeting = "Good afternoon";
+      currentGreeting = "Good Afternoon";
     } else if (localHour >= 18) {
-      currentGreeting = "Good evening";
+      currentGreeting = "Good Evening";
     }
     setGreeting(currentGreeting);
 
-    const fullName = user?.user_metadata?.full_name || user?.user_metadata?.nickname || user?.email?.split('@')[0] || "Jhade";
-    let nameFirst = fullName.split(' ')[0] || "Jhade";
-    if (nameFirst === "Learner" || nameFirst === "Bryan" || nameFirst === "Aven") {
-      nameFirst = "Jhade";
-    }
+    const fullName = user?.user_metadata?.full_name || user?.user_metadata?.nickname || user?.email?.split('@')[0] || "Learner";
+    const nameFirst = fullName.split(' ')[0] || "Learner";
     // Capitalize first letter
     const capitalizedName = nameFirst.charAt(0).toUpperCase() + nameFirst.slice(1);
     setFirstName(capitalizedName);
@@ -117,10 +114,10 @@ export default function Header() {
         {/* Left Column: Greeting & Date */}
         <div className="flex-1 min-w-0">
           <h1 className="text-[18px] leading-[27px] font-poppins font-semibold text-white truncate">
-            Good Afternoon, Bryan
+            {greeting}, {firstName}
           </h1>
           <p className="text-white/80 font-poppins text-[12px] uppercase tracking-wider mt-1">
-            TUESDAY, JULY 28
+            {formattedDate}
           </p>
         </div>
 
@@ -143,9 +140,8 @@ export default function Header() {
             )}
           </motion.button>
 
-          {/* Settings gear button */}
           <motion.button 
-            onClick={() => window.dispatchEvent(new CustomEvent("open-settings-drawer"))}
+            onClick={() => router.push('/settings')}
             whileTap={{ scale: 0.90 }}
             className="bg-white text-[#6949a8] p-2 rounded-full h-10 w-10 flex items-center justify-center cursor-pointer shadow-premium-glass border-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
             aria-label="Open settings menu"

@@ -253,13 +253,13 @@ export default function HomePage() {
       if (currentLesson) {
         router.push(`/lesson/${currentLesson.id}?tab=quiz`);
       } else {
-        router.push("/library");
+        router.push("/upload");
       }
     } else {
       if (currentLesson) {
         router.push(`/lesson/${currentLesson.id}`);
       } else {
-        router.push("/library");
+        router.push("/upload");
       }
     }
   };
@@ -347,7 +347,7 @@ export default function HomePage() {
             <div className="w-full h-[90px] bg-[#6949a8]/20 rounded-[15px] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] animate-pulse" />
           ) : !currentLesson ? (
             <motion.div
-              onClick={() => router.push("/library")}
+              onClick={() => router.push("/upload")}
               whileTap={{ scale: 0.95 }}
               transition={springTransition}
               className="w-full h-[90px] bg-[#6949a8] rounded-[15px] p-[20px] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] flex flex-row items-center justify-between gap-4 cursor-pointer select-none"
@@ -479,7 +479,7 @@ export default function HomePage() {
                   className="w-9 h-9 rounded-full object-cover shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"
                 />
                 <span className="text-white font-poppins font-semibold text-[18px] leading-[27px]">
-                  Omnave AI
+                  Omnave Ai
                 </span>
               </div>
 
@@ -617,9 +617,13 @@ export default function HomePage() {
 
             {/* Responsive grid container: grid on Desktop/Tablet, horizontal overflow scrolling on Mobile */}
             {displayMaterials.length === 0 ? (
-              <div className="py-6 text-center text-xs text-omnave-secondary-text font-medium border border-dashed border-omnave-border rounded-[15px] bg-black/[0.01] font-poppins">
+              <motion.div
+                onClick={() => router.push("/upload")}
+                whileTap={{ scale: 0.98 }}
+                className="py-6 text-center text-xs text-omnave-secondary-text font-medium border border-dashed border-omnave-border rounded-[15px] bg-black/[0.01] font-poppins cursor-pointer hover:bg-black/[0.03] transition-colors select-none"
+              >
                 No study materials found. Upload your first document to populate your library.
-              </div>
+              </motion.div>
             ) : (
               <div className="flex sm:grid sm:grid-cols-2 overflow-x-auto sm:overflow-x-visible gap-4 pb-2 sm:pb-0 snap-x hide-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 {displayMaterials.map((item) => (

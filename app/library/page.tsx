@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Search, RefreshCw, Play, FileText, MoreVertical } from "lucide-react";
+import { Search, SlidersHorizontal, Play, FileText, MoreVertical } from "lucide-react";
 import { useLessons } from "@/hooks/useLessons";
 import { useProgress } from "@/hooks/useProgress";
 import { calculateKitProgress } from "@/hooks/useProgressStats";
@@ -17,33 +17,24 @@ const DeleteLessonDialog = dynamic(
 
 export default function LibraryPage() {
   const router = useRouter();
-  const { lessons: notes, loading, refreshLessons, deleteLesson } = useLessons();
+  const { lessons: notes, loading, deleteLesson } = useLessons();
   const { quizScores } = useProgress();
   const { toast } = useToast();
   const { activeQueue } = useUploadContext();
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [localNotes, setLocalNotes] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<"all" | "recent" | "ready">("all");
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await refreshLessons();
-      toast("Library synced successfully", "success");
-    } catch (err) {
-      toast("Failed to sync library", "error");
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const [activeSort, setActiveSort] = useState<"newest" | "oldest" | "a-z" | "progress">("newest");
 
   useEffect(() => {
     if (notes) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalNotes(notes);
     }
   }, [notes]);
@@ -64,6 +55,7 @@ export default function LibraryPage() {
     return () => clearTimeout(handler);
   }, [searchTerm]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getNoteProgress = useCallback((note: any) => {
     return calculateKitProgress(note, quizScores);
   }, [quizScores]);
@@ -112,13 +104,12 @@ export default function LibraryPage() {
   };
 
   const filteredNotes = useMemo(() => {
-    return visibleNotes.filter((note) => {
+    const filtered = visibleNotes.filter((note) => {
       const cleanTitle = getCleanTitle(note.file_path).toLowerCase();
       const subject = cleanTitle.split(/[\s\-_]+/)[0] || "";
       const matchesSearch = cleanTitle.includes(debouncedSearchTerm.toLowerCase()) || subject.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
       if (!matchesSearch) return false;
 
-      const progress = getNoteProgress(note);
       switch (activeFilter) {
         case "recent":
           return true;
@@ -128,7 +119,25 @@ export default function LibraryPage() {
           return true;
       }
     });
-  }, [visibleNotes, debouncedSearchTerm, activeFilter, getNoteProgress]);
+
+    return [...filtered].sort((a, b) => {
+      if (activeSort === "newest") {
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      }
+      if (activeSort === "oldest") {
+        return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+      }
+      if (activeSort === "a-z") {
+        const titleA = getCleanTitle(a.file_path).toLowerCase();
+        const titleB = getCleanTitle(b.file_path).toLowerCase();
+        return titleA.localeCompare(titleB);
+      }
+      if (activeSort === "progress") {
+        return getNoteProgress(b) - getNoteProgress(a);
+      }
+      return 0;
+    });
+  }, [visibleNotes, debouncedSearchTerm, activeFilter, activeSort, getNoteProgress]);
 
   const continueLearningNote = useMemo(() => {
     if (!notes || notes.length === 0) return null;
@@ -165,14 +174,28 @@ export default function LibraryPage() {
             />
           </div>
           {/* Circular white Filter Button */}
-          <button
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="w-11 h-11 bg-white rounded-full flex items-center justify-center shrink-0 border-none cursor-pointer shadow-[0px_4px_10px_rgba(0,0,0,0.05)] hover:bg-gray-50 active:scale-95 transition-all"
-            title="Refresh Library"
-          >
-            <RefreshCw size={18} className={`text-[#6949a8] ${isRefreshing ? "animate-spin" : ""}`} />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
+              className="w-11 h-11 bg-white rounded-full flex items-center justify-center shrink-0 border-none cursor-pointer shadow-[0px_4px_10px_rgba(0,0,0,0.05)] hover:bg-gray-50 active:scale-95 transition-all"
+              title="Sort Library"
+            >
+              <SlidersHorizontal size={18} className="text-[#6949a8]" />
+            </button>
+            {isSortMenuOpen && (
+              <div className="absolute top-14 right-0 w-40 bg-white rounded-2xl shadow-[0px_8px_20px_rgba(0,0,0,0.1)] border border-gray-100 overflow-hidden z-50 py-1 flex flex-col font-poppins">
+                {(['newest', 'oldest', 'a-z', 'progress'] as const).map((sortType) => (
+                  <button
+                    key={sortType}
+                    onClick={() => { setActiveSort(sortType); setIsSortMenuOpen(false); }}
+                    className={`px-4 py-2.5 text-left text-xs font-semibold hover:bg-gray-50 transition-colors border-none cursor-pointer ${activeSort === sortType ? 'text-[#6949a8] bg-[#6949a8]/5' : 'text-gray-600'}`}
+                  >
+                    {sortType === 'newest' ? 'Newest First' : sortType === 'oldest' ? 'Oldest First' : sortType === 'a-z' ? 'A-Z' : 'Highest Progress'}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -286,7 +309,6 @@ export default function LibraryPage() {
                 <div className="flex flex-col gap-3 w-full">
                   {filteredNotes.map((note) => {
                     const cleanTitle = note.is_processed && note.title ? note.title : getCleanTitle(note.file_path);
-                    const filename = getNoteRawFilename(note.file_path);
                     const progress = getNoteProgress(note);
                     const flashcardsCount = Array.isArray(note.flashcards) ? note.flashcards.length : 0;
                     return (
