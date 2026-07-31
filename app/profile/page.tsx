@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { createBrowserClient } from "@supabase/ssr";
-import { useUserContext } from "@/context/UserContext";
-import { ProfileMenuSheet } from "@/components/profile/ProfileMenuSheet";
+import { useUserContext, Notification } from "@/context/UserContext";
+import { useUploadContext } from "@/context/UploadContext";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import { useToast } from "@/components/ToastProvider";
 import { 
   Bell, 
   User, 
@@ -18,10 +21,14 @@ import {
   BellRing,
   Globe,
   GitBranch,
-  LogOut
+  LogOut,
+  X,
+  Check
 } from "lucide-react";
 
 export default function ProfilePage() {
+  const router = useRouter();
+  const { toast } = useToast();
   const {
     user,
     bestScore,
@@ -29,7 +36,11 @@ export default function ProfilePage() {
     gamificationStats,
     quizScores,
     lessons: notes,
+    notifications = [],
+    clearAllNotifications,
+    markNotificationAsRead,
   } = useUserContext();
+  const { uploadStatus, uploadProgress, cancelUpload } = useUploadContext();
 
   const [mounted, setMounted] = useState(false);
   const [profileName, setProfileName] = useState("Bryan");
@@ -38,15 +49,51 @@ export default function ProfilePage() {
   const [userTags, setUserTags] = useState<string[]>([]);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
-  // Modal / bottom sheet triggers
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  const unreadNotifications = useMemo(() => {
+    return notifications ? notifications.filter((n) => !n.isRead) : [];
+  }, [notifications]);
+
+  const hasUnread = unreadNotifications.length > 0 || uploadStatus === "uploading";
+
+  // Click outside to close notification popover
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const getNotificationIcon = (type: string, isRead: boolean) => {
+    const colorClass = isRead ? "text-[#525252]" : "text-[#6949a8]";
+    switch (type) {
+      case "quiz":
+        return <Check size={18} className={colorClass} />;
+      default:
+        return <FileText size={18} className={colorClass} />;
+    }
+  };
+
+  const handleNotificationClick = (n: Notification) => {
+    markNotificationAsRead(n.id);
+    setShowNotifications(false);
+    if (n.id.startsWith("processed-")) {
+      const lessonId = n.id.replace("processed-", "");
+      router.push(`/lesson/${lessonId}`);
+    }
+  };
 
   // Listen for trigger dispatched by external navigations
   useEffect(() => {
-    const handleOpen = () => setIsMenuOpen(true);
+    const handleOpen = () => router.push("/settings");
     window.addEventListener("open-settings-drawer", handleOpen);
     return () => window.removeEventListener("open-settings-drawer", handleOpen);
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     setMounted(true);
@@ -94,16 +141,16 @@ export default function ProfilePage() {
     if (gamificationStats?.documentsUploaded !== undefined && gamificationStats.documentsUploaded > 0) {
       return gamificationStats.documentsUploaded;
     }
-    return notes?.length || 14;
+    return notes?.length || 0;
   }, [gamificationStats, notes]);
 
   const flashcardsCount = useMemo(() => {
-    if (!notes || notes.length === 0) return 850;
+    if (!notes || notes.length === 0) return 0;
     const count = notes.reduce(
       (acc, l) => acc + (Array.isArray(l.flashcards) ? l.flashcards.length : 0),
       0
     );
-    return count > 0 ? count : 850;
+    return count;
   }, [notes]);
 
   const joinedDateString = useMemo(() => {
@@ -129,7 +176,7 @@ export default function ProfilePage() {
   }, [notes]);
 
   const handleRowClick = (label: string) => {
-    setIsMenuOpen(true);
+    toast(`${label} is coming soon!`, "info");
   };
 
   if (!mounted || isAuthLoading) {
@@ -172,12 +219,145 @@ export default function ProfilePage() {
         <h1 className="text-3xl font-bold text-gray-900 font-poppins">
           Profile
         </h1>
-        <button 
-          onClick={() => setIsMenuOpen(true)}
-          className="w-10 h-10 rounded-full border border-gray-100 bg-white flex items-center justify-center text-[#6949a8] hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
-        >
-          <Bell size={18} />
-        </button>
+        <div className="relative">
+          <button 
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="w-10 h-10 rounded-full border border-gray-100 bg-white flex items-center justify-center text-[#6949a8] hover:bg-gray-50 active:scale-95 transition-all cursor-pointer relative"
+          >
+            <Bell size={18} />
+            {!isAuthLoading && hasUnread && (
+              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#00d047] rounded-full border border-white" />
+            )}
+          </button>
+
+          <AnimatePresence>
+            {showNotifications && (
+              <motion.div
+                ref={popoverRef}
+                initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                className="absolute top-12 right-0 w-[calc(100vw-2rem)] sm:w-80 rounded-[15px] bg-white border-none shadow-[0px_10px_10px_rgba(0,0,0,0.09)] overflow-hidden z-[9999]"
+              >
+                {/* Popover Header */}
+                <div className="relative flex items-center justify-center px-4 pt-3.5 pb-3 border-b border-[#EBEBEB] bg-black/[0.01]">
+                  <button
+                    onClick={() => setShowNotifications(false)}
+                    className="absolute right-4 p-1 text-[#525252] hover:text-black rounded-lg hover:bg-black/5 transition-colors cursor-pointer border-none bg-transparent"
+                    aria-label="Close notifications"
+                  >
+                    <X size={14} />
+                  </button>
+
+                  <span className="text-xs font-bold text-black font-poppins">Notifications</span>
+
+                  {notifications && notifications.length > 0 && (
+                    <button
+                      onClick={clearAllNotifications}
+                      className="absolute left-4 text-[10px] font-bold text-[#525252] hover:text-black uppercase tracking-widest transition-colors cursor-pointer border-none bg-transparent"
+                    >
+                      Clear All
+                    </button>
+                  )}
+                </div>
+
+                {/* Active Task (AI Uploading Progress in Background) */}
+                {uploadStatus === "uploading" && (
+                  <div className="p-4 bg-[#6949a8]/5 border-b border-[#EBEBEB] flex flex-row items-center gap-4 relative text-left">
+                    <div className="w-12 h-12 flex items-center justify-center bg-white rounded-xl border border-[#EBEBEB] shadow-inner shrink-0">
+                      <motion.div
+                        animate={{ 
+                          scale: [1, 1.05, 0.96, 1.03, 1],
+                          filter: [
+                            "drop-shadow(0 0 4px rgba(105,73,168,0.4))",
+                            "drop-shadow(0 0 8px rgba(105,73,168,0.7))",
+                            "drop-shadow(0 0 4px rgba(105,73,168,0.4))"
+                          ]
+                        }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                        className="w-full h-full flex items-center justify-center px-1"
+                      >
+                        <svg viewBox="0 0 200 60" width="34" className="overflow-visible select-none">
+                          <text 
+                            x="50%" 
+                            y="50%" 
+                            dominantBaseline="middle" 
+                            textAnchor="middle" 
+                            fill="transparent" 
+                            stroke="#6949a8" 
+                            strokeWidth="4"
+                            className="animate-svg-trace font-brand tracking-widest text-4xl lowercase"
+                          >
+                            omnave
+                          </text>
+                        </svg>
+                      </motion.div>
+                    </div>
+
+                    <div className="flex-1 flex flex-col min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-bold tracking-widest text-[#6949a8] uppercase">Active Task</span>
+                        <button
+                          onClick={cancelUpload}
+                          className="text-[#525252] hover:text-red-500 text-[10px] font-extrabold uppercase tracking-widest transition-colors cursor-pointer select-none border-none bg-transparent"
+                        >
+                          [x] Cancel
+                        </button>
+                      </div>
+                      
+                      <p className="text-xs font-semibold text-black truncate pr-4 mt-0.5">AI is analyzing your material...</p>
+                      
+                      <div className="flex items-center gap-3 mt-1.5">
+                        <div className="flex-1 bg-[#EBEBEB] h-1.5 rounded-full overflow-hidden border border-[#EBEBEB]">
+                          <div 
+                            className="bg-gradient-to-r from-[#6949a8] to-[#86d1ff] h-full rounded-full transition-all duration-300 ease-out" 
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] font-bold text-black shrink-0">{uploadProgress}%</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Popover List */}
+                <div className="divide-y divide-[#EBEBEB] max-h-[300px] overflow-y-auto">
+                  {(!notifications || notifications.length === 0) && uploadStatus !== "uploading" ? (
+                    <div className="p-8 text-center text-xs text-[#525252] select-none font-medium">
+                      You&apos;re all caught up!
+                    </div>
+                  ) : (
+                    notifications && notifications.map((n) => {
+                      const isProcessed = n.id.startsWith("processed-");
+                      return (
+                        <div 
+                          key={n.id} 
+                          onClick={() => handleNotificationClick(n)}
+                          className={`p-4 flex gap-3.5 hover:bg-black/[0.01] transition-colors text-left cursor-pointer ${!n.isRead ? "bg-[#6949a8]/[0.02]" : ""}`}
+                        >
+                          <div className="mt-0.5 shrink-0 select-none">
+                            {getNotificationIcon(n.type, n.isRead)}
+                          </div>
+                          <div className="flex flex-col gap-0.5 min-w-0">
+                            <span className="text-xs font-bold text-black truncate">{n.title}</span>
+                            <p className="text-[11px] text-[#525252] leading-normal">{n.desc}</p>
+                            {isProcessed && (
+                              <span className="text-[10px] text-[#6949a8] font-semibold mt-1 flex items-center gap-1 group-hover:underline">
+                                View Lesson ➔
+                              </span>
+                            )}
+                            <span className="text-[9px] text-[#525252]/60 font-medium mt-1">{n.time}</span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       <div className="w-full max-w-md mx-auto flex flex-col">
@@ -307,7 +487,7 @@ export default function ProfilePage() {
 
             {/* GitHub Service Row */}
             <button 
-              onClick={() => setIsMenuOpen(true)}
+              onClick={() => toast("GitHub integration is coming soon!", "info")}
               className="w-full flex items-center justify-between py-4 px-2 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors duration-150 text-left outline-none cursor-pointer rounded-xl"
             >
               <div className="flex items-center">
@@ -346,17 +526,6 @@ export default function ProfilePage() {
 
       </div>
 
-      {/* Settings Bottom Sheet — self-contained navigation stack */}
-      <ProfileMenuSheet
-        isOpen={isMenuOpen}
-        onClose={() => setIsMenuOpen(false)}
-        quizScores={quizScores}
-        lessons={notes}
-        isSigningOut={isSigningOut}
-        onSignOut={handleSignOut}
-        plan="Free"
-        appVersion="1.0.0"
-      />
     </main>
   );
 }

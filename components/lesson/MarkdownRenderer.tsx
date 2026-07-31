@@ -6,9 +6,10 @@ interface MarkdownRendererProps {
   text: string;
   className?: string;
   variant?: "summary" | "chat";
+  theme?: "light" | "dark";
 }
 
-function parseInlineMarkdown(text: string): React.ReactNode[] {
+function parseInlineMarkdown(text: string, theme: "light" | "dark" = "dark"): React.ReactNode[] {
   if (!text) return [text];
   
   const parts: React.ReactNode[] = [];
@@ -19,7 +20,7 @@ function parseInlineMarkdown(text: string): React.ReactNode[] {
   boldSplit.forEach((part) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       parts.push(
-        <strong key={key++} className="font-extrabold text-white">
+        <strong key={key++} className={`font-extrabold ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
           {part.slice(2, -2)}
         </strong>
       );
@@ -28,16 +29,20 @@ function parseInlineMarkdown(text: string): React.ReactNode[] {
       italicSplit.forEach((iPart) => {
         if (iPart.startsWith("*") && iPart.endsWith("*") && iPart.length > 2) {
           parts.push(
-            <em key={key++} className="italic text-white/80">
+            <em key={key++} className={`italic ${theme === 'light' ? 'text-gray-700' : 'text-white/80'}`}>
               {iPart.slice(1, -1)}
             </em>
           );
         } else {
-          const codeSplit = iPart.split(/(`[^`]+`)/g);
-          codeSplit.forEach((cPart) => {
+          const codeSplit2 = iPart.split(/(`[^`]+`)/g);
+          codeSplit2.forEach((cPart) => {
             if (cPart.startsWith("`") && cPart.endsWith("`")) {
               parts.push(
-                <code key={key++} className="px-1.5 py-0.5 bg-white/5 rounded-md text-xs font-mono text-white/90 border border-white/5">
+                <code key={key++} className={`px-1.5 py-0.5 rounded-md text-xs font-mono border ${
+                  theme === 'light' 
+                    ? 'bg-gray-100 text-gray-800 border-gray-200' 
+                    : 'bg-white/5 text-white/90 border-white/5'
+                }`}>
                   {cPart.slice(1, -1)}
                 </code>
               );
@@ -53,7 +58,7 @@ function parseInlineMarkdown(text: string): React.ReactNode[] {
   return parts;
 }
 
-export const MarkdownRenderer = memo(function MarkdownRenderer({ text, className = '', variant = 'summary' }: MarkdownRendererProps) {
+export const MarkdownRenderer = memo(function MarkdownRenderer({ text, className = '', variant = 'summary', theme = 'dark' }: MarkdownRendererProps) {
   if (!text) return null;
 
   const lines = text.split("\n");
@@ -67,7 +72,11 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ text, className
   const flushList = () => {
     if (listItems.length > 0) {
       elements.push(
-        <ul key={`ul-${key++}`} className={`list-disc pl-5 space-y-2 ${variant === 'summary' ? 'mb-6 text-white/80' : 'mb-2 text-white/90'}`}>
+        <ul key={`ul-${key++}`} className={`list-disc pl-5 space-y-2 ${
+          theme === 'light'
+            ? 'mb-6 text-gray-700'
+            : variant === 'summary' ? 'mb-6 text-white/80' : 'mb-2 text-white/90'
+        }`}>
           {listItems.map((item, i) => (
             <li key={i} className="leading-relaxed text-sm">{item}</li>
           ))}
@@ -78,7 +87,11 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ text, className
     }
     if (orderedItems.length > 0) {
       elements.push(
-        <ol key={`ol-${key++}`} className={`list-decimal pl-5 space-y-2 ${variant === 'summary' ? 'mb-6 text-white/80' : 'mb-2 text-white/90'}`}>
+        <ol key={`ol-${key++}`} className={`list-decimal pl-5 space-y-2 ${
+          theme === 'light'
+            ? 'mb-6 text-gray-700'
+            : variant === 'summary' ? 'mb-6 text-white/80' : 'mb-2 text-white/90'
+        }`}>
           {orderedItems.map((item, i) => (
             <li key={i} className="leading-relaxed text-sm">{item}</li>
           ))}
@@ -95,7 +108,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ text, className
     if (/^(---|___|\*\*\*)$/.test(trimmed)) {
       flushList();
       elements.push(
-        <hr key={`hr-${key++}`} className="my-8 border-white/5" />
+        <hr key={`hr-${key++}`} className={`my-8 ${theme === 'light' ? 'border-gray-200' : 'border-white/5'}`} />
       );
       return;
     }
@@ -104,9 +117,11 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ text, className
       flushList();
       const quoteText = trimmed.substring(2);
       elements.push(
-        <blockquote key={`bq-${key++}`} className="border-l-4 border-omnave-primary pl-4 py-2 my-4 bg-white/5 rounded-r-lg">
-          <p className="text-sm italic text-white/70 leading-relaxed">
-            {parseInlineMarkdown(quoteText)}
+        <blockquote key={`bq-${key++}`} className={`border-l-4 border-omnave-primary pl-4 py-2 my-4 rounded-r-lg ${
+          theme === 'light' ? 'bg-gray-50 border-purple-300' : 'bg-white/5 border-omnave-primary/40'
+        }`}>
+          <p className={`text-sm italic leading-relaxed ${theme === 'light' ? 'text-gray-600' : 'text-white/70'}`}>
+            {parseInlineMarkdown(quoteText, theme)}
           </p>
         </blockquote>
       );
@@ -117,8 +132,8 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ text, className
       flushList();
       const headingText = trimmed.substring(2);
       elements.push(
-        <h1 key={`h1-${key++}`} className="text-xl font-black text-white mt-12 mb-6 tracking-tight">
-          {parseInlineMarkdown(headingText)}
+        <h1 key={`h1-${key++}`} className={`text-xl font-black mt-12 mb-6 tracking-tight ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+          {parseInlineMarkdown(headingText, theme)}
         </h1>
       );
       return;
@@ -128,8 +143,10 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ text, className
       flushList();
       const headingText = trimmed.substring(3);
       elements.push(
-        <h2 key={`h2-${key++}`} className="text-lg font-extrabold text-white mt-10 mb-4 tracking-tight flex items-center gap-2 border-b border-white/5 pb-2">
-          {parseInlineMarkdown(headingText)}
+        <h2 key={`h2-${key++}`} className={`text-lg font-extrabold mt-10 mb-4 tracking-tight flex items-center gap-2 border-b pb-2 ${
+          theme === 'light' ? 'text-gray-800 border-gray-100' : 'text-white border-white/5'
+        }`}>
+          {parseInlineMarkdown(headingText, theme)}
         </h2>
       );
       return;
@@ -139,8 +156,10 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ text, className
       flushList();
       const headingText = trimmed.substring(4);
       elements.push(
-        <h3 key={`h3-${key++}`} className="text-base font-bold text-white mt-8 mb-4 tracking-tight flex items-center gap-2 border-b border-white/5 pb-2">
-          {parseInlineMarkdown(headingText)}
+        <h3 key={`h3-${key++}`} className={`text-base font-bold mt-8 mb-4 tracking-tight flex items-center gap-2 border-b pb-2 ${
+          theme === 'light' ? 'text-gray-800 border-gray-100' : 'text-white border-white/5'
+        }`}>
+          {parseInlineMarkdown(headingText, theme)}
         </h3>
       );
       return;
@@ -150,8 +169,8 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ text, className
       flushList();
       const headingText = trimmed.replace(/^#{4,6}\s/, "");
       elements.push(
-        <h4 key={`h4-${key++}`} className="text-sm font-bold text-white mt-6 mb-3 tracking-tight">
-          {parseInlineMarkdown(headingText)}
+        <h4 key={`h4-${key++}`} className={`text-sm font-bold mt-6 mb-3 tracking-tight ${theme === 'light' ? 'text-gray-800' : 'text-white'}`}>
+          {parseInlineMarkdown(headingText, theme)}
         </h4>
       );
       return;
@@ -165,7 +184,11 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ text, className
     if (trimmed.startsWith("|")) {
       flushList();
       elements.push(
-        <p key={`table-${key++}`} className="text-sm leading-7 text-white/80 mb-5 select-text font-mono bg-white/5 p-3 rounded-lg overflow-x-auto border border-white/5">
+        <p key={`table-${key++}`} className={`text-sm leading-7 mb-5 select-text font-mono p-3 rounded-lg overflow-x-auto border ${
+          theme === 'light' 
+            ? 'bg-gray-50 text-gray-700 border-gray-200' 
+            : 'bg-white/5 text-white/80 border-white/5'
+        }`}>
           {trimmed}
         </p>
       );
@@ -175,14 +198,14 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ text, className
     if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
       inList = true;
       const itemText = trimmed.substring(2);
-      listItems.push(parseInlineMarkdown(itemText));
+      listItems.push(parseInlineMarkdown(itemText, theme));
       return;
     }
 
     if (/^\d+\.\s/.test(trimmed)) {
       inOrderedList = true;
       const itemText = trimmed.replace(/^\d+\.\s/, "");
-      orderedItems.push(parseInlineMarkdown(itemText));
+      orderedItems.push(parseInlineMarkdown(itemText, theme));
       return;
     }
 
@@ -193,8 +216,8 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ text, className
 
     flushList();
     elements.push(
-      <p key={`p-${key++}`} className={`leading-7 text-white/80 mb-5 select-text text-sm`}>
-        {parseInlineMarkdown(line)}
+      <p key={`p-${key++}`} className={`leading-7 mb-5 select-text text-sm ${theme === 'light' ? 'text-gray-700' : 'text-white/80'}`}>
+        {parseInlineMarkdown(line, theme)}
       </p>
     );
   });

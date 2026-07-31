@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { UploadCloud, FileText, AlertCircle, X } from "lucide-react";
 import { useUploadContext } from "@/context/UploadContext";
 import { useUserContext } from "@/context/UserContext";
@@ -10,7 +9,7 @@ export default function FileUploadArea() {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
-  const router = useRouter();
+
   const { processBackgroundUpload } = useUploadContext();
   const { user } = useUserContext();
 
@@ -98,7 +97,6 @@ export default function FileUploadArea() {
     setError(null);
 
     void processBackgroundUpload(file);
-    router.push("/library");
   };
 
   return (

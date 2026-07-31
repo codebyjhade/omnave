@@ -142,14 +142,14 @@ export default function UploadPage() {
                   type="file"
                   accept=".pdf"
                   onChange={handleFileChange}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50"
                 />
                 
                 {/* Cloud Upload Icon */}
                 <UploadCloud className="w-14 h-14 text-[#6949a8] mb-4 transition-transform duration-300" />
                 
                 {/* Select Button */}
-                <div className="bg-[#6949a8] hover:bg-[#563b8c] text-white font-semibold py-3 px-8 rounded-full shadow-[0_4px_15px_rgba(105,73,168,0.4)] active:scale-95 transition-transform text-sm select-none z-20 font-poppins">
+                <div className="bg-[#6949a8] hover:bg-[#563b8c] text-white font-semibold py-3 px-8 rounded-full shadow-[0_4px_15px_rgba(105,73,168,0.4)] active:scale-95 transition-transform text-sm select-none z-20 font-poppins pointer-events-none">
                   Select PDF Document
                 </div>
 
@@ -196,7 +196,7 @@ export default function UploadPage() {
             </h2>
             
             {jobs.length === 0 ? (
-              <div className="bg-transparent border-2 border-dashed border-gray-150 rounded-[15px] p-8 flex flex-col items-center justify-center text-center gap-2 font-poppins select-none">
+              <div className="bg-transparent border-2 border-dashed border-gray-200 rounded-[15px] p-8 flex flex-col items-center justify-center text-center gap-2 font-poppins select-none text-gray-400">
                 <div className="w-10 h-10 text-gray-400 flex items-center justify-center shrink-0">
                   <FileText size={22} strokeWidth={1.5} />
                 </div>

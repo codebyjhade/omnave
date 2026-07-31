@@ -1,24 +1,30 @@
 "use client";
 
-import { useUserContext } from "@/context/UserContext";
+import { useUserContext, Notification } from "@/context/UserContext";
+import { useUploadContext } from "@/context/UploadContext";
 import { useProgressStats } from "@/hooks/useProgressStats";
 import { calculateKitProgress } from "@/hooks/useProgressStats";
 import { 
   Check,
-  ListFilter,
-  Share,
+  Settings,
+  Share2,
   Bell,
   BookOpen,
   Clock,
   Target,
-  Flame
+  Flame,
+  X,
+  FileText
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { getLocalDateString } from "@/lib/gamification";
 
 export default function ProgressPage() {
   const router = useRouter();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const { 
     xp, 
     streak, 
@@ -26,8 +32,48 @@ export default function ProgressPage() {
     quizScores, 
     quizzesCount, 
     loading, 
-    gamificationStats
+    gamificationStats,
+    notifications = [],
+    clearAllNotifications,
+    markNotificationAsRead
   } = useUserContext();
+  const { uploadStatus, uploadProgress, cancelUpload } = useUploadContext();
+
+  const unreadNotifications = useMemo(() => {
+    return notifications ? notifications.filter((n) => !n.isRead) : [];
+  }, [notifications]);
+
+  const hasUnread = unreadNotifications.length > 0 || uploadStatus === "uploading";
+
+  // Click outside to close notification popover
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const getNotificationIcon = (type: string, isRead: boolean) => {
+    const colorClass = isRead ? "text-[#525252]" : "text-[#6949a8]";
+    switch (type) {
+      case "quiz":
+        return <Check size={18} className={colorClass} />;
+      default:
+        return <FileText size={18} className={colorClass} />;
+    }
+  };
+
+  const handleNotificationClick = (n: Notification) => {
+    markNotificationAsRead(n.id);
+    setShowNotifications(false);
+    if (n.id.startsWith("processed-")) {
+      const lessonId = n.id.replace("processed-", "");
+      router.push(`/lesson/${lessonId}`);
+    }
+  };
 
   const [mounted, setMounted] = useState(false);
 
@@ -70,21 +116,11 @@ export default function ProgressPage() {
       return parts.slice(1).join("_").replace(".pdf", "") || "Study Material.pdf";
     };
 
-    const defaultKits = [
-      { title: "Python_FastAPI_Backend_Setup.pdf", score: 85 },
-      { title: "HTML_CSS_Universal_Booth.pdf", score: 70 },
-      { title: "Discrete_Structures_Ch1.pdf", score: 45 }
-    ];
-
     if (!notes || notes.length === 0) {
-      return defaultKits;
+      return [];
     }
 
-    return [0, 1, 2].map((idx) => {
-      const note = notes[idx];
-      if (!note) {
-        return defaultKits[idx];
-      }
+    return notes.slice(0, 3).map((note) => {
       const progress = calculateKitProgress(note, quizScores);
       return {
         title: note.is_processed && note.title ? `${note.title}.pdf` : `${getCleanTitle(note.file_path)}.pdf`,
@@ -111,16 +147,164 @@ export default function ProgressPage() {
         <h1 className="text-3xl font-bold text-gray-900 font-poppins">
           Progress
         </h1>
-        <div className="flex items-center gap-2">
-          <button className="w-10 h-10 rounded-full border border-gray-100 bg-white flex items-center justify-center text-[#6949a8] hover:bg-gray-50 active:scale-95 transition-all cursor-pointer">
-            <ListFilter size={18} />
+        <div className="flex items-center gap-2 relative">
+          <button 
+            onClick={() => router.push('/settings')}
+            className="w-10 h-10 rounded-full border border-gray-100 bg-white flex items-center justify-center text-[#6949a8] hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
+          >
+            <Settings size={18} />
           </button>
-          <button className="w-10 h-10 rounded-full border border-gray-100 bg-white flex items-center justify-center text-[#6949a8] hover:bg-gray-50 active:scale-95 transition-all cursor-pointer">
-            <Share size={18} />
+          <button 
+            onClick={async () => {
+              try {
+                if (navigator.share) {
+                  await navigator.share({
+                    text: `I'm currently on a ${streak}-day study streak on BryanAI! 🚀`
+                  });
+                }
+              } catch {}
+            }}
+            className="w-10 h-10 rounded-full border border-gray-100 bg-white flex items-center justify-center text-[#6949a8] hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
+          >
+            <Share2 size={18} />
           </button>
-          <button className="w-10 h-10 rounded-full border border-gray-100 bg-white flex items-center justify-center text-[#6949a8] hover:bg-gray-50 active:scale-95 transition-all cursor-pointer">
+          <button 
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="w-10 h-10 rounded-full border border-gray-100 bg-white flex items-center justify-center text-[#6949a8] hover:bg-gray-50 active:scale-95 transition-all cursor-pointer relative"
+          >
             <Bell size={18} />
+            {!loading && hasUnread && (
+              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#00d047] rounded-full border border-white" />
+            )}
           </button>
+
+          <AnimatePresence>
+            {showNotifications && (
+              <motion.div
+                ref={popoverRef}
+                initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                className="absolute top-12 right-0 w-[calc(100vw-2rem)] sm:w-80 rounded-[15px] bg-white border-none shadow-[0px_10px_10px_rgba(0,0,0,0.09)] overflow-hidden z-[9999]"
+              >
+                {/* Popover Header */}
+                <div className="relative flex items-center justify-center px-4 pt-3.5 pb-3 border-b border-[#EBEBEB] bg-black/[0.01]">
+                  <button
+                    onClick={() => setShowNotifications(false)}
+                    className="absolute right-4 p-1 text-[#525252] hover:text-black rounded-lg hover:bg-black/5 transition-colors cursor-pointer border-none bg-transparent"
+                    aria-label="Close notifications"
+                  >
+                    <X size={14} />
+                  </button>
+
+                  <span className="text-xs font-bold text-black font-poppins">Notifications</span>
+
+                  {notifications && notifications.length > 0 && (
+                    <button
+                      onClick={clearAllNotifications}
+                      className="absolute left-4 text-[10px] font-bold text-[#525252] hover:text-black uppercase tracking-widest transition-colors cursor-pointer border-none bg-transparent"
+                    >
+                      Clear All
+                    </button>
+                  )}
+                </div>
+
+                {/* Active Task (AI Uploading Progress in Background) */}
+                {uploadStatus === "uploading" && (
+                  <div className="p-4 bg-[#6949a8]/5 border-b border-[#EBEBEB] flex flex-row items-center gap-4 relative text-left">
+                    <div className="w-12 h-12 flex items-center justify-center bg-white rounded-xl border border-[#EBEBEB] shadow-inner shrink-0">
+                      <motion.div
+                        animate={{ 
+                          scale: [1, 1.05, 0.96, 1.03, 1],
+                          filter: [
+                            "drop-shadow(0 0 4px rgba(105,73,168,0.4))",
+                            "drop-shadow(0 0 8px rgba(105,73,168,0.7))",
+                            "drop-shadow(0 0 4px rgba(105,73,168,0.4))"
+                          ]
+                        }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                        className="w-full h-full flex items-center justify-center px-1"
+                      >
+                        <svg viewBox="0 0 200 60" width="34" className="overflow-visible select-none">
+                          <text 
+                            x="50%" 
+                            y="50%" 
+                            dominantBaseline="middle" 
+                            textAnchor="middle" 
+                            fill="transparent" 
+                            stroke="#6949a8" 
+                            strokeWidth="4"
+                            className="animate-svg-trace font-brand tracking-widest text-4xl lowercase"
+                          >
+                            omnave
+                          </text>
+                        </svg>
+                      </motion.div>
+                    </div>
+
+                    <div className="flex-1 flex flex-col min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-bold tracking-widest text-[#6949a8] uppercase">Active Task</span>
+                        <button
+                          onClick={cancelUpload}
+                          className="text-[#525252] hover:text-red-500 text-[10px] font-extrabold uppercase tracking-widest transition-colors cursor-pointer select-none border-none bg-transparent"
+                        >
+                          [x] Cancel
+                        </button>
+                      </div>
+                      
+                      <p className="text-xs font-semibold text-black truncate pr-4 mt-0.5">AI is analyzing your material...</p>
+                      
+                      <div className="flex items-center gap-3 mt-1.5">
+                        <div className="flex-1 bg-[#EBEBEB] h-1.5 rounded-full overflow-hidden border border-[#EBEBEB]">
+                          <div 
+                            className="bg-gradient-to-r from-[#6949a8] to-[#86d1ff] h-full rounded-full transition-all duration-300 ease-out" 
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] font-bold text-black shrink-0">{uploadProgress}%</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Popover List */}
+                <div className="divide-y divide-[#EBEBEB] max-h-[300px] overflow-y-auto">
+                  {(!notifications || notifications.length === 0) && uploadStatus !== "uploading" ? (
+                    <div className="p-8 text-center text-xs text-[#525252] select-none font-medium">
+                      You&apos;re all caught up!
+                    </div>
+                  ) : (
+                    notifications && notifications.map((n) => {
+                      const isProcessed = n.id.startsWith("processed-");
+                      return (
+                        <div 
+                          key={n.id} 
+                          onClick={() => handleNotificationClick(n)}
+                          className={`p-4 flex gap-3.5 hover:bg-black/[0.01] transition-colors text-left cursor-pointer ${!n.isRead ? "bg-[#6949a8]/[0.02]" : ""}`}
+                        >
+                          <div className="mt-0.5 shrink-0 select-none">
+                            {getNotificationIcon(n.type, n.isRead)}
+                          </div>
+                          <div className="flex flex-col gap-0.5 min-w-0">
+                            <span className="text-xs font-bold text-black truncate">{n.title}</span>
+                            <p className="text-[11px] text-[#525252] leading-normal">{n.desc}</p>
+                            {isProcessed && (
+                              <span className="text-[10px] text-[#6949a8] font-semibold mt-1 flex items-center gap-1 group-hover:underline">
+                                View Lesson ➔
+                              </span>
+                            )}
+                            <span className="text-[9px] text-[#525252]/60 font-medium mt-1">{n.time}</span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -264,26 +448,37 @@ export default function ProgressPage() {
           <h2 className="text-lg font-bold text-gray-900 mb-4 font-poppins">
             Study Kit Mastery
           </h2>
-          <div className="flex flex-col gap-5">
-            {studyKitsProgress.map((kit, index) => (
-              <div key={index} className="flex flex-col">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-sm font-semibold text-gray-800 font-poppins truncate flex-1 text-left">
-                    {kit.title}
-                  </span>
-                  <span className="text-sm text-[#6949a8] font-bold font-poppins shrink-0">
-                    {kit.score}%
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-purple-100 rounded-full mt-2 overflow-hidden">
-                  <div
-                    className="h-full bg-[#6949a8] rounded-full transition-all duration-1000 ease-out"
-                    style={{ width: mounted ? `${kit.score}%` : "0%" }}
-                  />
-                </div>
+          {studyKitsProgress.length === 0 ? (
+            <div className="border-2 border-dashed border-gray-200 rounded-[15px] p-6 flex flex-col items-center justify-center text-center gap-3 font-poppins select-none text-gray-400">
+              <div className="w-10 h-10 rounded-full bg-[#6949a8]/5 flex items-center justify-center text-[#6949a8]">
+                <Target size={20} />
               </div>
-            ))}
-          </div>
+              <p className="text-xs font-semibold text-gray-400 max-w-[280px] leading-relaxed">
+                Upload a document and complete your first quiz to see your mastery metrics.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-5">
+              {studyKitsProgress.map((kit, index) => (
+                <div key={index} className="flex flex-col">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-sm font-semibold text-gray-800 font-poppins truncate flex-1 text-left">
+                      {kit.title}
+                    </span>
+                    <span className="text-sm text-[#6949a8] font-bold font-poppins shrink-0">
+                      {kit.score}%
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-purple-100 rounded-full mt-2 overflow-hidden">
+                    <div
+                      className="h-full bg-[#6949a8] rounded-full transition-all duration-1000 ease-out"
+                      style={{ width: mounted ? `${kit.score}%` : "0%" }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>

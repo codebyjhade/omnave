@@ -1,211 +1,135 @@
 "use client";
-
-import { useEffect, useState, useRef, useMemo, useCallback } from "react";
-import { useParams, useSearchParams, useRouter } from "next/navigation";
+ 
+import { useEffect, useState, useMemo, useRef } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
-import { BrainCircuit, ArrowLeft, MoreHorizontal, FileText, Play, Layers, Target, Sparkles, Edit3, RefreshCw, Trash2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
+import { ChevronLeft, FileText, Zap, Target, MessageCircle } from "lucide-react";
 import { useToast } from "@/components/ToastProvider";
-
-// UI Components
-import { Skeleton } from "@/components/Skeleton";
-import { LessonHeader, LessonNav, type TabId, StudySessionBanner, GamificationToast } from "@/components/lesson";
-
-// Context & Hooks
-import { useAssessmentGuard } from "@/context/AssessmentContext";
 import { useUserContext } from "@/context/UserContext";
 import { useProgress } from "@/hooks/useProgress";
 import { calculateKitProgress } from "@/hooks/useProgressStats";
+import { MarkdownRenderer } from "@/components/lesson";
 import dynamic from "next/dynamic";
-
-const SummaryTab = dynamic(
-  () => import("@/components/assessment/SummaryTab").then((mod) => mod.SummaryTab),
-  { ssr: false }
-);
+ 
 const AssessmentEngine = dynamic(
   () => import("@/components/assessment/AssessmentEngine").then((mod) => mod.AssessmentEngine),
   { ssr: false }
 );
+ 
 const FlashcardEngine = dynamic(
   () => import("@/components/assessment/FlashcardEngine").then((mod) => mod.FlashcardEngine),
   { ssr: false }
 );
-
+ 
+const ChatPanel = dynamic(
+  () => import("@/components/lesson/ChatPanel").then((mod) => mod.ChatPanel),
+  { ssr: false }
+);
+ 
 export default function LessonView() {
   const router = useRouter();
   const { id } = useParams();
-  const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab");
-  const { isAssessmentActive, triggerNavAttempt } = useAssessmentGuard();
   const { user, loading: contextLoading } = useUserContext();
-  const { quizScores, refreshProgress } = useProgress();
+  const { quizScores } = useProgress();
+  const { toast } = useToast();
   const planType = user?.plan_type || 'free';
-
+ 
   // Data State
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-
-  // Layout State
-  const [activeTab, setActiveTab] = useState<TabId>("summary");
-  const [viewMode, setViewMode] = useState<"hub" | "study">("hub");
-  const [isExiting, setIsExiting] = useState(false);
-
-  // Sync active tab from query params
+ 
+  // Active workspace mode
+  const [activeMode, setActiveMode] = useState<'summary' | 'flashcards' | 'quiz' | 'chat'>('summary');
+  
+  // Assessment View State
+  const [assessmentType, setAssessmentType] = useState<'quiz' | 'exam'>('quiz');
+ 
+  // Chat Panel states
+  const [chatInput, setChatInput] = useState("");
+  const [chatHistory, setChatHistory] = useState<{ role: "user" | "ai"; text: string }[]>([]);
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [selectedText, setSelectedText] = useState("");
+  
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+ 
+  // Auto-scroll to bottom when chat updates
   useEffect(() => {
-    if (tabParam) {
-      setViewMode("study");
-      if (tabParam === "flashcards" || tabParam === "slides") {
-        setActiveTab("slides");
-      } else if (tabParam === "quiz" || tabParam === "summary") {
-        setActiveTab(tabParam as TabId);
-      } else if (tabParam === "exam") {
-        if (planType === "free") {
-          console.log("Trigger Paywall: Exam Mode");
-          setActiveTab("summary");
-        } else {
-          setActiveTab("exam");
-        }
-      }
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
-  }, [tabParam, planType]);
-
-  const [studyDuration, setStudyDuration] = useState(0);
-  const studyIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [xpReward, setXpReward] = useState<{ xp: number, streakBonus: boolean } | null>(null);
-
-  // Header menu and actions state
-  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [tempTitle, setTempTitle] = useState("");
-  const [isActionLoading, setIsActionLoading] = useState(false);
-  const headerMenuRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
-
-  const handleNavigateToQuiz = useCallback(() => {
-    setActiveTab("quiz");
-  }, []);
-
-  const handleNavigateToSummary = useCallback(() => {
-    setActiveTab("summary");
-  }, []);
-
-  const memoizedFlashcards = useMemo(() => {
-    return data?.flashcards || [];
-  }, [data?.flashcards]);
-
-  useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (headerMenuRef.current && !headerMenuRef.current.contains(e.target as Node)) {
-        setShowHeaderMenu(false);
-      }
-    };
-    if (showHeaderMenu) {
-      document.addEventListener("mousedown", handleOutsideClick);
-    }
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, [showHeaderMenu]);
-
-  const handleResetMastery = async () => {
-    const confirmReset = window.confirm("Are you sure you want to reset your mastery progress for this kit? This will delete all quiz scores.");
-    if (!confirmReset) return;
-
+  }, [chatHistory, isChatLoading]);
+ 
+  // Handle AI Chat Logic
+  const handleAskQuestion = async (customText?: string) => {
+    const promptText = (customText || chatInput).trim();
+    if (!promptText) return;
+ 
+    setChatHistory((prev) => [...prev, { role: "user", text: promptText }]);
+    setChatInput("");
+    setIsChatLoading(true);
+    setChatError(null);
+ 
     try {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-
-      const { error } = await supabase
-        .from('quiz_scores')
-        .delete()
-        .eq('lesson_id', id);
-
-      if (error) throw error;
-
-      toast("Mastery progress reset to 0%", "success");
-      refreshProgress();
-    } catch (err) {
-      toast("Failed to reset progress", "error");
-    }
-  };
-
-  const handleRename = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tempTitle.trim()) return;
-
-    try {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-
-      const { error } = await supabase
-        .from('materials')
-        .update({ title: tempTitle.trim() })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setData((prev: any) => prev ? { ...prev, title: tempTitle.trim() } : null);
-      toast("Study kit renamed successfully", "success");
-      setShowEditModal(false);
-    } catch (err) {
-      toast("Failed to rename study kit", "error");
-    }
-  };
-
-  const handleDeleteKit = async () => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this study kit? This action cannot be undone.");
-    if (!confirmDelete) return;
-
-    setIsActionLoading(true);
-    try {
-      const response = await fetch(`/api/materials/${id}`, {
-        method: "DELETE",
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: promptText,
+          summary: data?.summary || "",
+        }),
       });
-
-      if (!response.ok) throw new Error("Failed to delete study kit via API");
-
-      toast("Study kit deleted successfully", "success");
-      router.push("/library");
-    } catch (err) {
-      toast("Failed to delete study kit", "error");
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
-
-  // Tab Navigation Guard
-  const handleTabChange = (tab: TabId) => {
-    if (isAssessmentActive) {
-      triggerNavAttempt(`/lesson/${id}`);
-    } else {
-      if (tab === "exam" && planType === "free") {
-        console.log("Trigger Paywall: Exam Mode");
-        return;
+ 
+      if (!response.ok) {
+        let errMsg = "AI tutor failed to respond.";
+        try {
+          const json = await response.json();
+          if (json?.message) errMsg = json.message;
+          else if (json?.error) errMsg = json.error;
+        } catch {}
+        throw new Error(errMsg);
       }
-      setActiveTab(tab);
+ 
+      const resData = await response.json();
+      if (!resData.success || !resData.reply) {
+        throw new Error(resData.message || "Failed to generate AI response.");
+      }
+ 
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          role: "ai",
+          text: resData.reply,
+        },
+      ]);
+    } catch (err: unknown) {
+      console.error("AI chat error:", err);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      setChatError(errMsg || "Something went wrong. Please try again.");
+    } finally {
+      setIsChatLoading(false);
     }
   };
-
-  // DIRECT DATABASE FETCHING & POLLING LOGIC
+ 
+  // Supabase Fetching and Polling
   useEffect(() => {
     let isMounted = true;
     let pollInterval: NodeJS.Timeout;
-
+ 
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
-
+ 
     const fetchLesson = async () => {
       const { data: lessonData } = await supabase
         .from('materials')
         .select('*')
         .eq('id', id)
         .single();
-
+ 
       if (isMounted) {
         if (lessonData) {
           setData(lessonData);
@@ -216,450 +140,211 @@ export default function LessonView() {
         setLoading(false);
       }
     };
-
+ 
     if (id) {
       fetchLesson();
       pollInterval = setInterval(fetchLesson, 3000);
     }
-
+ 
     return () => {
       isMounted = false;
       clearInterval(pollInterval);
     };
   }, [id]);
-
-  // Study session timer
-  useEffect(() => {
-    if (!loading && data?.is_processed && viewMode === "study") {
-      studyIntervalRef.current = setInterval(() => {
-        setStudyDuration((d) => d + 1);
-      }, 1000);
-    }
-    return () => {
-      if (studyIntervalRef.current) {
-        clearInterval(studyIntervalRef.current);
-        studyIntervalRef.current = null;
-      }
-    };
-  }, [loading, data, viewMode]);
-
-  // 3. AI STILL GENERATING STATE (Redirect instead of Trap)
+ 
+  // AI Generation processing redirect
   useEffect(() => {
     if (!loading && data && (!data.is_processed || data.status === "PROCESSING")) {
       toast("Your material is still processing in the background.", "info");
       router.replace('/library');
     }
   }, [loading, data, router, toast]);
-
+ 
+  const memoizedFlashcards = useMemo(() => {
+    return data?.flashcards || [];
+  }, [data?.flashcards]);
+ 
+  const handleNavigateToQuiz = () => {
+    setActiveMode("quiz");
+  };
+ 
+  const handleNavigateToSummary = () => {
+    setActiveMode("summary");
+  };
+ 
   if (loading || contextLoading) {
     return (
-      <div className="relative min-h-screen bg-[#0A0710] pb-32 px-4 md:px-8 overflow-hidden flex flex-col items-center">
-        <main className="relative z-10 w-full max-w-3xl pt-4 pb-40 md:pb-24 animate-pulse">
-          <div className="flex flex-col w-full">
-            <Skeleton className="w-24 h-4 mb-6 rounded-md" />
-            <Skeleton className="w-3/4 h-8 mb-4" />
-            <div className="flex gap-2 mb-8">
-              <Skeleton className="w-16 h-6 rounded-full" />
-              <Skeleton className="w-20 h-6 rounded-full" />
-            </div>
-            <div className="flex space-x-2 mb-6">
-              <Skeleton className="w-24 h-10 rounded-full" />
-              <Skeleton className="w-20 h-10 rounded-full" />
-              <Skeleton className="w-20 h-10 rounded-full" />
-            </div>
-            <Skeleton className="w-full h-[300px] rounded-3xl" />
-          </div>
-        </main>
-      </div>
+      <main className="min-h-[100dvh] bg-slate-50 flex flex-col items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-[#6949a8] border-t-transparent rounded-full" />
+      </main>
     );
   }
-
-  // 2. Data Not Found State
-  if (!data) return <div className="p-6 text-white text-center mt-20">Study Kit not found.</div>;
-
+ 
+  if (!data) {
+    return (
+      <main className="min-h-[100dvh] bg-slate-50 flex flex-col items-center justify-center p-6 text-gray-500 font-poppins">
+        Study Kit not found.
+      </main>
+    );
+  }
+ 
   if (!data.is_processed || data.status === "PROCESSING") {
     return null; // Return null while redirecting
   }
-
-  // Formatting variables
+ 
   const getCleanTitle = (path?: string | null) => {
     if (!path) return "Study Material";
     const base = path.split("/").pop() || "";
     const name = base.replace(/^\d+_/, "");
     return name.replace(".pdf", "") || "Study Material";
   };
-
-  const getRawFilename = (path?: string | null) => {
-    if (!path) return "document.pdf";
-    const base = path.split("/").pop() || "";
-    return base.replace(/^\d+_/, "") || "document.pdf";
-  };
-
-  const filename = getRawFilename(data?.file_path);
+ 
   const displayTitle = data?.title || getCleanTitle(data?.file_path);
-
-  const flashcardCount = data.flashcards?.length || 0;
-  const quizCount = data.quizzes?.length || 0;
-  const progress = calculateKitProgress(data, quizScores);
-
-  const pdfUrl = data.content_url 
-    ? `https://htfdclxtioyucnppcxns.supabase.co/storage/v1/object/public/study_materials/${data.content_url}`
-    : "#";
-
+  const progress = data ? calculateKitProgress(data, quizScores) : 0;
+ 
   return (
-    <motion.div
-      initial={{ x: "100%" }}
-      animate={{ x: isExiting ? "100%" : 0 }}
-      transition={{ duration: 0.15, ease: [0.32, 0.94, 0.6, 1] }}
-      style={{ willChange: "transform" }}
-      className="relative min-h-screen bg-[#0A0710] pb-32 overflow-hidden flex flex-col items-center w-full"
-    >
-      {/* Ambient Spotlight Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-omnave-primary/10 rounded-full blur-[120px] pointer-events-none -z-10" aria-hidden="true" />
-      {/* Dynamic Focus Header */}
-      {!isAssessmentActive && (
-        <header id="global-lesson-header" className="w-full flex items-center justify-between px-6 py-4 bg-[#0A0710]/40 backdrop-blur-md border-b border-white/5 sticky top-0 z-50 select-none">
-          {viewMode === "hub" ? (
-            <button
-              onClick={() => {
-                setIsExiting(true);
-                setTimeout(() => {
-                  router.push('/library');
-                }, 150);
-              }}
-              className="flex items-center gap-2 px-3 py-1.5 -ml-3 text-white/70 hover:text-white hover:bg-white/5 rounded-lg active:scale-[0.97] active:opacity-80 transition-[background-color,opacity] duration-150 select-none cursor-pointer"
-              aria-label="Go back to Library"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="font-medium text-sm">Back</span>
-            </button>
-          ) : (
-            <button 
-              onClick={() => setViewMode("hub")} 
-              className="flex items-center gap-2 px-3 py-1.5 -ml-3 text-white/70 hover:text-white hover:bg-white/5 rounded-lg active:scale-[0.97] active:opacity-80 transition-[background-color,opacity] duration-150 select-none cursor-pointer"
-              aria-label="Go back to Lesson Hub"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="font-medium text-sm">Lesson Hub</span>
-            </button>
-          )}
-          
-          <div className="text-sm font-bold text-white/80 select-none">
-            {viewMode === "hub" ? "Focus Mode" : "Active Session"}
-          </div>
-          
-          <div className="relative shrink-0 flex items-center" ref={headerMenuRef}>
-            <button 
-              onClick={() => setShowHeaderMenu(!showHeaderMenu)}
-              className="p-2 text-white/40 hover:text-white transition-colors rounded-full hover:bg-white/5 cursor-pointer"
-              aria-label="More options"
-              aria-expanded={showHeaderMenu}
-            >
-              <MoreHorizontal className="w-5 h-5" />
-            </button>
-
-            {showHeaderMenu && (
-              <div className="absolute right-0 top-10 w-44 bg-[#1A1528] border border-white/10 rounded-xl shadow-xl py-1 z-20 backdrop-blur-xl animate-in fade-in slide-in-from-top-1 duration-150">
-                <button
-                  onClick={() => {
-                    setShowHeaderMenu(false);
-                    setTempTitle(displayTitle);
-                    setShowEditModal(true);
-                  }}
-                  className="w-full text-left px-3 py-3 text-xs font-semibold text-white/80 hover:bg-white/[0.05] transition-colors flex items-center gap-2 min-h-[44px] cursor-pointer"
-                >
-                  <Edit3 className="w-3.5 h-3.5 text-white/60" />
-                  Edit Details
-                </button>
-
-                <div className="border-t border-white/5 my-1" />
-
-                <button
-                  disabled={isActionLoading}
-                  onClick={() => {
-                    setShowHeaderMenu(false);
-                    handleDeleteKit();
-                  }}
-                  className="w-full text-left px-3 py-3 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center gap-2 transition-colors min-h-[44px] cursor-pointer disabled:opacity-50"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Delete Study Kit
-                </button>
-              </div>
-            )}
-          </div>
-        </header>
-      )}
-
-      <main className="relative z-10 w-full max-w-3xl pt-4 pb-40 md:pb-24 px-6">
-        <div className="flex flex-col w-full">
-
-          <AnimatePresence mode="wait">
-            {viewMode === "hub" ? (
-              <motion.div
-                key="hub"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-                className="w-full flex flex-col"
-              >
-                {/* Hero Card */}
-                <div className="relative flex flex-col p-6 pb-7 bg-[#130E24]/80 backdrop-blur-xl border border-omnave-primary/20 rounded-3xl overflow-hidden w-full min-h-[220px] shadow-[0_0_40px_rgba(127,34,254,0.05)] select-none">
-                  {/* Ambient Glow */}
-                  <div className="absolute top-0 left-0 w-64 h-64 bg-omnave-primary/10 rounded-full blur-[80px] pointer-events-none translate-x-[-20%] translate-y-[-20%]" aria-hidden="true" />
-
-                  {/* Title Stack */}
-                  <div className="flex flex-col mb-6 relative z-10 text-left">
-                    <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight line-clamp-2 drop-shadow-sm">
-                      {displayTitle}
-                    </h1>
-                    <p className="text-sm text-white/40 mt-2 flex items-center gap-1.5 truncate" title={filename}>
-                      <FileText className="w-4 h-4 shrink-0 text-white/30" />
-                      {filename}
-                    </p>
-                  </div>
-
-                  {/* Mastery Visual & CTA */}
-                  <div className="mt-auto flex flex-col gap-4 relative z-10">
-                    <div className="flex justify-between items-end">
-                      <span className="text-sm font-semibold text-white/80">{progress}% Mastery Completed</span>
-                      <span className="text-sm font-bold text-omnave-primary">Focus Level 1</span>
-                    </div>
-                    
-                    <button 
-                      onClick={() => {
-                        setViewMode("study");
-                        setActiveTab("slides");
-                      }}
-                      className="w-full py-4 rounded-2xl bg-omnave-primary hover:bg-omnave-primary/95 text-white font-bold text-base active:scale-[0.97] active:opacity-80 transition-[background-color,opacity,box-shadow] duration-100 shadow-[0_0_25px_rgba(127,34,254,0.3)] hover:shadow-[0_0_35px_rgba(127,34,254,0.5)] flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <Play className="w-4 h-4 fill-white text-white" />
-                      Resume Study Session
-                    </button>
-                  </div>
-
-                  {/* Edge-to-Edge Progress Bar */}
-                  <div className="absolute bottom-0 left-0 right-0 h-[4px] bg-white/5 pointer-events-none">
-                    <div 
-                      className="h-full bg-gradient-to-r from-purple-600 to-omnave-primary relative shadow-[0_0_10px_rgba(127,34,254,0.8)] transition-all duration-500" 
-                      style={{ width: `${progress}%` }}
-                    >
-                      <div className="absolute right-0 top-0 bottom-0 w-6 bg-white/40 blur-[3px]" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* The "Study Modules" Bento Grid */}
-                <div className="grid grid-cols-2 gap-4 w-full mt-6 select-none">
-                  {/* Module 1: Flashcards */}
-                  <button 
-                    onClick={() => {
-                      setViewMode("study");
-                      setActiveTab("slides");
-                    }}
-                    className="flex flex-col p-5 bg-[#130E24]/60 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden hover:bg-white/[0.02] hover:border-omnave-primary/20 active:scale-[0.97] active:opacity-80 transition-[background-color,border-color,opacity] duration-100 text-left min-h-[140px] cursor-pointer group"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-omnave-primary mb-4 group-hover:border-omnave-primary/50 group-hover:shadow-[0_0_15px_rgba(127,34,254,0.3)] transition-all flex items-center justify-center">
-                      <Layers className="w-5 h-5 text-omnave-primary brightness-125" />
-                    </div>
-                    <div className="mt-auto">
-                      <h3 className="text-sm font-bold text-white group-hover:text-omnave-primary transition-colors">Flashcards</h3>
-                      <p className="text-[11px] text-white/40 font-medium mt-0.5">{flashcardCount} items</p>
-                    </div>
-                  </button>
-
-                  {/* Module 2: Practice Quiz */}
-                  <button 
-                    onClick={() => {
-                      setViewMode("study");
-                      setActiveTab("quiz");
-                    }}
-                    className="flex flex-col p-5 bg-[#130E24]/60 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden hover:bg-white/[0.02] hover:border-omnave-primary/20 active:scale-[0.97] active:opacity-80 transition-[background-color,border-color,opacity] duration-100 text-left min-h-[140px] cursor-pointer group"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-yellow-500 mb-4 group-hover:border-omnave-primary/50 group-hover:shadow-[0_0_15px_rgba(127,34,254,0.3)] transition-all flex items-center justify-center">
-                      <Target className="w-5 h-5 text-yellow-500 brightness-125" />
-                    </div>
-                    <div className="mt-auto">
-                      <h3 className="text-sm font-bold text-white group-hover:text-yellow-500 transition-colors">Practice Quiz</h3>
-                      <p className="text-[11px] text-white/40 font-medium mt-0.5">{quizCount} questions</p>
-                    </div>
-                  </button>
-
-                  {/* Module 3: Source Document */}
-                  <a 
-                    href={pdfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex flex-col p-5 bg-[#130E24]/60 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden hover:bg-white/[0.02] hover:border-omnave-primary/20 active:scale-[0.97] active:opacity-80 transition-[background-color,border-color,opacity] duration-100 text-left min-h-[140px] block cursor-pointer group"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-blue-500 mb-4 group-hover:border-omnave-primary/50 group-hover:shadow-[0_0_15px_rgba(127,34,254,0.3)] transition-all flex items-center justify-center">
-                      <FileText className="w-5 h-5 text-blue-500 brightness-125" />
-                    </div>
-                    <div className="mt-auto">
-                      <h3 className="text-sm font-bold text-white group-hover:text-blue-500 transition-colors">Original PDF</h3>
-                      <p className="text-[11px] text-white/40 font-medium mt-0.5">View source</p>
-                    </div>
-                  </a>
-
-                  {/* Module 4: AI Summary */}
-                  <button 
-                    onClick={() => {
-                      setViewMode("study");
-                      setActiveTab("summary");
-                    }}
-                    className="flex flex-col p-5 bg-[#130E24]/60 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden hover:bg-white/[0.02] hover:border-omnave-primary/20 active:scale-[0.97] active:opacity-80 transition-[background-color,border-color,opacity] duration-100 text-left min-h-[140px] cursor-pointer group"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-purple-500 mb-4 group-hover:border-omnave-primary/50 group-hover:shadow-[0_0_15px_rgba(127,34,254,0.3)] transition-all flex items-center justify-center">
-                      <Sparkles className="w-5 h-5 text-purple-500 brightness-125" />
-                    </div>
-                    <div className="mt-auto">
-                      <h3 className="text-sm font-bold text-white group-hover:text-purple-500 transition-colors">Lesson Summary</h3>
-                      <p className="text-[11px] text-white/40 font-medium mt-0.5">TL;DR Summary</p>
-                    </div>
-                  </button>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="study"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="w-full flex flex-col"
-              >
-                {!isAssessmentActive && (
-                  <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 z-50 flex flex-col gap-4">
-                    <LessonNav activeTab={activeTab} onTabChange={handleTabChange} />
-
-                    <StudySessionBanner
-                      activeTab={activeTab}
-                      flashcardCount={flashcardCount}
-                      quizCount={quizCount}
-                      studyDuration={studyDuration}
-                    />
-                  </div>
-                )}
-
-                <div className="mt-4 md:mt-6 min-h-[450px]">
-                  <AnimatePresence mode="wait">
-                    {/* 1. SUMMARY TAB */}
-                    {activeTab === "summary" && (
-                      <motion.div
-                        key="summary"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
-                        className="w-full h-full"
-                      >
-                        <SummaryTab summary={data.summary || ""} />
-                      </motion.div>
-                    )}
-
-                    {/* 2. FLASHCARDS TAB */}
-                    {activeTab === "slides" && (
-                      <motion.div
-                        key="slides"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
-                        className="w-full h-full"
-                      >
-                        <div className="pt-4 flex flex-col max-w-2xl mx-auto w-full pb-28 md:pb-16">
-                          <FlashcardEngine 
-                            lessonId={id as string} 
-                            flashcards={memoizedFlashcards} 
-                            onNavigateToQuiz={handleNavigateToQuiz} 
-                            onNavigateToSummary={handleNavigateToSummary}
-                          />
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {/* 3. QUIZ & EXAM TAB */}
-                    {(activeTab === "quiz" || activeTab === "exam") && (
-                      <motion.div
-                        key="quiz"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
-                        className="w-full h-full"
-                      >
-                        <div className="flex flex-col w-full pb-20 pt-4">
-                          <AssessmentEngine 
-                            lesson={data} 
-                            activeTab={activeTab as "quiz" | "exam"} 
-                          />
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <GamificationToast xpReward={xpReward} />
+    <main className="min-h-[100dvh] bg-slate-50 flex flex-col pb-[calc(env(safe-area-inset-bottom)+100px)] relative w-full">
+      {/* Focused Sticky Top Header */}
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-100 px-5 py-4 flex items-center justify-between shadow-sm select-none">
+        <button
+          onClick={() => router.push('/library')}
+          className="p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none border-none bg-transparent"
+          aria-label="Go back to Library"
+        >
+          <ChevronLeft size={20} />
+        </button>
+        <span className="font-bold text-gray-900 font-poppins truncate max-w-[200px]">
+          {displayTitle}
+        </span>
+        <div className="w-8 h-8 rounded-full border-2 border-purple-100 flex items-center justify-center text-[9px] font-bold text-[#6949a8]">
+          {progress}%
         </div>
-      </main>
-
-      {/* Rename Modal */}
-      <AnimatePresence>
-        {showEditModal && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowEditModal(false)}
-              className="absolute inset-0 bg-[#0A0710]/80 backdrop-blur-sm cursor-pointer"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-              className="relative w-full max-w-md bg-[#120F20]/96 border border-white/10 rounded-2xl p-6 shadow-2xl z-10"
-            >
-              <h3 className="text-lg font-bold text-white mb-4">Edit Details</h3>
-              <form onSubmit={handleRename} className="flex flex-col gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-bold text-white/40 uppercase tracking-wider">
-                    Study Kit Title
-                  </label>
-                  <input
-                    type="text"
-                    value={tempTitle}
-                    onChange={(e) => setTempTitle(e.target.value)}
-                    placeholder="Enter study kit title"
-                    className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-omnave-primary/40 transition-colors"
-                    autoFocus
-                  />
-                </div>
-                <div className="flex justify-end gap-2.5 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowEditModal(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold text-white/60 hover:text-white bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-omnave-primary hover:bg-omnave-primaryHover transition-colors shadow-lg"
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              </form>
-            </motion.div>
+      </header>
+ 
+      {/* Main Stage (Conditional Mode Render) */}
+      <div className="flex-1 w-full max-w-2xl mx-auto p-5 text-left flex flex-col">
+        {activeMode === 'summary' && (
+          <div className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.03)] border border-gray-100 p-6 md:p-8 font-poppins">
+            <MarkdownRenderer text={data.summary || "No summary content."} variant="summary" theme="light" />
           </div>
         )}
-      </AnimatePresence>
-    </motion.div>
+ 
+        {activeMode === 'flashcards' && (
+          <div className="w-full flex-1 min-h-[450px]">
+            <FlashcardEngine 
+              lessonId={id as string} 
+              flashcards={memoizedFlashcards} 
+              onNavigateToQuiz={handleNavigateToQuiz} 
+              onNavigateToSummary={handleNavigateToSummary}
+            />
+          </div>
+        )}
+ 
+        {activeMode === 'quiz' && (
+          <div className="w-full flex flex-col">
+            {/* Sticky Sub-Header Toggle */}
+            <div className="flex justify-center mb-6">
+              <div className="bg-white p-1 rounded-full border border-gray-100 shadow-[0px_4px_10px_rgba(0,0,0,0.02)] flex gap-1 font-poppins text-xs font-semibold select-none">
+                <button
+                  onClick={() => setAssessmentType('quiz')}
+                  className={`px-4 py-2 rounded-full transition-all border-none cursor-pointer duration-200 ${
+                    assessmentType === 'quiz'
+                      ? 'bg-[#6949a8] text-white shadow-sm'
+                      : 'text-gray-500 bg-transparent hover:text-gray-700'
+                  }`}
+                >
+                  Practice Quiz
+                </button>
+                <button
+                  onClick={() => {
+                    if (planType === 'free') {
+                      toast("Upgrade to Pro to unlock Exam Mode", "info");
+                    } else {
+                      setAssessmentType('exam');
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-full transition-all border-none cursor-pointer duration-200 flex items-center gap-1 ${
+                    assessmentType === 'exam'
+                      ? 'bg-[#6949a8] text-white shadow-sm'
+                      : 'text-gray-500 bg-transparent hover:text-gray-700'
+                  }`}
+                >
+                  Mock Exam {planType === 'free' && '🔒'}
+                </button>
+              </div>
+            </div>
+ 
+            <AssessmentEngine 
+              lesson={data} 
+              activeTab={assessmentType} 
+            />
+          </div>
+        )}
+ 
+        {activeMode === 'chat' && (
+          <div className="w-full h-[calc(100vh-200px)] overflow-hidden">
+            <ChatPanel
+              chatHistory={chatHistory}
+              chatInput={chatInput}
+              isChatLoading={isChatLoading}
+              chatError={chatError}
+              selectedText={selectedText}
+              onSend={handleAskQuestion}
+              onInputChange={setChatInput}
+              onClearSelectedText={() => setSelectedText("")}
+              scrollRef={chatScrollRef}
+            />
+          </div>
+        )}
+      </div>
+ 
+      {/* Floating Context Switcher (Bottom Nav Pill) */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-[320px] bg-white rounded-full shadow-[0px_10px_30px_rgba(0,0,0,0.15)] border border-gray-100 flex items-center justify-between p-1.5 font-poppins select-none">
+        <button 
+          onClick={() => setActiveMode('summary')}
+          className={`flex-1 py-2.5 flex items-center justify-center transition-all duration-200 border-none cursor-pointer ${
+            activeMode === 'summary' 
+              ? 'bg-[#6949a8] text-white rounded-full shadow-md' 
+              : 'text-gray-400 bg-transparent hover:text-gray-600'
+          }`}
+          title="Summary"
+        >
+          <FileText size={18} />
+        </button>
+        <button 
+          onClick={() => setActiveMode('flashcards')}
+          className={`flex-1 py-2.5 flex items-center justify-center transition-all duration-200 border-none cursor-pointer ${
+            activeMode === 'flashcards' 
+              ? 'bg-[#6949a8] text-white rounded-full shadow-md' 
+              : 'text-gray-400 bg-transparent hover:text-gray-600'
+          }`}
+          title="Flashcards"
+        >
+          <Zap size={18} />
+        </button>
+        <button 
+          onClick={() => setActiveMode('quiz')}
+          className={`flex-1 py-2.5 flex items-center justify-center transition-all duration-200 border-none cursor-pointer ${
+            activeMode === 'quiz' 
+              ? 'bg-[#6949a8] text-white rounded-full shadow-md' 
+              : 'text-gray-400 bg-transparent hover:text-gray-600'
+          }`}
+          title="Quiz"
+        >
+          <Target size={18} />
+        </button>
+        <button 
+          onClick={() => setActiveMode('chat')}
+          className={`flex-1 py-2.5 flex items-center justify-center transition-all duration-200 border-none cursor-pointer ${
+            activeMode === 'chat' 
+              ? 'bg-[#6949a8] text-white rounded-full shadow-md' 
+              : 'text-gray-400 bg-transparent hover:text-gray-600'
+          }`}
+          title="Tutor Chat"
+        >
+          <MessageCircle size={18} />
+        </button>
+      </div>
+    </main>
   );
 }

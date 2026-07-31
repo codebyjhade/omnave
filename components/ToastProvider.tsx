@@ -69,9 +69,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ toast }}>
       {children}
 
-      {/* Toast Stack — bottom-center, above everything */}
+      {/* Toast Stack — top-center, above everything */}
       <div
-        className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[99999] flex flex-col items-center gap-2 pointer-events-none w-max max-w-[calc(100vw-2rem)]"
+        className="fixed top-10 left-1/2 -translate-x-1/2 z-[99999] flex flex-col items-center gap-2 pointer-events-none w-max max-w-[calc(100vw-2rem)]"
         aria-live="polite"
         aria-atomic="false"
       >
@@ -80,9 +80,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             <motion.div
               key={t.id}
               layout
-              initial={{ opacity: 0, y: 16, scale: 0.94 }}
+              initial={{ opacity: 0, y: -16, scale: 0.94 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.96 }}
+              exit={{ opacity: 0, y: -16, scale: 0.96 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
               className="pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-[#1A1530]/90 border border-white/10 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] text-sm text-white font-medium select-none"
               role="status"

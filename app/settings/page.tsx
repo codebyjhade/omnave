@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/ToastProvider';
+import { createBrowserClient } from '@supabase/ssr';
 import { 
   ArrowLeft, 
   Search, 
@@ -18,11 +20,30 @@ import {
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { toast } = useToast();
 
   // Local state for toggle switches to make it feel responsive
-  const [darkMode, setDarkMode] = useState(false);
-  const [pushNotifications, setPushNotifications] = useState(true);
-  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [pushNotif, setPushNotif] = useState(true);
+  const [emailNotif, setEmailNotif] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    if (isSigningOut) return;
+    try {
+      setIsSigningOut(true);
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Error signing out:", error);
+      setIsSigningOut(false);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-slate-50 text-gray-900 pb-[100px] font-sans antialiased">
@@ -55,12 +76,15 @@ export default function SettingsPage() {
         </h2>
         <div className="bg-white rounded-[20px] shadow-[0px_4px_10px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden">
           {/* Language Row */}
-          <div className="flex items-center justify-between p-4 bg-white border-b border-gray-50 last:border-none">
+          <div 
+            onClick={() => toast("This feature is coming soon!", "info")}
+            className="flex items-center justify-between p-4 bg-white border-b border-gray-50 last:border-none cursor-pointer hover:bg-gray-50/50 transition-colors group"
+          >
             <div className="flex items-center">
               <div className="w-10 h-10 rounded-xl bg-[#6949a8]/10 flex items-center justify-center shrink-0 mr-4">
                 <Globe className="text-[#6949a8]" size={20} />
               </div>
-              <span className="text-[14px] font-semibold text-gray-800 font-poppins">
+              <span className="text-[14px] font-semibold text-gray-800 font-poppins group-hover:text-[#6949a8] transition-colors">
                 Language
               </span>
             </div>
@@ -83,17 +107,20 @@ export default function SettingsPage() {
               </span>
             </div>
             <button
-              onClick={() => setDarkMode(!darkMode)}
+              onClick={() => {
+                setIsDarkMode(!isDarkMode);
+                toast("Dark mode is arriving in v2.0!", "info");
+              }}
               className={`w-12 h-7 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
-                darkMode ? "bg-[#6949a8]" : "bg-gray-200"
+                isDarkMode ? "bg-[#6949a8]" : "bg-gray-200"
               }`}
               role="switch"
-              aria-checked={darkMode}
+              aria-checked={isDarkMode}
               aria-label="Dark Mode Toggle"
             >
               <div
                 className={`absolute top-[4px] left-[4px] w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
-                  darkMode ? "translate-x-5" : "translate-x-0"
+                  isDarkMode ? "translate-x-5" : "translate-x-0"
                 }`}
               />
             </button>
@@ -116,17 +143,20 @@ export default function SettingsPage() {
               </span>
             </div>
             <button
-              onClick={() => setPushNotifications(!pushNotifications)}
+              onClick={() => {
+                setPushNotif(!pushNotif);
+                toast("Notification preferences updated locally.", "success");
+              }}
               className={`w-12 h-7 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
-                pushNotifications ? "bg-[#6949a8]" : "bg-gray-200"
+                pushNotif ? "bg-[#6949a8]" : "bg-gray-200"
               }`}
               role="switch"
-              aria-checked={pushNotifications}
+              aria-checked={pushNotif}
               aria-label="Push Notifications Toggle"
             >
               <div
                 className={`absolute top-[4px] left-[4px] w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
-                  pushNotifications ? "translate-x-5" : "translate-x-0"
+                  pushNotif ? "translate-x-5" : "translate-x-0"
                 }`}
               />
             </button>
@@ -143,17 +173,20 @@ export default function SettingsPage() {
               </span>
             </div>
             <button
-              onClick={() => setEmailNotifications(!emailNotifications)}
+              onClick={() => {
+                setEmailNotif(!emailNotif);
+                toast("Notification preferences updated locally.", "success");
+              }}
               className={`w-12 h-7 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
-                emailNotifications ? "bg-[#6949a8]" : "bg-gray-200"
+                emailNotif ? "bg-[#6949a8]" : "bg-gray-200"
               }`}
               role="switch"
-              aria-checked={emailNotifications}
+              aria-checked={emailNotif}
               aria-label="Email Notifications Toggle"
             >
               <div
                 className={`absolute top-[4px] left-[4px] w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
-                  emailNotifications ? "translate-x-5" : "translate-x-0"
+                  emailNotif ? "translate-x-5" : "translate-x-0"
                 }`}
               />
             </button>
@@ -166,7 +199,10 @@ export default function SettingsPage() {
         </h2>
         <div className="bg-white rounded-[20px] shadow-[0px_4px_10px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden">
           {/* Privacy & Security Row */}
-          <div className="flex items-center justify-between p-4 bg-white border-b border-gray-50 last:border-none cursor-pointer hover:bg-gray-50/50 transition-colors group">
+          <div 
+            onClick={() => toast("This feature is coming soon!", "info")}
+            className="flex items-center justify-between p-4 bg-white border-b border-gray-50 last:border-none cursor-pointer hover:bg-gray-50/50 transition-colors group"
+          >
             <div className="flex items-center">
               <div className="w-10 h-10 rounded-xl bg-[#6949a8]/10 flex items-center justify-center shrink-0 mr-4">
                 <Lock className="text-[#6949a8]" size={20} />
@@ -179,7 +215,10 @@ export default function SettingsPage() {
           </div>
 
           {/* Help & Support Row */}
-          <div className="flex items-center justify-between p-4 bg-white border-b border-gray-50 last:border-none cursor-pointer hover:bg-gray-50/50 transition-colors group">
+          <div 
+            onClick={() => toast("This feature is coming soon!", "info")}
+            className="flex items-center justify-between p-4 bg-white border-b border-gray-50 last:border-none cursor-pointer hover:bg-gray-50/50 transition-colors group"
+          >
             <div className="flex items-center">
               <div className="w-10 h-10 rounded-xl bg-[#6949a8]/10 flex items-center justify-center shrink-0 mr-4">
                 <HelpCircle className="text-[#6949a8]" size={20} />
@@ -192,7 +231,10 @@ export default function SettingsPage() {
           </div>
 
           {/* Legal Row */}
-          <div className="flex items-center justify-between p-4 bg-white border-b border-gray-50 last:border-none cursor-pointer hover:bg-gray-50/50 transition-colors group">
+          <div 
+            onClick={() => toast("This feature is coming soon!", "info")}
+            className="flex items-center justify-between p-4 bg-white border-b border-gray-50 last:border-none cursor-pointer hover:bg-gray-50/50 transition-colors group"
+          >
             <div className="flex items-center">
               <div className="w-10 h-10 rounded-xl bg-[#6949a8]/10 flex items-center justify-center shrink-0 mr-4">
                 <ShieldCheck className="text-[#6949a8]" size={20} />
@@ -205,17 +247,21 @@ export default function SettingsPage() {
           </div>
 
           {/* Logout / Delete Account Row */}
-          <div className="flex items-center justify-between p-4 bg-white border-b border-gray-50 last:border-none cursor-pointer hover:bg-red-50/40 transition-colors group">
+          <button 
+            disabled={isSigningOut}
+            onClick={handleSignOut}
+            className="w-full flex items-center justify-between p-4 bg-white border-b border-gray-50 last:border-none cursor-pointer hover:bg-red-50/40 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed border-none text-left"
+          >
             <div className="flex items-center">
               <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0 mr-4">
                 <LogOut className="text-red-500" size={20} />
               </div>
               <span className="text-[14px] font-semibold text-red-500 font-poppins group-hover:text-red-600 transition-colors">
-                Logout / Delete Account
+                {isSigningOut ? "Logging out..." : "Logout / Delete Account"}
               </span>
             </div>
             <ChevronRight className="text-red-400" size={18} />
-          </div>
+          </button>
         </div>
 
       </div>
