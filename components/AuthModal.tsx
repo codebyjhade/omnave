@@ -187,34 +187,72 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
     event.preventDefault();
     setError(null);
 
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+    // Strip ALL spaces, quotes, and hidden formatting characters (\r, \n)
+    const supabaseUrl = rawUrl.replace(/[\s'"\r\n]/g, '');
+    const supabaseKey = rawKey.replace(/[\s'"\r\n]/g, '');
+
+    if (!supabaseUrl || !supabaseKey) {
+      setError("Config Error: Supabase keys are missing from browser memory. Hard restart the dev server.");
+      return;
+    }
+    if (!supabaseUrl.startsWith('http')) {
+      setError(`Config Error: URL must start with https://. Current value: "${supabaseUrl}"`);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      await fetch(`${supabaseUrl}/auth/v1/health`, { 
+        method: 'GET',
+        headers: { 'apikey': supabaseKey }
+      });
+    } catch (nativeError: any) {
+      console.error("NATIVE FETCH FAILED:", nativeError);
+      setError(`Native Browser Error: ${nativeError.message || 'Failed to fetch'}. Check console for hidden blocks.`);
+      setIsLoading(false);
+      return;
+    }
+
+    const supabase = createBrowserClient(supabaseUrl, supabaseKey);
 
     if (authStep === 'signup') {
       if (!email || !password || !fullName) {
         setError('Please fill in all fields.');
+        setIsLoading(false);
         return;
       }
       if (!isPasswordValid) {
         setError('Please satisfy all password criteria.');
+        setIsLoading(false);
         return;
       }
-      setIsLoading(true);
       try {
-        const { error: authError } = await supabase.auth.signUp({
+        const { data, error: authError } = await supabase.auth.signUp({
           email,
           password,
-          options: {
-            data: { full_name: fullName },
-          },
+          options: { data: { full_name: fullName } },
         });
 
         if (authError) throw authError;
 
-        setAuthStep('verify');
-        toast('Verification email sent! Please check your inbox.', 'success');
+        if (data?.session) {
+          // Auto-Login Bypass (Email Confirmations are OFF)
+          setAuthStep('success');
+          const onboardingComplete = !!data.user?.user_metadata?.onboarding_complete;
+          
+          setTimeout(() => {
+            onClose();
+            window.location.href = onboardingComplete ? '/home' : '/welcome';
+          }, 1500);
+        } else {
+          // Standard Flow (Email Confirmations are ON)
+          setAuthStep('verify');
+          toast('Verification email sent! Please check your inbox.', 'success');
+        }
       } catch (err: any) {
         console.error("Supabase SignUp Error:", err);
         
@@ -242,9 +280,9 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
     } else if (authStep === 'verify') {
       if (!otpToken || otpToken.length < 8) {
         setError('Please enter the 8-digit verification code.');
+        setIsLoading(false);
         return;
       }
-      setIsLoading(true);
       try {
         const { data, error: verifyError } = await supabase.auth.verifyOtp({
           email,
@@ -286,10 +324,10 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
     } else if (authStep === 'signin') {
       if (!email || !password) {
         setError('Please enter your email and password.');
+        setIsLoading(false);
         return;
       }
 
-      setIsLoading(true);
       try {
         const { data: { user }, error: authError } = await supabase.auth.signInWithPassword({
           email,
@@ -334,10 +372,12 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
     setError(null);
 
     try {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
+      const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+      const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+      const supabaseUrl = rawUrl.replace(/[\s'"\r\n]/g, '');
+      const supabaseKey = rawKey.replace(/[\s'"\r\n]/g, '');
+
+      const supabase = createBrowserClient(supabaseUrl, supabaseKey);
       const { error: resendError } = await supabase.auth.resend({
         type: 'signup',
         email,
@@ -357,10 +397,12 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
   const handleGoogleLogin = async () => {
     setError(null);
     try {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
+      const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+      const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+      const supabaseUrl = rawUrl.replace(/[\s'"\r\n]/g, '');
+      const supabaseKey = rawKey.replace(/[\s'"\r\n]/g, '');
+
+      const supabase = createBrowserClient(supabaseUrl, supabaseKey);
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -462,7 +504,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                       ? 'Confirm email.'
                       : 'Create workspace.'}
                 </h2>
-                <p id="auth-modal-description" className="mt-2 text-sm text-gray-500 max-w-[420px]">
+                <p id="auth-modal-description" className="mt-2 text-sm text-gray-550 max-w-[420px]">
                   {authStep === 'signin'
                     ? 'Pick up your learning flow exactly where you left off.'
                     : authStep === 'verify'
