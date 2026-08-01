@@ -31,7 +31,7 @@ export const ExamSetup = React.memo(function ExamSetup({ maxQuestions, onStartEx
       </div>
  
       {/* Configuration Card */}
-      <div className="bg-white border border-gray-100 rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-6 sm:p-10 relative overflow-hidden">
+      <div className="p-6 sm:p-10 relative overflow-hidden bg-transparent">
         
         {/* Background warning glow */}
         <div className="absolute -top-32 -right-32 w-80 h-80 bg-amber-500/5 blur-[100px] rounded-full pointer-events-none" />

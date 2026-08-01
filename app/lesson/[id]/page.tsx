@@ -223,79 +223,77 @@ export default function LessonView() {
  
       {/* Main Stage (Conditional Mode Render) */}
       <div className="flex-1 w-full max-w-2xl mx-auto p-5 text-left flex flex-col">
-        {activeMode === 'summary' && (
-          <div className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.03)] border border-gray-100 p-6 md:p-8 font-poppins">
-            <MarkdownRenderer text={data.summary || "No summary content."} variant="summary" theme="light" />
-          </div>
-        )}
- 
-        {activeMode === 'flashcards' && (
-          <div className="w-full flex-1 min-h-[450px]">
-            <FlashcardEngine 
-              lessonId={id as string} 
-              flashcards={memoizedFlashcards} 
-              onNavigateToQuiz={handleNavigateToQuiz} 
-              onNavigateToSummary={handleNavigateToSummary}
-            />
-          </div>
-        )}
- 
-        {activeMode === 'quiz' && (
-          <div className="w-full flex flex-col">
-            {/* Sticky Sub-Header Toggle */}
-            <div className="flex justify-center mb-6">
-              <div className="bg-white p-1 rounded-full border border-gray-100 shadow-[0px_4px_10px_rgba(0,0,0,0.02)] flex gap-1 font-poppins text-xs font-semibold select-none">
-                <button
-                  onClick={() => setAssessmentType('quiz')}
-                  className={`px-4 py-2 rounded-full transition-all border-none cursor-pointer duration-200 ${
-                    assessmentType === 'quiz'
-                      ? 'bg-[#6949a8] text-white shadow-sm'
-                      : 'text-gray-500 bg-transparent hover:text-gray-700'
-                  }`}
-                >
-                  Practice Quiz
-                </button>
-                <button
-                  onClick={() => {
-                    if (planType === 'free') {
-                      toast("Upgrade to Pro to unlock Exam Mode", "info");
-                    } else {
-                      setAssessmentType('exam');
-                    }
-                  }}
-                  className={`px-4 py-2 rounded-full transition-all border-none cursor-pointer duration-200 flex items-center gap-1 ${
-                    assessmentType === 'exam'
-                      ? 'bg-[#6949a8] text-white shadow-sm'
-                      : 'text-gray-500 bg-transparent hover:text-gray-700'
-                  }`}
-                >
-                  Mock Exam {planType === 'free' && '🔒'}
-                </button>
-              </div>
+        <div className="flex-1 w-full bg-white rounded-[32px] shadow-[0px_10px_40px_rgba(0,0,0,0.06)] border border-gray-100 overflow-hidden flex flex-col mb-4 mt-2">
+          {activeMode === 'summary' && (
+            <div className="flex-1 w-full overflow-y-auto p-6 md:p-8 font-poppins">
+              <MarkdownRenderer text={data.summary || "No summary content."} variant="summary" theme="light" />
             </div>
+          )}
  
-            <AssessmentEngine 
-              lesson={data} 
-              activeTab={assessmentType} 
-            />
-          </div>
-        )}
+          {activeMode === 'flashcards' && (
+            <div className="w-full flex-1 min-h-[450px] p-6">
+              <FlashcardEngine 
+                lessonId={id as string} 
+                flashcards={memoizedFlashcards} 
+                onNavigateToQuiz={handleNavigateToQuiz} 
+                onNavigateToSummary={handleNavigateToSummary}
+              />
+            </div>
+          )}
  
-        {activeMode === 'chat' && (
-          <div className="w-full h-[calc(100vh-200px)] overflow-hidden">
-            <ChatPanel
-              chatHistory={chatHistory}
-              chatInput={chatInput}
-              isChatLoading={isChatLoading}
-              chatError={chatError}
-              selectedText={selectedText}
-              onSend={handleAskQuestion}
-              onInputChange={setChatInput}
-              onClearSelectedText={() => setSelectedText("")}
-              scrollRef={chatScrollRef}
-            />
-          </div>
-        )}
+          {activeMode === 'quiz' && (
+            <div className="w-full flex-1 flex flex-col overflow-y-auto p-6">
+              {/* Sticky Sub-Header Toggle */}
+              <div className="flex justify-center mb-6">
+                <div className="bg-gray-50 p-1 rounded-full border border-gray-100 shadow-[0px_4px_10px_rgba(0,0,0,0.02)] flex gap-1 font-poppins text-xs font-semibold select-none">
+                  <button
+                    onClick={() => setAssessmentType('quiz')}
+                    className={`px-4 py-2 rounded-full transition-all border-none cursor-pointer duration-200 ${
+                      assessmentType === 'quiz'
+                        ? 'bg-[#6949a8] text-white shadow-sm'
+                        : 'text-gray-500 bg-transparent hover:text-gray-700'
+                    }`}
+                  >
+                    Practice Quiz
+                  </button>
+                  <button
+                    onClick={() => {
+                      toast("Mock Exam mode is coming soon!", "info");
+                    }}
+                    className={`px-4 py-2 rounded-full transition-all border-none cursor-pointer duration-200 flex items-center gap-1 ${
+                      assessmentType === 'exam'
+                        ? 'bg-[#6949a8] text-white shadow-sm'
+                        : 'text-gray-555 bg-transparent hover:text-gray-700'
+                    }`}
+                  >
+                    Mock Exam {planType === 'free' && '🔒'}
+                  </button>
+                </div>
+              </div>
+ 
+              <AssessmentEngine 
+                lesson={data} 
+                activeTab={assessmentType} 
+              />
+            </div>
+          )}
+ 
+          {activeMode === 'chat' && (
+            <div className="w-full flex-1 overflow-hidden flex flex-col">
+              <ChatPanel
+                chatHistory={chatHistory}
+                chatInput={chatInput}
+                isChatLoading={isChatLoading}
+                chatError={chatError}
+                selectedText={selectedText}
+                onSend={handleAskQuestion}
+                onInputChange={setChatInput}
+                onClearSelectedText={() => setSelectedText("")}
+                scrollRef={chatScrollRef}
+              />
+            </div>
+          )}
+        </div>
       </div>
  
       {/* Floating Context Switcher (Bottom Nav Pill) */}

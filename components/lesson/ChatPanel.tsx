@@ -78,9 +78,9 @@ export const ChatPanel = memo(function ChatPanel({
   };
  
   return (
-    <div className="bg-white border border-gray-100 rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] overflow-hidden flex flex-col h-auto lg:h-[calc(100vh-140px)] lg:sticky lg:top-[100px] w-full font-poppins text-left">
+    <div className="flex-1 w-full h-full flex flex-col font-poppins text-left bg-transparent">
       {/* Chat Header */}
-      <div className="flex items-center space-x-2 px-5 py-4 border-b border-gray-100 bg-gray-50/20 shrink-0">
+      <div className="flex items-center space-x-2 px-5 py-4 bg-white border-b border-gray-100 shrink-0">
         <div className="w-8 h-8 rounded-full bg-purple-50 border border-purple-100 flex items-center justify-center">
           <Sparkles size={14} className="text-[#6949a8]" />
         </div>
@@ -94,7 +94,7 @@ export const ChatPanel = memo(function ChatPanel({
       <div ref={scrollRef} className="p-5 flex-1 overflow-y-auto flex flex-col space-y-6 scroll-smooth select-text bg-white">
         {chatHistory.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-6 py-8 space-y-5 select-none bg-white">
-            <div className="w-12 h-12 bg-purple-50 border border-purple-100 rounded-2xl flex items-center justify-center text-[#6949a8] shadow-sm">
+            <div className="bg-purple-50 text-[#6949a8] p-3 rounded-2xl flex items-center justify-center">
               <MessageSquare size={22} />
             </div>
             <div className="space-y-1">
@@ -105,12 +105,12 @@ export const ChatPanel = memo(function ChatPanel({
             </div>
             <div className="w-full max-w-xs text-left bg-gray-50 p-4 rounded-[15px] border border-gray-100 space-y-2">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Try asking:</p>
-              <ul className="space-y-2 text-xs font-semibold text-gray-600">
+              <ul className="space-y-2 text-xs font-semibold text-gray-650">
                 {["Explain this topic", "Give examples", "Make a quiz", "Simplify this paragraph"].map((exampleText, eIdx) => (
                   <li
                     key={eIdx}
                     onClick={() => onInputChange(exampleText)}
-                    className="flex items-center space-x-1.5 cursor-pointer hover:text-[#6949a8] transition-colors duration-155"
+                    className="flex items-center space-x-1.5 cursor-pointer hover:bg-purple-50 hover:text-[#6949a8] p-1.5 rounded-lg transition-all"
                   >
                     <ChevronRight size={12} className="text-[#6949a8] shrink-0" />
                     <span>&ldquo;{exampleText}&rdquo;</span>
@@ -127,8 +127,8 @@ export const ChatPanel = memo(function ChatPanel({
                   className={`
                     p-5 max-w-[85%] text-sm leading-relaxed shadow-sm group relative
                     ${msg.role === "user"
-                      ? "bg-[#6949a8] text-white rounded-3xl rounded-tr-sm border border-[#6949a8] shadow-sm"
-                      : "bg-white text-gray-800 rounded-3xl rounded-tl-sm border border-gray-100 shadow-sm"
+                      ? "bg-[#6949a8] text-white rounded-3xl rounded-tr-sm"
+                      : "bg-gray-55 border border-gray-100 text-gray-800 rounded-3xl rounded-tl-sm"
                     }
                   `}
                 >
@@ -235,7 +235,7 @@ export const ChatPanel = memo(function ChatPanel({
       </div>
  
       {/* Input & Smart Chips Area */}
-      <div className="p-4 pb-28 lg:pb-4 bg-white border-t border-gray-100 shrink-0">
+      <div className="p-4 bg-white border-t border-gray-100 shrink-0">
         {/* Highlight Selection Chip */}
         <AnimatePresence>
           {selectedText && (
@@ -308,23 +308,25 @@ export const ChatPanel = memo(function ChatPanel({
             Daily message limit reached. Upgrade to Pro for unlimited chat.
           </button>
         ) : (
-          <div className="flex space-x-2 items-end">
-            <textarea
-              value={chatInput}
-              onChange={(e) => onInputChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              maxLength={1000}
-              placeholder="Ask a question..."
-              className="flex-1 bg-gray-50 text-gray-900 text-sm rounded-2xl px-5 py-4 h-14 outline-none focus:ring-2 focus:ring-[#6949a8]/30 transition-all duration-150 border border-gray-200 resize-none overflow-y-auto scrollbar-hide"
-              aria-label="Ask the AI tutor a question"
-            />
+          <div className="flex space-x-2 items-center">
+            <div className="bg-gray-50 border border-gray-200 p-1.5 pl-5 rounded-full flex items-center gap-2 flex-1">
+              <textarea
+                value={chatInput}
+                onChange={(e) => onInputChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                maxLength={1000}
+                placeholder="Ask a question..."
+                className="bg-transparent border-none flex-1 outline-none resize-none h-6 overflow-y-auto scrollbar-hide text-sm text-gray-900"
+                aria-label="Ask the AI tutor a question"
+              />
+            </div>
             <button
               onClick={() => onSend()}
               disabled={isChatLoading || !chatInput.trim()}
-              className="bg-[#6949a8] text-white px-6 h-14 rounded-2xl font-bold border-none hover:bg-[#6949a8]/90 transition-all duration-150 disabled:opacity-50 active:scale-95 shadow-sm flex items-center justify-center shrink-0 cursor-pointer"
+              className="w-10 h-10 shrink-0 rounded-full bg-[#6949a8] flex items-center justify-center text-white border-none hover:bg-[#6949a8]/90 transition-all disabled:opacity-50 active:scale-95 cursor-pointer"
               aria-label="Send message"
             >
-              <Send size={18} />
+              <Send size={16} />
             </button>
           </div>
         )}

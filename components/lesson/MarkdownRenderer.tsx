@@ -132,7 +132,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ text, className
       flushList();
       const headingText = trimmed.substring(2);
       elements.push(
-        <h1 key={`h1-${key++}`} className={`text-xl font-black mt-12 mb-6 tracking-tight ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>
+        <h1 key={`h1-${key++}`} className={`text-xl font-black mt-12 mb-6 tracking-tight ${theme === 'light' ? 'text-[#6949a8]' : 'text-white'}`}>
           {parseInlineMarkdown(headingText, theme)}
         </h1>
       );
@@ -144,7 +144,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ text, className
       const headingText = trimmed.substring(3);
       elements.push(
         <h2 key={`h2-${key++}`} className={`text-lg font-extrabold mt-10 mb-4 tracking-tight flex items-center gap-2 border-b pb-2 ${
-          theme === 'light' ? 'text-gray-800 border-gray-100' : 'text-white border-white/5'
+          theme === 'light' ? 'text-[#6949a8] border-gray-100' : 'text-white border-white/5'
         }`}>
           {parseInlineMarkdown(headingText, theme)}
         </h2>

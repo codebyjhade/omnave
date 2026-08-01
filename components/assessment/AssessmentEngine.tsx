@@ -92,6 +92,40 @@ const prepareScrambledAssessment = (generated: GeneratedQuestion[]) => {
   return scrambledQuestions;
 };
  
+const transformQuestion = (q: GeneratedQuestion, targetFormat: string): GeneratedQuestion => {
+  const copy: GeneratedQuestion = JSON.parse(JSON.stringify(q));
+  const normFormat = targetFormat.toLowerCase().replace(/[^a-z0-9]/g, '');
+  
+  if (normFormat === 'identification') {
+    copy.type = 'identification';
+    copy.options = [];
+    return copy;
+  }
+  
+  if (normFormat === 'truefalse') {
+    copy.type = 'true-false';
+    copy.options = ['True', 'False'];
+    
+    const isTrue = Math.random() > 0.5;
+    const cleanQText = copy.question.replace(/\?$/, "").trim();
+    
+    if (isTrue) {
+      copy.question = `Is it true that ${cleanQText} is "${copy.correctAnswer}"?`;
+      copy.correctAnswer = 'True';
+    } else {
+      const wrongAnswers = (copy.options || []).filter(o => o !== copy.correctAnswer);
+      const wrongAns = wrongAnswers.length > 0 
+        ? wrongAnswers[Math.floor(Math.random() * wrongAnswers.length)] 
+        : "something else";
+      copy.question = `Is it true that ${cleanQText} is "${wrongAns}"?`;
+      copy.correctAnswer = 'False';
+    }
+    return copy;
+  }
+  
+  return copy;
+};
+ 
 export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, activeTab }: AssessmentEngineProps) {
   const { user, updateStatsAfterQuiz } = useUserContext();
   const { 
@@ -106,6 +140,12 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
   // Engine States
   const [gameState, setGameState] = useState<AssessmentState>("setup");
   const [mode, setMode] = useState<AssessmentMode>("quiz");
+ 
+  // Configuration States
+  const [selectedFormats, setSelectedFormats] = useState<string[]>(['multiple-choice']);
+  const [sessionLength, setSessionLength] = useState<number>(15);
+  const [focusArea, setFocusArea] = useState<string>('random');
+  const potentialXp = sessionLength * 10;
   
   // Playing States
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
@@ -172,11 +212,24 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
   }, [gameState, setSaveAndExitHandler, setAbandonHandler, setIsAssessmentActive]);
  
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(`omnilearn:assessment:state:${lesson.id}`);
-      if (saved) setHasSavedSession(true);
-    } catch {}
-  }, [lesson.id]);
+    if (gameState === "setup") {
+      try {
+        const saved = localStorage.getItem(`omnilearn:assessment:state:${lesson.id}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.questions && parsed.questions.length > 0) {
+            setHasSavedSession(true);
+          } else {
+            setHasSavedSession(false);
+          }
+        } else {
+          setHasSavedSession(false);
+        }
+      } catch {
+        setHasSavedSession(false);
+      }
+    }
+  }, [gameState, lesson.id]);
  
   useEffect(() => {
     if (gameState !== "playing") return;
@@ -253,14 +306,52 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
     setHasSavedSession(false);
   }, []);
  
-  const handleStartQuiz = useCallback((config: { count: number; focus: "random" | "weakness"; types: string[] }) => {
+  const generateQuizSession = useCallback(() => {
     setMode("quiz");
-    const generated = generateAssessment(
-      lesson.quizzes, lesson.summary || "", "quiz", config.count, "moderate", config.types, "recommended", {}
+    
+    const allQuizzes = (lesson.quizzes || []) as GeneratedQuestion[];
+    
+    // Filter naturally matching
+    const filteredArray = allQuizzes.filter((q: GeneratedQuestion) => 
+      q.type && selectedFormats.some(f => {
+        const normQ = q.type.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const normF = f.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return normQ === normF;
+      })
     );
-    setQuestions(prepareScrambledAssessment(generated));
-    resetPlayState(0, 0); 
-  }, [lesson.quizzes, lesson.summary, resetPlayState]);
+    
+    let combinedArray = [...filteredArray];
+    
+    if (combinedArray.length < sessionLength) {
+      const deficit = sessionLength - combinedArray.length;
+      const unmatchedArray = allQuizzes.filter(q => !filteredArray.includes(q));
+      const shuffledUnmatched = [...unmatchedArray].sort(() => Math.random() - 0.5);
+      
+      for (let i = 0; i < Math.min(deficit, shuffledUnmatched.length); i++) {
+        const targetFormat = selectedFormats[Math.floor(Math.random() * selectedFormats.length)];
+        const transformed = transformQuestion(shuffledUnmatched[i], targetFormat);
+        combinedArray.push(transformed);
+      }
+    }
+    
+    // Sort / Focus
+    const sortedArray = [...combinedArray];
+    if (focusArea === "weaknesses" || focusArea === "weakness") {
+      sortedArray.sort((a, b) => {
+        const aVal = a.difficulty?.toLowerCase() === "hard" ? 1 : 0;
+        const bVal = b.difficulty?.toLowerCase() === "hard" ? 1 : 0;
+        return bVal - aVal;
+      });
+    } else {
+      sortedArray.sort(() => Math.random() - 0.5);
+    }
+    
+    // Slice
+    const finalQuizDeck = sortedArray.slice(0, sessionLength);
+    
+    setQuestions(prepareScrambledAssessment(finalQuizDeck));
+    resetPlayState(0, 0);
+  }, [lesson.quizzes, selectedFormats, focusArea, sessionLength, resetPlayState]);
  
   const handleStartExam = useCallback((config: { count: number; timeLimit: number; difficulty: string }) => {
     setMode("mock");
@@ -296,9 +387,11 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
     setCompletedTime(timeSpent);
     clearSavedSession();
  
-    const baseXP = mode === "mock" ? 45 : 15;
+    const baseXP = mode === "mock" ? 45 : potentialXp;
     const isPerfect = correctCount === questions.length;
-    const totalXP = baseXP + (isPerfect ? 20 : 0);
+    const totalXP = mode === "mock"
+      ? baseXP + (isPerfect ? 20 : 0)
+      : Math.round((questions.length > 0 ? (correctCount / questions.length) : 0) * potentialXp);
     setXpAwarded(totalXP);
     setGameState("results");
  
@@ -366,111 +459,134 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
   const workspaceContent = (
     <div className={`w-full max-w-4xl mx-auto space-y-6 select-none text-left relative font-poppins ${isZenMode ? "mt-24 pb-24" : ""}`}>
       
+      {/* Restore Banner */}
+      {hasSavedSession && gameState === "setup" && (
+        <div className="bg-amber-50 border border-amber-100 rounded-[24px] p-5 flex flex-col sm:flex-row items-center justify-between gap-4 mb-8 w-full shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center gap-3">
+            <RefreshCw className="w-5 h-5 text-amber-600 animate-spin" />
+            <div className="leading-tight text-left">
+              <h4 className="text-xs font-black text-amber-600">Unfinished Session Found</h4>
+              <p className="text-[10px] text-amber-500/70 mt-0.5 font-medium">Continue where you left off.</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => { clearSavedSession(); setHasSavedSession(false); }} 
+              className="h-10 px-5 border border-gray-200 text-xs font-semibold text-gray-555 rounded-full hover:bg-gray-50 cursor-pointer bg-white transition-all"
+            >
+              Delete
+            </button>
+            <button 
+              onClick={handleResumeSession} 
+              className="h-10 px-6 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-full cursor-pointer border-none shadow-sm transition-all"
+            >
+              Resume
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 1. SETUP SCREENS */}
       {gameState === "setup" && activeTab === "quiz" && (
-        <QuizSetup onStartQuiz={handleStartQuiz} />
+        <QuizSetup 
+          selectedFormats={selectedFormats}
+          setSelectedFormats={setSelectedFormats}
+          sessionLength={sessionLength}
+          setSessionLength={setSessionLength}
+          focusArea={focusArea}
+          setFocusArea={setFocusArea}
+          potentialXp={potentialXp}
+          onStartQuiz={generateQuizSession}
+        />
       )}
  
       {gameState === "setup" && activeTab === "exam" && (
         <ExamSetup maxQuestions={lesson.quizzes?.length || 0} onStartExam={handleStartExam} />
       )}
  
-      {/* Restore Banner */}
-      {hasSavedSession && gameState === "setup" && (
-        <div className="bg-amber-50 border border-amber-100 rounded-[24px] p-5 flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
-          <div className="flex items-center gap-3">
-            <RefreshCw className="w-5 h-5 text-amber-600 animate-spin" />
-            <div className="leading-tight">
-              <h4 className="text-xs font-black text-amber-600">Unfinished Session Found</h4>
-              <p className="text-[10px] text-amber-500/70 mt-0.5 font-medium">Continue where you left off.</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => { clearSavedSession(); setHasSavedSession(false); }} className="h-9 px-4 border border-gray-200 text-[10px] font-bold text-gray-500 rounded-xl hover:bg-gray-50 cursor-pointer bg-white">
-              Delete
-            </button>
-            <button onClick={handleResumeSession} className="h-9 px-5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black rounded-xl cursor-pointer border-none shadow-sm">
-              Resume
-            </button>
-          </div>
-        </div>
-      )}
- 
       {/* 2. PLAYING WORKSPACE */}
       {gameState === "playing" && questions[currentIdx] && (
         mode === "quiz" ? (
           <div className="fixed inset-0 z-[100] bg-slate-50 overflow-y-auto flex flex-col min-h-[100dvh] w-full select-none text-left font-poppins">
-            {/* THE SAFE-AREA ESCAPE HATCH */}
-            <div className="absolute top-0 left-0 w-full p-4 sm:p-8 pt-[max(1rem,env(safe-area-inset-top))] z-50 pointer-events-none">
-              <button 
-                onClick={() => {
-                  if (abandonHandler) abandonHandler();
-                }}
-                className="pointer-events-auto inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-red-50 hover:text-red-650 hover:border-red-200 transition-colors active:scale-[0.97] cursor-pointer"
-              >
-                <span className="text-[11px] font-bold tracking-widest uppercase">✖ End Session</span>
-              </button>
-            </div>
- 
             {/* PERFECTLY CENTERED CARD CONTAINER */}
-            <div className="flex-1 flex items-center justify-center w-full p-4 pt-20 pb-[env(safe-area-inset-bottom)]">
-              <div className="w-full max-w-2xl bg-white border border-gray-100 rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-6 md:p-8 space-y-6 relative">
+            <div className="flex-1 flex items-center justify-center w-full p-4 pt-6 pb-[env(safe-area-inset-bottom)]">
+              <div className="w-full max-w-2xl bg-white border border-gray-100 rounded-[32px] shadow-sm p-6 space-y-6 relative">
+                {/* Header with End Session */}
+                <div className="flex justify-between items-center select-none pb-2">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Practice Quiz</span>
+                  <button 
+                    onClick={() => {
+                      setShowAbortModal(true);
+                    }}
+                    className="text-red-400 hover:text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-full text-xs font-bold flex items-center transition-all border-none cursor-pointer"
+                  >
+                    ✖ End Session
+                  </button>
+                </div>
                 
                 {/* Progress bar */}
                 <div className="w-full bg-gray-50 rounded-[15px] p-3 flex items-center gap-3">
                   <div className="flex-1 bg-gray-200 h-1.5 rounded-full overflow-hidden">
                     <div className="bg-[#6949a8] h-full w-full rounded-full transition-transform duration-300 transform-gpu origin-left" style={{ transform: `scaleX(${(currentIdx + 1) / questions.length})` }} />
                   </div>
-                  <span className="text-[10px] font-extrabold text-gray-500">Q{currentIdx + 1}/{questions.length}</span>
+                  <div className="flex items-center">
+                    {userAnswers[currentIdx] ? <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2" /> : <span className="w-2 h-2 rounded-full bg-gray-300 mr-2" />}
+                    <span className="text-[10px] font-extrabold text-gray-555">Q{currentIdx + 1}/{questions.length}</span>
+                  </div>
                 </div>
  
                 <div className="flex justify-between items-start gap-4">
                   <div className="space-y-2">
                     <span className="px-2 py-0.5 bg-purple-50 border border-purple-100 rounded text-[9px] font-bold text-[#6949a8] uppercase tracking-widest select-none">
-                      {questions[currentIdx].type?.replace("-", " ") || "Question"}
+                      {(() => {
+                        const hasOptions = questions[currentIdx].options && questions[currentIdx].options.length > 0;
+                        return (questions[currentIdx].type || (hasOptions ? "Multiple Choice" : "Identification"))?.replace("-", " ");
+                      })()}
                     </span>
                     <h3 className="text-lg sm:text-xl font-bold text-gray-900 leading-snug pt-2 select-text text-left">
                       {questions[currentIdx].question}
                     </h3>
                   </div>
                 </div>
- 
                 <div className="space-y-3.5 pt-2">
-                  {(questions[currentIdx].type === "multiple-choice" || questions[currentIdx].type?.toLowerCase() === "true-false") && 
-                   (questions[currentIdx].type?.toLowerCase() === "true-false" ? ["True", "False"] : (questions[currentIdx].options || [])).map((opt, i) => {
-                     const isSel = userAnswers[currentIdx] === opt;
-                     const isQuizRevealed = quizChecked[currentIdx] === true;
-                     const isCor = opt === questions[currentIdx].correctAnswer;
- 
-                     let btnStyle = "bg-white border-2 border-gray-100 rounded-[15px] text-gray-700 hover:bg-gray-50/50 hover:border-gray-200";
-                     if (isSel) btnStyle = "border-[#6949a8] bg-[#6949a8]/5 text-[#6949a8] font-semibold";
-                     if (isQuizRevealed) {
-                       if (isCor) btnStyle = "border-emerald-500 bg-emerald-50 text-emerald-700 font-semibold";
-                       else if (isSel) btnStyle = "border-red-500 bg-red-50 text-red-700 font-semibold";
-                       else btnStyle = "border-gray-100 bg-gray-50/30 opacity-40 text-gray-400";
-                     }
- 
-                     return (
-                       <button
-                         key={i}
-                         disabled={isQuizRevealed}
-                         onClick={() => handleSelectAnswer(opt)}
-                         className={`w-full p-4 border rounded-xl text-sm font-medium text-left cursor-pointer flex items-center justify-between active:scale-[0.98] transition-[background-color,border-color,opacity] duration-100 ${btnStyle}`}
-                       >
-                         <span>{opt}</span>
-                         {isSel && <CheckCircle2 size={16} className={isQuizRevealed && !isCor ? "text-red-555" : "text-[#6949a8]"} />}
-                       </button>
-                     );
-                   })}
- 
-                  {questions[currentIdx].type === "identification" && (
-                    <IdentificationInput
-                      disabled={quizChecked[currentIdx] === true}
-                      value={userAnswers[currentIdx] || ""}
-                      onChange={handleSelectAnswer}
-                      className="w-full h-14 px-5 bg-gray-50 border border-gray-200 rounded-[15px] text-sm font-semibold text-gray-900 focus:outline-none focus:border-[#6949a8] focus:ring-1 focus:ring-[#6949a8] disabled:opacity-50 transition-colors"
-                    />
-                  )}
+                  {(() => {
+                    const hasOptions = questions[currentIdx].options && questions[currentIdx].options.length > 0;
+                    if (hasOptions) {
+                      return (questions[currentIdx].options || []).map((opt, i) => {
+                        const isSel = userAnswers[currentIdx] === opt;
+                        const isQuizRevealed = quizChecked[currentIdx] === true;
+                        const isCor = opt === questions[currentIdx].correctAnswer;
+                        let btnStyle = "bg-white border-2 border-gray-200 shadow-sm hover:border-[#6949a8]/50 rounded-[20px] text-gray-800 font-semibold py-4 px-5 w-full text-left transition-all";
+                        if (isSel) btnStyle = "bg-[#6949a8]/10 border-2 border-[#6949a8] text-[#6949a8] font-semibold transition-all py-4 px-5 rounded-[20px] text-left w-full";
+                        if (isQuizRevealed) {
+                          if (isCor) btnStyle = "border-emerald-500 bg-emerald-50 text-emerald-700 font-semibold py-4 px-5 rounded-[20px] text-left w-full";
+                          else if (isSel) btnStyle = "border-red-500 bg-red-50 text-red-700 font-semibold py-4 px-5 rounded-[20px] text-left w-full";
+                          else btnStyle = "border-gray-100 bg-gray-55/30 opacity-40 text-gray-405 py-4 px-5 rounded-[20px] text-left w-full";
+                        }
+
+                        return (
+                          <button
+                            key={i}
+                            disabled={isQuizRevealed}
+                            onClick={() => handleSelectAnswer(opt)}
+                            className={`cursor-pointer flex items-center justify-between active:scale-[0.98] duration-100 text-sm ${btnStyle}`}
+                          >
+                            <span>{opt}</span>
+                            {isSel && <CheckCircle2 size={16} className={isQuizRevealed && !isCor ? "text-red-500" : "text-white fill-[#6949a8]"} />}
+                          </button>
+                        );
+                      });
+                    } else {
+                      return (
+                        <IdentificationInput
+                          disabled={quizChecked[currentIdx] === true}
+                          value={userAnswers[currentIdx] || ""}
+                          onChange={handleSelectAnswer}
+                          className="w-full h-14 px-5 bg-gray-50 border border-gray-200 rounded-[15px] text-sm font-semibold text-gray-900 focus:outline-none focus:border-[#6949a8] focus:ring-1 focus:ring-[#6949a8] disabled:opacity-50 transition-colors"
+                        />
+                      );
+                    }
+                  })()}
                 </div>
  
                 {quizChecked[currentIdx] && (
@@ -492,7 +608,7 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                 <div className="flex justify-between items-center pt-6 border-t border-gray-100 mt-6">
                   <button
                     onClick={handlePrev} disabled={currentIdx === 0}
-                    className="h-11 px-6 border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 rounded-[15px] text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-[0.97] transition-all duration-100"
+                    className="h-11 px-6 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-full text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-95 transition-all duration-100 border-none"
                   >
                     Previous
                   </button>
@@ -500,7 +616,7 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                   {!quizChecked[currentIdx] && (
                     <button
                       onClick={checkQuizAnswer} disabled={!userAnswers[currentIdx]}
-                      className="bg-[#6949a8] text-white hover:bg-[#6949a8]/95 font-bold transition-all px-6 h-11 rounded-[15px] border-none cursor-pointer disabled:opacity-35 text-xs active:scale-[0.97] duration-100"
+                      className="bg-[#6949a8] text-white font-bold shadow-md active:scale-95 transition-all px-6 h-11 rounded-full border-none cursor-pointer disabled:opacity-50 text-xs duration-100"
                     >
                       Check Answer
                     </button>
@@ -509,26 +625,65 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                   {currentIdx === questions.length - 1 ? (
                     <button
                       onClick={triggerGrading}
-                      className="h-11 px-8 text-white text-xs font-bold rounded-[15px] border-none bg-emerald-600 hover:bg-emerald-700 cursor-pointer active:scale-[0.97] transition-all duration-100"
+                      className="h-11 px-8 text-white text-xs font-bold rounded-full border-none bg-emerald-600 hover:bg-emerald-700 cursor-pointer active:scale-95 transition-all duration-100"
                     >
                       Finish Quiz
                     </button>
                   ) : (
-                    <button onClick={handleNext} className="h-11 px-6 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 rounded-[15px] text-xs font-bold cursor-pointer active:scale-[0.97] transition-all duration-100">
+                    <button onClick={handleNext} className="h-11 px-6 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-full text-xs font-semibold cursor-pointer active:scale-95 transition-all duration-100 border-none">
                       Next
                     </button>
                   )}
                 </div>
               </div>
             </div>
+ 
+            <AnimatePresence>
+              {showAbortModal && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm pointer-events-auto">
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="bg-white border border-gray-100 p-6 rounded-[32px] shadow-xl max-w-sm w-full text-left"
+                  >
+                    <h3 className="text-lg font-bold text-gray-900 font-poppins">Pause Practice Session?</h3>
+                    <p className="text-xs text-gray-500 mt-2 font-medium leading-relaxed font-poppins">
+                      You can safely leave and resume this session later from the setup screen.
+                    </p>
+                    <div className="mt-6 flex justify-end gap-3 font-poppins">
+                      <button 
+                        onClick={() => setShowAbortModal(false)}
+                        className="px-4 py-2 border-none bg-transparent hover:bg-gray-50 text-gray-500 rounded-full text-xs font-bold cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setShowAbortModal(false);
+                          setIsAssessmentActive(false);
+                          setGameState("setup");
+                        }}
+                        className="px-5 py-2 bg-[#6949a8] hover:bg-[#6949a8]/90 text-white rounded-full text-xs font-bold border-none cursor-pointer shadow-sm active:scale-95"
+                      >
+                        Save & Pause
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
           </div>
         ) : (
           <motion.div key="playing" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-            <div className="w-full max-w-2xl mx-auto mt-8 p-6 sm:p-8 bg-white border border-gray-100 rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] space-y-6 relative">
+            <div className="w-full max-w-2xl mx-auto mt-2 p-6 sm:p-8 space-y-6 relative bg-transparent">
               <div className="flex justify-between items-start gap-4">
                 <div className="space-y-2">
                   <span className="px-2 py-0.5 bg-purple-50 border border-purple-100 rounded text-[9px] font-bold text-[#6949a8] uppercase tracking-widest select-none">
-                    {questions[currentIdx].type?.replace("-", " ") || "Question"}
+                    {(() => {
+                      const hasOptions = questions[currentIdx].options && questions[currentIdx].options.length > 0;
+                      return (questions[currentIdx].type || (hasOptions ? "Multiple Choice" : "Identification"))?.replace("-", " ");
+                    })()}
                   </span>
                   <h3 className="text-lg sm:text-xl font-bold text-gray-900 leading-snug mt-4 select-text text-left">
                     {questions[currentIdx].question}
@@ -546,38 +701,42 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
               </div>
  
               <div className="space-y-3.5 pt-2">
-                {(questions[currentIdx].type === "multiple-choice" || questions[currentIdx].type?.toLowerCase() === "true-false") && 
-                 (questions[currentIdx].type?.toLowerCase() === "true-false" ? ["True", "False"] : (questions[currentIdx].options || [])).map((opt, i) => {
-                   const isSel = userAnswers[currentIdx] === opt;
-                   const btnStyle = isSel 
-                     ? "border-[#6949a8] bg-[#6949a8]/5 text-[#6949a8] font-semibold"
-                     : "bg-white border-2 border-gray-100 rounded-[15px] text-gray-700 hover:bg-gray-50/50 hover:border-gray-200";
- 
-                   return (
-                     <button
-                       key={i}
-                       onClick={() => handleSelectAnswer(opt)}
-                       className={`w-full p-4 border rounded-xl text-sm font-medium text-left cursor-pointer flex items-center justify-between active:scale-[0.98] transition-[background-color,border-color,opacity] duration-100 ${btnStyle}`}
-                     >
-                       <span>{opt}</span>
-                       {isSel && <CheckCircle2 size={16} className="text-[#6949a8]" />}
-                     </button>
-                   );
-                 })}
- 
-                {questions[currentIdx].type === "identification" && (
-                  <IdentificationInput
-                    value={userAnswers[currentIdx] || ""}
-                    onChange={handleSelectAnswer}
-                    className="w-full h-14 px-5 bg-gray-50 border border-gray-200 rounded-[15px] text-sm font-semibold text-gray-900 focus:outline-none focus:border-[#6949a8] focus:ring-1 focus:ring-[#6949a8] transition-colors mt-6"
-                  />
-                )}
+                {(() => {
+                  const hasOptions = questions[currentIdx].options && questions[currentIdx].options.length > 0;
+                  if (hasOptions) {
+                    return (questions[currentIdx].options || []).map((opt, i) => {
+                      const isSel = userAnswers[currentIdx] === opt;
+                      const btnStyle = isSel 
+                         ? "bg-[#6949a8]/10 border-2 border-[#6949a8] text-[#6949a8] font-semibold transition-all py-4 px-5 rounded-[20px] text-left w-full"
+                         : "bg-white border-2 border-gray-200 shadow-sm hover:border-[#6949a8]/50 rounded-[20px] text-gray-800 font-semibold py-4 px-5 w-full text-left transition-all";
+
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => handleSelectAnswer(opt)}
+                          className={`cursor-pointer flex items-center justify-between active:scale-[0.98] duration-100 text-sm ${btnStyle}`}
+                        >
+                          <span>{opt}</span>
+                          {isSel && <CheckCircle2 size={16} className="text-white fill-[#6949a8]" />}
+                        </button>
+                      );
+                    });
+                  } else {
+                    return (
+                      <IdentificationInput
+                        value={userAnswers[currentIdx] || ""}
+                        onChange={handleSelectAnswer}
+                        className="w-full h-14 px-5 bg-gray-50 border border-gray-200 rounded-[15px] text-sm font-semibold text-gray-900 focus:outline-none focus:border-[#6949a8] focus:ring-1 focus:ring-[#6949a8] transition-colors mt-6"
+                      />
+                    );
+                  }
+                })()}
               </div>
  
               <div className="flex justify-between items-center pt-6 border-t border-gray-100 mt-6">
                 <button
                   onClick={handlePrev} disabled={currentIdx === 0}
-                  className="h-11 px-6 border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 rounded-[15px] text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-[0.97] transition-all duration-100"
+                  className="h-11 px-6 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-full text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-95 transition-all duration-100 border-none"
                 >
                   Previous
                 </button>
@@ -585,12 +744,12 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                 {currentIdx === questions.length - 1 ? (
                   <button
                     onClick={() => setGameState("review-screen")}
-                    className="h-11 px-8 text-white text-xs font-bold rounded-[15px] border-none bg-amber-600 hover:bg-amber-700 cursor-pointer active:scale-[0.97] transition-all duration-100"
+                    className="h-11 px-8 text-white text-xs font-bold rounded-full border-none bg-amber-600 hover:bg-amber-700 cursor-pointer active:scale-95 transition-all duration-100"
                   >
                     Review Exam
                   </button>
                 ) : (
-                  <button onClick={handleNext} className="h-11 px-6 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 rounded-[15px] text-xs font-bold cursor-pointer active:scale-[0.97] transition-all duration-100">
+                  <button onClick={handleNext} className="h-11 px-6 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-full text-xs font-semibold cursor-pointer active:scale-95 transition-all duration-100 border-none">
                     Next
                   </button>
                 )}
@@ -602,7 +761,7 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
  
       {/* 3. REVIEW SCREEN */}
       {gameState === "review-screen" && (
-        <motion.div key="review-screen" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white border border-gray-100 rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-6 md:p-10 space-y-6 text-left max-w-2xl mx-auto mt-8">
+        <motion.div key="review-screen" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-6 md:p-10 space-y-6 text-left max-w-2xl mx-auto mt-2 bg-transparent">
           <div className="flex items-center justify-between border-b border-gray-100 pb-4">
             <h2 className="text-base font-bold text-gray-900">Review Assessment</h2>
             <button onClick={() => setGameState("playing")} className="text-xs font-bold text-gray-500 hover:text-gray-700 cursor-pointer bg-transparent border-none">Return to Exam</button>
@@ -650,7 +809,7 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
       {gameState === "results" && (
         <motion.div key="results" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 font-poppins">
           {mode === "quiz" ? (
-            <div className="bg-white border border-gray-100 rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-8 md:p-12 text-center space-y-8">
+            <div className="p-8 md:p-12 text-center space-y-8 bg-transparent">
               <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-2xl font-black shadow-sm">
                 <Trophy size={32} />
               </div>
@@ -673,20 +832,20 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
               <div className="flex justify-center gap-4">
                 <button
                   onClick={() => setGameState("setup")}
-                  className="h-14 px-8 border border-gray-200 bg-white hover:bg-gray-50 text-gray-750 text-sm font-black rounded-[15px] cursor-pointer transition-all"
+                  className="h-14 px-8 bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-semibold rounded-full cursor-pointer transition-all border-none"
                 >
                   Back to Settings
                 </button>
                 <button
                   onClick={handleRestart}
-                  className="h-14 px-8 bg-[#6949a8] hover:bg-[#6949a8]/95 text-white border-none text-sm font-black rounded-[15px] transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+                  className="h-14 px-8 bg-[#6949a8] hover:bg-[#6949a8]/95 text-white border-none text-sm font-bold rounded-full transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-95"
                 >
                   <RotateCcw size={16} /> Restart Quiz
                 </button>
               </div>
             </div>
           ) : (
-            <div className="bg-white border border-gray-100 rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-8 md:p-12 space-y-8 max-w-3xl mx-auto">
+            <div className="p-8 md:p-12 space-y-8 max-w-3xl mx-auto bg-transparent">
               <div className="border-b border-gray-100 pb-6 flex justify-between items-end">
                 <div>
                   <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest block mb-2">Official Simulation Report</span>
@@ -716,13 +875,13 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
               <div className="flex gap-4">
                 <button 
                   onClick={() => setGameState("setup")} 
-                  className="flex-1 h-14 border border-gray-200 bg-white hover:bg-gray-50 text-gray-750 text-sm font-black rounded-[15px] transition-all cursor-pointer"
+                  className="flex-1 h-14 bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-semibold rounded-full transition-all cursor-pointer border-none"
                 >
                   Close Report
                 </button>
                 <button 
                   onClick={handleRestart} 
-                  className="flex-1 h-14 bg-amber-600 hover:bg-amber-700 text-white border-none text-sm font-black rounded-[15px] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                  className="flex-1 h-14 bg-amber-600 hover:bg-amber-700 text-white border-none text-sm font-bold rounded-full transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95"
                 >
                   <RotateCcw size={16} /> Restart Exam
                 </button>

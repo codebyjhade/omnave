@@ -139,7 +139,7 @@ export const FlashcardEngine = React.memo(function FlashcardEngine({ lessonId, f
         </p>
  
         {/* Metrics */}
-        <div className="grid grid-cols-2 gap-4 w-full max-w-md mt-8 bg-slate-50 border border-gray-150 p-5 rounded-[15px]">
+        <div className="grid grid-cols-2 gap-4 w-full max-w-md mt-8 bg-gray-50 border border-gray-100 rounded-[24px] shadow-sm py-6 px-4">
           <div className="flex flex-col items-center">
             <span className="text-2xl font-bold text-gray-900">{flashcards.length}</span>
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Cards Reviewed</span>
@@ -152,11 +152,11 @@ export const FlashcardEngine = React.memo(function FlashcardEngine({ lessonId, f
  
         {/* Action Buttons */}
         <div className="mt-8 flex flex-col sm:flex-row gap-3 w-full max-w-md">
-          <button onClick={onNavigateToQuiz} className="flex-1 h-12 bg-[#6949a8] hover:bg-[#6949a8]/95 text-white font-bold rounded-2xl active:scale-[0.97] transition-all flex items-center justify-center gap-2 text-sm border-none cursor-pointer">
-            Continue to Quiz <BrainCircuit size={16} />
+          <button onClick={onNavigateToQuiz} className="h-14 w-full rounded-full text-sm font-bold flex items-center justify-center transition-all bg-[#6949a8] text-white shadow-md active:scale-[0.98] border-none cursor-pointer">
+            Continue to Quiz <BrainCircuit size={16} className="ml-2" />
           </button>
-          <button onClick={onNavigateToSummary} className="flex-1 h-12 bg-white text-gray-700 font-bold rounded-2xl border border-gray-200 hover:bg-gray-50 active:scale-[0.97] transition-all flex items-center justify-center gap-2 text-sm cursor-pointer">
-            Return to Lesson <BookOpen size={16} />
+          <button onClick={onNavigateToSummary} className="h-14 w-full rounded-full text-sm font-bold flex items-center justify-center transition-all bg-white border border-gray-200 text-gray-700 active:scale-[0.98] cursor-pointer">
+            Return to Lesson <BookOpen size={16} className="ml-2" />
           </button>
         </div>
         
@@ -169,9 +169,9 @@ export const FlashcardEngine = React.memo(function FlashcardEngine({ lessonId, f
  
   // 3. Active Playing State
   return (
-    <div className="flex flex-col max-w-2xl mx-auto w-full font-poppins">
+    <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full font-poppins">
       {/* Progress Indicator */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 text-[10px] font-bold text-gray-400 mb-4 px-1.5 select-none">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 text-[10px] font-bold text-gray-400 mb-4 px-1.5 select-none shrink-0">
         <span className="uppercase tracking-wider">Card {currentSlide + 1} of {flashcards.length}</span>
         <div className="flex items-center gap-2 flex-1 max-w-md">
           <div className="w-full bg-gray-150 h-1.5 rounded-full overflow-hidden border border-gray-200">
@@ -182,12 +182,12 @@ export const FlashcardEngine = React.memo(function FlashcardEngine({ lessonId, f
               transition={{ duration: 0.3, ease: "easeOut" }}
             />
           </div>
-          <span className="shrink-0 text-gray-500">{Math.round(((currentSlide + 1) / flashcards.length) * 100)}%</span>
+          <span className="shrink-0 text-gray-555">{Math.round(((currentSlide + 1) / flashcards.length) * 100)}%</span>
         </div>
       </div>
  
       {/* Flat Card Container */}
-      <div className="relative w-full aspect-square md:aspect-[4/3] [perspective:1000px] cursor-pointer mb-6 select-none" onClick={() => setIsFlipped(!isFlipped)}>
+      <div className="relative w-full aspect-square md:aspect-[4/3] min-h-[340px] flex-1 [perspective:1000px] cursor-pointer mb-6 select-none" onClick={() => setIsFlipped(!isFlipped)}>
         <div className="absolute inset-x-4 bottom-[-8px] h-full bg-slate-100/80 border border-gray-200/50 rounded-[24px] pointer-events-none -z-20 scale-[0.96]" />
         <div className="absolute inset-x-2 bottom-[-4px] h-full bg-slate-100 border border-gray-200 rounded-[24px] pointer-events-none -z-10 scale-[0.98]" />
  
@@ -195,20 +195,20 @@ export const FlashcardEngine = React.memo(function FlashcardEngine({ lessonId, f
         <div className={`relative w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${isFlipped ? '[transform:rotateY(180deg)]' : ''}`}>
  
           {/* 3. THE FRONT FACE (Displays the Term) */}
-          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] bg-white border border-gray-100 rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col items-center justify-center p-8 overflow-hidden transition-transform duration-300">
-            <span className="absolute top-6 right-6 text-[10px] font-bold tracking-widest text-gray-400 uppercase select-none">Concept</span>
+          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] bg-white border border-gray-100 rounded-[24px] shadow-[0px_20px_50px_rgba(0,0,0,0.1)] flex flex-col items-center justify-center p-8 overflow-hidden transition-transform duration-300">
+            <span className="absolute top-6 right-6 text-[10px] font-bold tracking-widest text-[#6949a8] uppercase select-none">Concept</span>
             
             {/* RENDER THE TERM HERE */}
             <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center leading-tight max-w-lg px-4 font-poppins">
               {flashcards[currentSlide].front}
             </h3>
             
-            <span className="absolute bottom-6 text-[10px] text-gray-400 uppercase tracking-widest select-none font-medium">Tap to Flip</span>
+            <span className="absolute bottom-6 text-[10px] text-[#6949a8]/70 font-semibold animate-pulse uppercase tracking-widest select-none">Tap to Flip</span>
           </div>
  
           {/* 4. THE BACK FACE (Displays the Explanation) */}
-          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] bg-white border border-gray-100 rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col items-center justify-center p-8 overflow-hidden transition-transform duration-300">
-            <span className="absolute top-6 right-6 text-[10px] font-bold tracking-widest text-gray-400 uppercase select-none">Definition</span>
+          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] bg-white border border-gray-100 rounded-[24px] shadow-[0px_20px_50px_rgba(0,0,0,0.1)] flex flex-col items-center justify-center p-8 overflow-hidden transition-transform duration-300">
+            <span className="absolute top-6 right-6 text-[10px] font-bold tracking-widest text-[#6949a8] uppercase select-none">Definition</span>
             
             {/* RENDER THE EXPLANATION HERE */}
             <div className="w-full max-h-full overflow-y-auto px-4 py-8 flex items-center justify-center">
@@ -217,7 +217,7 @@ export const FlashcardEngine = React.memo(function FlashcardEngine({ lessonId, f
               </p>
             </div>
             
-            <span className="absolute bottom-6 text-[10px] text-gray-400 uppercase tracking-widest select-none font-medium">Tap to Flip</span>
+            <span className="absolute bottom-6 text-[10px] text-[#6949a8]/70 font-semibold animate-pulse uppercase tracking-widest select-none">Tap to Flip</span>
           </div>
  
         </div>
@@ -225,29 +225,35 @@ export const FlashcardEngine = React.memo(function FlashcardEngine({ lessonId, f
  
       {/* Leitner Controls */}
       {isFlipped && (
-        <div className="w-full mb-5 grid grid-cols-4 gap-2 select-none">
+        <div className="w-full mb-5 grid grid-cols-4 gap-2 select-none shrink-0">
           {[
-            { label: "Again", rating: "again", color: "bg-red-50 border-red-100 text-red-600", hint: "1" },
-            { label: "Hard", rating: "hard", color: "bg-orange-50 border-orange-100 text-orange-600", hint: "2" },
-            { label: "Good", rating: "good", color: "bg-purple-50 border-purple-100 text-[#6949a8]", hint: "3" },
-            { label: "Easy", rating: "easy", color: "bg-emerald-50 border-emerald-100 text-emerald-600", hint: "4" }
+            { label: "Again", rating: "again", color: "bg-red-50 text-red-600", hint: "1" },
+            { label: "Hard", rating: "hard", color: "bg-orange-50 text-orange-600", hint: "2" },
+            { label: "Good", rating: "good", color: "bg-[#6949a8]/10 text-[#6949a8]", hint: "3" },
+            { label: "Easy", rating: "easy", color: "bg-emerald-50 text-emerald-600", hint: "4" }
           ].map((btn) => (
-            <button key={btn.label} onClick={(e) => { e.stopPropagation(); handleRateDifficulty(btn.rating as any); }} className={`h-12 rounded-xl border text-[10px] font-extrabold flex flex-col items-center justify-center hover:bg-gray-50 active:scale-[0.97] transition-all duration-100 cursor-pointer ${btn.color}`}>
+            <button key={btn.label} onClick={(e) => { e.stopPropagation(); handleRateDifficulty(btn.rating as any); }} className={`h-12 rounded-full text-[10px] font-extrabold flex flex-col items-center justify-center hover:brightness-95 active:scale-[0.97] transition-all duration-100 cursor-pointer border-none ${btn.color}`}>
               <span>{btn.label}</span>
-              <span className="text-[8px] opacity-60 mt-0.5 font-semibold">[{btn.hint}]</span>
+              <span className="text-[10px] text-current/60 mt-0.5 font-semibold">[{btn.hint}]</span>
             </button>
           ))}
         </div>
       )}
  
       {/* Navigation Controls */}
-      <div className="flex items-center justify-between gap-3 w-full max-w-md mx-auto mt-4">
-        <button onClick={() => { setCurrentSlide((s) => Math.max(0, s - 1)); setIsFlipped(false); }} disabled={currentSlide === 0} className="flex-1 h-11 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-xl disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all duration-100 cursor-pointer">
-          <ArrowLeft size={14} /> Previous
+      <div className="flex items-center justify-between gap-3 w-full max-w-md mx-auto mt-4 shrink-0">
+        <button 
+          onClick={() => { setCurrentSlide((s) => Math.max(0, s - 1)); setIsFlipped(false); }} 
+          disabled={currentSlide === 0} 
+          className="bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-full px-5 py-2.5 flex items-center justify-center font-semibold transition-all shadow-sm active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-xs border-none"
+        >
+          <ArrowLeft size={14} className="mr-1" /> Previous
         </button>
-        <button onClick={() => setIsFlipped(!isFlipped)} className="flex-1 h-11 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-xl active:scale-[0.97] transition-all duration-100 cursor-pointer">Flip</button>
-        <button onClick={() => { currentSlide < flashcards.length - 1 ? (setCurrentSlide((s) => s + 1), setIsFlipped(false)) : setIsSessionCompleted(true) }} className="flex-1 h-11 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all duration-100 cursor-pointer">
-          Next <ChevronRight size={14} />
+        <button 
+          onClick={() => { currentSlide < flashcards.length - 1 ? (setCurrentSlide((s) => s + 1), setIsFlipped(false)) : setIsSessionCompleted(true) }} 
+          className="bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-full px-5 py-2.5 flex items-center justify-center font-semibold transition-all shadow-sm active:scale-95 cursor-pointer text-xs border-none"
+        >
+          Next <ChevronRight size={14} className="ml-1" />
         </button>
       </div>
     </div>
