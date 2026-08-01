@@ -1,6 +1,6 @@
 "use client";
  
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { ChevronLeft, FileText, Zap, Target, MessageCircle } from "lucide-react";
@@ -53,12 +53,47 @@ export default function LessonView() {
   
   const chatScrollRef = useRef<HTMLDivElement>(null);
  
+  // Hydrate Chat History from LocalStorage on mount
+  useEffect(() => {
+    if (id) {
+      try {
+        const saved = localStorage.getItem(`omnilearn:chat:${id}`);
+        if (saved) {
+          setChatHistory(JSON.parse(saved));
+        }
+      } catch (err) {
+        console.error("Failed to hydrate chat history:", err);
+      }
+    }
+  }, [id]);
+ 
+  // Persist Chat History to LocalStorage on changes
+  useEffect(() => {
+    if (id) {
+      try {
+        localStorage.setItem(`omnilearn:chat:${id}`, JSON.stringify(chatHistory));
+      } catch (err) {
+        console.error("Failed to persist chat history:", err);
+      }
+    }
+  }, [id, chatHistory]);
+ 
   // Auto-scroll to bottom when chat updates
   useEffect(() => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
   }, [chatHistory, isChatLoading]);
+ 
+  // Clear Chat Logic
+  const handleClearChat = useCallback(() => {
+    setChatHistory([]);
+    try {
+      localStorage.removeItem(`omnilearn:chat:${id}`);
+    } catch (err) {
+      console.error("Failed to clear chat history:", err);
+    }
+  }, [id]);
  
   // Handle AI Chat Logic
   const handleAskQuestion = async (customText?: string) => {
@@ -79,6 +114,10 @@ export default function LessonView() {
         body: JSON.stringify({
           message: promptText,
           summary: data?.summary || "",
+          history: chatHistory.slice(-10).map(msg => ({
+            role: msg.role === "user" ? "user" : "assistant",
+            content: msg.text
+          }))
         }),
       });
  
@@ -290,6 +329,7 @@ export default function LessonView() {
                 onInputChange={setChatInput}
                 onClearSelectedText={() => setSelectedText("")}
                 scrollRef={chatScrollRef}
+                onClearChat={handleClearChat}
               />
             </div>
           )}

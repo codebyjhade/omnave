@@ -1,8 +1,8 @@
 "use client";
  
-import React, { memo, RefObject } from "react";
+import React, { memo, RefObject, useRef, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, MessageSquare, ChevronRight, Copy, RotateCcw, ThumbsUp, ThumbsDown, Send } from "lucide-react";
+import { Sparkles, MessageSquare, ChevronRight, Copy, RotateCcw, ThumbsUp, ThumbsDown, Send, Trash2 } from "lucide-react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { TypewriterText } from "./TypewriterText";
 import { useUserContext } from "@/context/UserContext";
@@ -22,6 +22,7 @@ interface ChatPanelProps {
   onInputChange: (value: string) => void;
   onClearSelectedText: () => void;
   scrollRef: RefObject<HTMLDivElement | null>;
+  onClearChat?: () => void;
 }
  
 const suggestionChips = [
@@ -50,9 +51,21 @@ export const ChatPanel = memo(function ChatPanel({
   onInputChange,
   onClearSelectedText,
   scrollRef,
+  onClearChat,
 }: ChatPanelProps) {
   const { user } = useUserContext();
   const planType = user?.plan_type || 'free';
+ 
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [showClearModal, setShowClearModal] = useState(false);
+ 
+  useEffect(() => {
+    if (textareaRef.current) {
+      // Reset height to recalculate on deletion
+      textareaRef.current.style.height = "24px"; 
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [chatInput]);
   
   const isLimitReached = planType === 'free' && (
     (user?.agent_message_count !== undefined && user.agent_message_count >= 15) ||
@@ -80,14 +93,27 @@ export const ChatPanel = memo(function ChatPanel({
   return (
     <div className="flex-1 w-full h-full flex flex-col font-poppins text-left bg-transparent">
       {/* Chat Header */}
-      <div className="flex items-center space-x-2 px-5 py-4 bg-white border-b border-gray-100 shrink-0">
-        <div className="w-8 h-8 rounded-full bg-purple-50 border border-purple-100 flex items-center justify-center">
-          <Sparkles size={14} className="text-[#6949a8]" />
+      <div className="flex items-center justify-between px-5 py-4 bg-white border-b border-gray-100 shrink-0 select-none">
+        <div className="flex items-center space-x-2">
+          <div className="w-8 h-8 rounded-full bg-purple-50 border border-purple-100 flex items-center justify-center">
+            <Sparkles size={14} className="text-[#6949a8]" />
+          </div>
+          <div className="flex flex-col text-left">
+            <h3 className="text-sm font-bold text-gray-900 leading-none">OmnaveAI</h3>
+            <span className="text-[10px] font-bold text-[#6949a8] uppercase tracking-wider mt-1">Online</span>
+          </div>
         </div>
-        <div className="flex flex-col">
-          <h3 className="text-sm font-bold text-gray-900 leading-none">BryanAI</h3>
-          <span className="text-[10px] font-bold text-[#6949a8] uppercase tracking-wider mt-1">Online</span>
-        </div>
+        
+        {onClearChat && (
+          <button 
+            onClick={() => setShowClearModal(true)}
+            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all border-none bg-transparent cursor-pointer flex items-center justify-center active:scale-95"
+            title="Clear Chat History"
+            aria-label="Clear Chat History"
+          >
+            <Trash2 size={16} />
+          </button>
+        )}
       </div>
  
       {/* Chat History Area */}
@@ -124,24 +150,23 @@ export const ChatPanel = memo(function ChatPanel({
             {chatHistory.map((msg, idx) => (
               <div key={idx} className={`flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div
-                  className={`
-                    p-5 max-w-[85%] text-sm leading-relaxed shadow-sm group relative
-                    ${msg.role === "user"
-                      ? "bg-[#6949a8] text-white rounded-3xl rounded-tr-sm"
-                      : "bg-gray-55 border border-gray-100 text-gray-800 rounded-3xl rounded-tl-sm"
-                    }
-                  `}
+                  className={msg.role === "user"
+                    ? "bg-[#6949a8] text-white font-medium rounded-3xl rounded-tr-sm px-5 py-3.5 max-w-[85%] text-[15px] leading-relaxed shadow-sm group relative [&_*]:!text-white [&_*]:!fill-white"
+                    : "bg-slate-50 border border-slate-100 text-slate-800 rounded-3xl rounded-tl-sm px-5 py-4 max-w-[85%] text-[15px] leading-relaxed shadow-sm group relative [&_*]:!text-slate-800 [&_*]:!fill-slate-800"
+                  }
                 >
                   <div className="leading-relaxed whitespace-pre-wrap">
-                    {msg.role === "ai" && idx === chatHistory.length - 1 && !isChatLoading ? (
-                      <TypewriterText text={msg.text} variant="chat" />
-                    ) : (
-                      <MarkdownRenderer text={msg.text} variant="chat" theme="light" />
-                    )}
+                    <div className={msg.role === "ai" ? "text-slate-800" : "text-white"}>
+                      {msg.role === "ai" && idx === chatHistory.length - 1 && !isChatLoading ? (
+                        <TypewriterText text={msg.text} variant="chat" />
+                      ) : (
+                        <MarkdownRenderer text={msg.text} variant="chat" theme="light" />
+                      )}
+                    </div>
  
                     {/* Message actions bar for AI responses */}
                     {msg.role === "ai" && (
-                      <div className="flex items-center space-x-3 mt-3 pt-2 border-t border-gray-100 opacity-60 group-hover:opacity-100 transition-opacity duration-150">
+                      <div className="flex items-center space-x-3 mt-4 pt-3 border-t border-slate-200/60 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
                         <button
                           onClick={(e) => { e.stopPropagation(); handleCopy(msg.text); }}
                           className="p-1 hover:bg-gray-100 rounded transition-colors text-gray-400 hover:text-gray-600 bg-transparent border-none"
@@ -184,7 +209,7 @@ export const ChatPanel = memo(function ChatPanel({
                           <button
                             key={sIdx}
                             onClick={() => onSend(suggestion)}
-                            className="px-2.5 py-1 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-[15px] text-[9px] font-bold transition-all duration-150 active:scale-[0.97] cursor-pointer"
+                            className="px-3 py-1.5 bg-white hover:bg-[#6949a8]/5 text-slate-600 hover:text-[#6949a8] border border-slate-200 hover:border-[#6949a8]/30 rounded-full text-xs font-semibold transition-all duration-150 active:scale-95 cursor-pointer shadow-sm"
                           >
                             💡 {suggestion}
                           </button>
@@ -308,15 +333,16 @@ export const ChatPanel = memo(function ChatPanel({
             Daily message limit reached. Upgrade to Pro for unlimited chat.
           </button>
         ) : (
-          <div className="flex space-x-2 items-center">
-            <div className="bg-gray-50 border border-gray-200 p-1.5 pl-5 rounded-full flex items-center gap-2 flex-1">
+          <div className="flex space-x-2 items-end">
+            <div className="bg-gray-50 border border-gray-200 p-1.5 pl-5 rounded-3xl flex items-end gap-2 flex-1">
               <textarea
+                ref={textareaRef}
                 value={chatInput}
                 onChange={(e) => onInputChange(e.target.value)}
                 onKeyDown={handleKeyDown}
                 maxLength={1000}
                 placeholder="Ask a question..."
-                className="bg-transparent border-none flex-1 outline-none resize-none h-6 overflow-y-auto scrollbar-hide text-sm text-gray-900"
+                className="bg-transparent border-none flex-1 outline-none resize-none min-h-[24px] max-h-[120px] py-0.5 overflow-y-auto scrollbar-hide text-sm text-gray-900"
                 aria-label="Ask the AI tutor a question"
               />
             </div>
@@ -331,6 +357,41 @@ export const ChatPanel = memo(function ChatPanel({
           </div>
         )}
       </div>
+ 
+      <AnimatePresence>
+        {showClearModal && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm pointer-events-auto">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white border border-gray-100 p-6 rounded-[32px] shadow-xl max-w-sm w-full text-left"
+            >
+              <h3 className="text-lg font-bold text-gray-900 font-poppins">Clear Conversation?</h3>
+              <p className="text-xs text-gray-500 mt-2 font-medium leading-relaxed font-poppins">
+                Are you sure you want to delete this chat history? This action cannot be undone.
+              </p>
+              <div className="mt-6 flex justify-end gap-3 font-poppins">
+                <button 
+                  onClick={() => setShowClearModal(false)}
+                  className="px-4 py-2 border-none bg-transparent hover:bg-gray-50 text-gray-500 rounded-full text-xs font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    if (onClearChat) onClearChat();
+                    setShowClearModal(false);
+                  }}
+                  className="px-5 py-2 bg-red-500 hover:bg-red-600 text-white rounded-full text-xs font-bold border-none cursor-pointer shadow-sm active:scale-95"
+                >
+                  Clear Chat
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 });

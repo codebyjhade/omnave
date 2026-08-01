@@ -1,23 +1,16 @@
-import { GeminiServiceProvider } from "./gemini.service";
 import { AIServiceProvider } from "./types";
-import { AI_CONFIG } from "./config";
-
+import { OrchestratorServiceProvider } from "./orchestrator";
+ 
 let activeProvider: AIServiceProvider | null = null;
-
+ 
 export function getAIProvider(): AIServiceProvider {
   if (activeProvider) return activeProvider;
   
-  // Safely grab the provider from config, or force "gemini" as the ultimate fallback
-  const providerType = (AI_CONFIG as any).activeProvider || (AI_CONFIG as any).provider || "gemini";
-  
-  if (providerType === "gemini" || String(providerType) === "undefined") {
-    activeProvider = new GeminiServiceProvider();
-    return activeProvider;
-  }
-  
-  throw new Error(`Unsupported AI Provider: ${providerType}`);
+  // Route all traffic through the multi-API waterfall orchestrator
+  activeProvider = new OrchestratorServiceProvider(); 
+  return activeProvider;
 }
-
+ 
 export * from "./types";
 export * from "./logger";
 export * from "./config";
