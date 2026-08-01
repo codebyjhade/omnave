@@ -368,22 +368,25 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     removeLessonFromState(jobId);
     removeNotification(`processing-${jobId}`);
 
-    // If registered, delete from Supabase
+    // If registered, call backend cancellation API
     if (!jobId.startsWith('temp-')) {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
       try {
-        await supabase.from('materials').delete().eq('id', jobId);
+        await fetch("/api/process-material/cancel", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ materialId: jobId }),
+        });
+        await refreshUser();
       } catch (err) {
-        console.error('[UploadContext] cancelJob db delete error:', err);
+        console.error('[UploadContext] cancelJob API error:', err);
       }
     }
-
+ 
     setJobs((prev) => prev.filter((job) => job.id !== jobId));
     toast('Processing cancelled.', 'info');
-  }, [removeLessonFromState, removeNotification, toast]);
+  }, [removeLessonFromState, removeNotification, toast, refreshUser]);
 
   // Backward compatible cancelUpload trigger (cancels latest active job)
   const cancelUpload = useCallback(async () => {

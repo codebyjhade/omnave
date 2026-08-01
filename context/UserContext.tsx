@@ -252,6 +252,35 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       console.log("Current User State:", user);
     }
   }, [user]);
+ 
+  // Real-time listener for the materials table to sync across devices/tabs
+  useEffect(() => {
+    if (!user) return;
+ 
+    const supabase = createClient();
+    
+    const channel = supabase
+      .channel(`materials-sync:${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "materials",
+          filter: `user_id=eq.${user.id}`,
+        },
+        async (payload) => {
+          console.log("[UserContext] Real-time materials table change:", payload);
+          await refreshUser();
+        }
+      )
+      .subscribe();
+ 
+    return () => {
+      console.log("[UserContext] Unsubscribing from real-time materials channel");
+      supabase.removeChannel(channel);
+    };
+  }, [user, refreshUser]);
 
   // ── Mutations ────────────────────────────────────────────────────────────────
 

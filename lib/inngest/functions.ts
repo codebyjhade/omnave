@@ -6,6 +6,12 @@ export const processMaterial = inngest.createFunction(
   { 
     id: "process-study-material", 
     triggers: [{ event: "ai/process.material" }],
+    cancelOn: [
+      {
+        event: "ai/process.cancel",
+        match: "data.materialId"
+      }
+    ],
     retries: 0
   },
   async ({ event, step }) => {
