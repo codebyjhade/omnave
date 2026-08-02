@@ -1,5 +1,41 @@
-if (typeof global !== "undefined" && typeof global.DOMMatrix === "undefined") {
-  (global as any).DOMMatrix = class DOMMatrix {};
+// @ts-ignore
+import PDFParser from "pdf2json";
+
+function parsePdfBuffer(buffer: Buffer): Promise<{ text: string; pages: number }> {
+  return new Promise((resolve, reject) => {
+    const pdfParser = new PDFParser();
+
+    pdfParser.on("pdfParser_dataError", (errData: any) => {
+      reject(new Error(errData?.parserError || "Failed to parse PDF"));
+    });
+
+    pdfParser.on("pdfParser_dataReady", (pdfData: any) => {
+      try {
+        const pages = pdfData.Pages || pdfData.formImage?.Pages || [];
+        const pageCount = pages.length;
+        
+        let fullText = "";
+        for (const page of pages) {
+          const texts = page.Texts || [];
+          const pageText = texts.map((t: any) => {
+            const token = t.R[0].T;
+            try {
+              return decodeURIComponent(token);
+            } catch {
+              return token;
+            }
+          }).join(" ");
+          fullText += pageText + "\n";
+        }
+        
+        resolve({ text: fullText.trim(), pages: pageCount });
+      } catch (err) {
+        reject(err);
+      }
+    });
+
+    pdfParser.parseBuffer(buffer);
+  });
 }
 
 export async function extractTextFromPdfUrl(fileUrl: string): Promise<string> {
@@ -15,15 +51,11 @@ export async function extractTextFromPdfUrl(fileUrl: string): Promise<string> {
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     
-    console.log(`PDF downloaded successfully. Buffer size: ${buffer.length} bytes. Parsing...`);
+    console.log(`PDF downloaded successfully. Buffer size: ${buffer.length} bytes. Parsing with pdf2json...`);
+    const parsed = await parsePdfBuffer(buffer);
+    if (!parsed.text) throw new Error("pdf2json returned empty text");
     
-    const { PDFParse } = await import("pdf-parse");
-    // Parse using the modern class-based PDFParse API to maintain TypeScript ESM compatibility
-    const parser = new PDFParse({ data: buffer });
-    const data = await parser.getText();
-    if (!data.text) throw new Error("pdf-parse returned empty text");
-    
-    return data.text;
+    return parsed.text;
     
   } catch (error: unknown) {
     console.error("Full PDF extraction error:", error);
@@ -45,17 +77,11 @@ export async function parsePdfFromUrl(fileUrl: string): Promise<{ text: string; 
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     
-    console.log(`PDF downloaded successfully for parsing. Buffer size: ${buffer.length} bytes. Parsing...`);
+    console.log(`PDF downloaded successfully for parsing. Buffer size: ${buffer.length} bytes. Parsing with pdf2json...`);
+    const parsed = await parsePdfBuffer(buffer);
+    if (!parsed.text) throw new Error("pdf2json returned empty text");
     
-    const { PDFParse } = await import("pdf-parse");
-    const parser = new PDFParse({ data: buffer });
-    const data = await parser.getText();
-    if (!data.text) throw new Error("pdf-parse returned empty text");
-    
-    return {
-      text: data.text,
-      pages: data.total,
-    };
+    return parsed;
     
   } catch (error: unknown) {
     console.error("Full PDF extraction and parsing error:", error);
