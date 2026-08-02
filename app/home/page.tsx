@@ -18,6 +18,13 @@ import Link from "next/link";
 import { getLocalDateString } from "@/lib/gamification";
 import { motion } from "framer-motion";
 import TodaysGoal from "@/components/TodaysGoal";
+import StaggerContainer from "@/components/ui/animation/StaggerContainer";
+import StaggerItem from "@/components/ui/animation/StaggerItem";
+
+const homeStaggerVariants = {
+  hidden: { opacity: 0, y: -15, scale: 1 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: "easeOut" } }
+} as const;
 
 export default function HomePage() {
   const router = useRouter();
@@ -328,17 +335,19 @@ export default function HomePage() {
       <Header />
 
       {/* Grounded, Friendly EdTech vertical layout wrapper with curved canvas */}
-      <div className="flex-1 w-full max-w-5xl mx-auto px-[25px] pt-8 pb-[120px] rounded-t-[40px] flex flex-col gap-[20px] bg-[#FFFFFF] -mt-12 relative z-20">
+      <StaggerContainer staggerChildren={0} className="flex-1 w-full max-w-5xl mx-auto px-[25px] pt-8 pb-[120px] rounded-t-[40px] flex flex-col gap-[20px] bg-[#FFFFFF] -mt-12 relative z-20">
 
         {/* 1. TODAY'S GOAL */}
-        {loading ? (
-          <div className="w-full bg-[#FFFFFF] rounded-[15px] p-5 shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[80px]" />
-        ) : (
-          <TodaysGoal completed={completedGoalsCount} total={totalGoalsCount} />
-        )}
+        <StaggerItem variants={homeStaggerVariants}>
+          {loading ? (
+            <div className="w-full bg-[#FFFFFF] rounded-[15px] p-5 shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[80px]" />
+          ) : (
+            <TodaysGoal completed={completedGoalsCount} total={totalGoalsCount} />
+          )}
+        </StaggerItem>
 
         {/* 2. UP NEXT — Compact Purple Card */}
-        <div className="flex flex-col">
+        <StaggerItem className="flex flex-col" variants={homeStaggerVariants}>
           {/* Figma: font-medium text-[18px] leading-[27px] — NOT uppercase */}
           <h2 className="text-[#000000] font-poppins font-medium text-[18px] leading-[27px] mb-[10px]">
             Up Next
@@ -396,278 +405,284 @@ export default function HomePage() {
               <ChevronRight size={20} strokeWidth={2} className="text-white shrink-0" />
             </motion.div>
           )}
-        </div>
+        </StaggerItem>
 
         {/* 3. PROGRESS MINI-GRID (Level & Streak Squares) */}
-        {loading ? (
-          <div className="grid grid-cols-2 gap-[20px] w-full">
-            <div className="bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[110px]" />
-            <div className="bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[110px]" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-[20px] w-full">
-            {/* LEVEL CARD */}
-            <motion.div 
-              whileTap={{ scale: 0.95 }}
-              transition={springTransition}
-              className="bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col justify-between select-none cursor-pointer"
-            >
-              <div>
-                <span className="text-[10px] font-bold tracking-[0.2em] text-omnave-secondary-text uppercase block mb-1 font-poppins">LEVEL</span>
-                <span className="text-3xl font-bold tracking-tight text-omnave-primary-text leading-none font-poppins">
-                  {gamificationStats?.currentLevel || 1}
-                </span>
-              </div>
-              <div className="mt-2">
-                <span className="text-[9px] font-bold text-omnave-secondary-text block font-poppins">
-                  {gamificationStats?.currentXp || 0} / {(gamificationStats?.currentXp || 0) + (gamificationStats?.xpNeeded || 100)} XP
-                </span>
-                {/* XP Bar — gradient per ODL gamification rule */}
-                <div className="w-full h-[2px] bg-omnave-border rounded-full overflow-hidden mt-1.5">
-                  <div 
-                    className="h-full bg-gradient-to-r from-[#6949a8] to-[#86d1ff] transition-all duration-300"
-                    style={{ width: `${gamificationStats?.xpProgress || 0}%` }}
-                  />
-                </div>
-              </div>
-            </motion.div>
-
-            {/* STREAK CARD */}
-            <motion.div 
-              whileTap={{ scale: 0.95 }}
-              transition={springTransition}
-              className="bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col justify-between select-none cursor-pointer"
-            >
-              <div>
-                <span className="text-[10px] font-bold tracking-[0.2em] text-omnave-secondary-text uppercase block mb-1 font-poppins">STREAK</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-3xl font-bold tracking-tight text-omnave-primary-text leading-none font-poppins">
-                    {streak || 0}d
-                  </span>
-                  <Flame 
-                    size={20} 
-                    strokeWidth={1.5} 
-                    className={`transition-colors duration-300 ${
-                      streak > 0 && studiedToday ? "text-[#6949a8] fill-[#6949a8]/20" : "text-omnave-secondary-text"
-                    }`}
-                  />
-                </div>
-              </div>
-              <div className="mt-2">
-                <span className="text-[9px] font-bold text-omnave-secondary-text block leading-tight font-poppins">
-                  {studiedToday ? "Keep it up!" : "Study today to extend"}
-                </span>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {/* 4. OMNAVE AI CARD — Flat brand purple with logo + sparkle watermark */}
-        {loading ? (
-          <div className="w-full h-[167px] bg-[#6949a8]/20 rounded-[15px] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] animate-pulse" />
-        ) : (
-          <div className="w-full h-[167px] bg-[#6949a8] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] rounded-[15px] p-[20px] flex flex-row justify-between items-center overflow-hidden relative">
-
-            {/* Left column: logo + title + description + CTA */}
-            <div className="flex flex-col items-start gap-[10px] z-10 w-[60%]">
-
-              {/* Header row: Omnave logo + title */}
-              <div className="flex items-center gap-3">
-                <img
-                  src="/omnave.png"
-                  alt="Omnave AI"
-                  className="w-9 h-9 rounded-full object-cover shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"
-                />
-                <span className="text-white font-poppins font-semibold text-[18px] leading-[27px]">
-                  Omnave Ai
-                </span>
-              </div>
-
-              {/* Description */}
-              <p className="text-white/80 font-poppins font-normal text-[12px] leading-[20px]">
-                {!currentLesson
-                  ? "Upload a PDF to get started!"
-                  : recommendation.text}
-              </p>
-
-              {/* Left-aligned CTA button */}
-              <motion.button
+        <StaggerItem variants={homeStaggerVariants}>
+          {loading ? (
+            <div className="grid grid-cols-2 gap-[20px] w-full">
+              <div className="bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[110px]" />
+              <div className="bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[110px]" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-[20px] w-full">
+              {/* LEVEL CARD */}
+              <motion.div 
                 whileTap={{ scale: 0.95 }}
                 transition={springTransition}
-                onClick={!currentLesson ? () => router.push("/upload") : recommendation.onClick}
-                className="mt-1 bg-white text-[#6949a8] font-poppins font-semibold px-5 py-2.5 rounded-full transition-all hover:bg-white/90 flex items-center gap-2 w-max shadow-sm select-none cursor-pointer border-none"
+                className="bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col justify-between select-none cursor-pointer"
               >
-                <span className="text-[13px] leading-[20px]">
-                  {!currentLesson ? "Get Started" : recommendation.actionLabel}
-                </span>
-                <ArrowRight size={13} className="text-[#6949a8]" />
-              </motion.button>
+                <div>
+                  <span className="text-[10px] font-bold tracking-[0.2em] text-omnave-secondary-text uppercase block mb-1 font-poppins">LEVEL</span>
+                  <span className="text-3xl font-bold tracking-tight text-omnave-primary-text leading-none font-poppins">
+                    {gamificationStats?.currentLevel || 1}
+                  </span>
+                </div>
+                <div className="mt-2">
+                  <span className="text-[9px] font-bold text-omnave-secondary-text block font-poppins">
+                    {gamificationStats?.currentXp || 0} / {(gamificationStats?.currentXp || 0) + (gamificationStats?.xpNeeded || 100)} XP
+                  </span>
+                  {/* XP Bar — gradient per ODL gamification rule */}
+                  <div className="w-full h-[2px] bg-omnave-border rounded-full overflow-hidden mt-1.5">
+                    <div 
+                      className="h-full bg-gradient-to-r from-[#6949a8] to-[#86d1ff] transition-all duration-300"
+                      style={{ width: `${gamificationStats?.xpProgress || 0}%` }}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* STREAK CARD */}
+              <motion.div 
+                whileTap={{ scale: 0.95 }}
+                transition={springTransition}
+                className="bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col justify-between select-none cursor-pointer"
+              >
+                <div>
+                  <span className="text-[10px] font-bold tracking-[0.2em] text-omnave-secondary-text uppercase block mb-1 font-poppins">STREAK</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-3xl font-bold tracking-tight text-omnave-primary-text leading-none font-poppins">
+                      {streak || 0}d
+                    </span>
+                    <Flame 
+                      size={20} 
+                      strokeWidth={1.5} 
+                      className={`transition-colors duration-300 ${
+                        streak > 0 && studiedToday ? "text-[#6949a8] fill-[#6949a8]/20" : "text-omnave-secondary-text"
+                      }`}
+                    />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <span className="text-[9px] font-bold text-omnave-secondary-text block leading-tight font-poppins">
+                    {studiedToday ? "Keep it up!" : "Study today to extend"}
+                  </span>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </StaggerItem>
+
+        {/* 4. OMNAVE AI CARD — Flat brand purple with logo + sparkle watermark */}
+        <StaggerItem variants={homeStaggerVariants}>
+          {loading ? (
+            <div className="w-full h-[167px] bg-[#6949a8]/20 rounded-[15px] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] animate-pulse" />
+          ) : (
+            <div className="w-full h-[167px] bg-[#6949a8] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] rounded-[15px] p-[20px] flex flex-row justify-between items-center overflow-hidden relative">
+
+              {/* Left column: logo + title + description + CTA */}
+              <div className="flex flex-col items-start gap-[10px] z-10 w-[60%]">
+
+                {/* Header row: Omnave logo + title */}
+                <div className="flex items-center gap-3">
+                  <img
+                    src="/omnave.png"
+                    alt="Omnave AI"
+                    className="w-9 h-9 rounded-full object-cover shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"
+                  />
+                  <span className="text-white font-poppins font-semibold text-[18px] leading-[27px]">
+                    Omnave Ai
+                  </span>
+                </div>
+
+                {/* Description */}
+                <p className="text-white/80 font-poppins font-normal text-[12px] leading-[20px]">
+                  {!currentLesson
+                    ? "Upload a PDF to get started!"
+                    : recommendation.text}
+                </p>
+
+                {/* Left-aligned CTA button */}
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  transition={springTransition}
+                  onClick={!currentLesson ? () => router.push("/upload") : recommendation.onClick}
+                  className="mt-1 bg-white text-[#6949a8] font-poppins font-semibold px-5 py-2.5 rounded-full transition-all hover:bg-white/90 flex items-center gap-2 w-max shadow-sm select-none cursor-pointer border-none"
+                >
+                  <span className="text-[13px] leading-[20px]">
+                    {!currentLesson ? "Get Started" : recommendation.actionLabel}
+                  </span>
+                  <ArrowRight size={13} className="text-[#6949a8]" />
+                </motion.button>
+
+              </div>
+
+              {/* Watermark: large faded sparkle */}
+              <Sparkles
+                size={120}
+                strokeWidth={0.75}
+                className="absolute top-1/2 -translate-y-1/2 -right-4 w-32 h-32 text-white opacity-10 pointer-events-none z-0"
+              />
 
             </div>
-
-            {/* Watermark: large faded sparkle — vertically centered on right to fill the void */}
-            <Sparkles
-              size={120}
-              strokeWidth={0.75}
-              className="absolute top-1/2 -translate-y-1/2 -right-4 w-32 h-32 text-white opacity-10 pointer-events-none z-0"
-            />
-
-          </div>
-        )}
+          )}
+        </StaggerItem>
 
         {/* 5. DAILY GOALS CARD */}
-        {loading ? (
-          <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[220px]">
-            <div className="flex justify-between items-center mb-4">
-              <div className="h-3.5 w-24 bg-omnave-border rounded-md" />
-              <div className="h-4 w-12 bg-omnave-border rounded-full" />
-            </div>
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-14 w-full bg-omnave-surface border border-omnave-border rounded-2xl" />
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-[11px] font-bold tracking-[0.2em] text-omnave-secondary-text uppercase font-poppins">Daily Goals</span>
-                <span 
-                  className="text-[10px] font-semibold text-[#6949a8] bg-[#6949a8]/10 px-2 py-0.5 rounded-full font-poppins"
-                  aria-label={`${completedGoalsCount} of ${totalGoalsCount} goals completed`}
-                >
-                  {completedGoalsCount}/{totalGoalsCount} Done
-                </span>
+        <StaggerItem variants={homeStaggerVariants}>
+          {loading ? (
+            <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[220px]">
+              <div className="flex justify-between items-center mb-4">
+                <div className="h-3.5 w-24 bg-omnave-border rounded-md" />
+                <div className="h-4 w-12 bg-omnave-border rounded-full" />
               </div>
-
-              {/* List of 3 nested goals */}
-              <ul className="space-y-3" role="list">
-                {(dailyGoals.length === 0 
-                  ? [
-                      { id: "daily-upload", title: "Upload a PDF", description: "Import a study document.", completed: lessonsList.length > 0 },
-                      { id: "daily-quiz", title: "Complete a Quiz", description: "Take a diagnostic quiz.", completed: quizScoresList.length > 0 },
-                      { id: "daily-streak", title: "Maintain Streak", description: "Keep your momentum active.", completed: streak > 0 }
-                  ]
-                  : dailyGoals.slice(0, 3)
-                ).map((goal) => (
-                  <motion.li 
-                    key={goal.id}
-                    onClick={() => handleGoalClick(goal.id)}
-                    whileTap={{ scale: 0.98 }}
-                    transition={springTransition}
-                    className={`flex items-center gap-3 p-3 rounded-[15px] bg-black/[0.02] border border-omnave-border cursor-pointer select-none`}
-                  >
-                    {/* Circular Checkbox button (44px touch target) */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleGoalClick(goal.id);
-                      }}
-                      className="w-11 h-11 flex items-center justify-center -ml-3 shrink-0 rounded-full hover:bg-black/[0.04] focus:outline-none transition-colors border-none bg-transparent cursor-pointer"
-                      aria-label={goal.completed ? `Mark ${goal.title} as incomplete` : `Mark ${goal.title} as completed`}
-                    >
-                      <div
-                        className={`w-5 h-5 rounded-full flex items-center justify-center border transition-all ${
-                          goal.completed
-                            ? "bg-[#6949a8] border-[#6949a8] text-white"
-                            : "border-omnave-border bg-transparent hover:border-[#6949a8]/50"
-                        }`}
-                      >
-                        {goal.completed && <Check size={12} strokeWidth={3} />}
-                      </div>
-                    </button>
-
-                    <div className="flex flex-col text-left min-w-0">
-                      <span
-                        className={`text-xs font-bold block font-poppins ${
-                          goal.completed ? "text-omnave-muted-text line-through" : "text-omnave-primary-text"
-                        }`}
-                      >
-                        {goal.title}
-                      </span>
-                      <span className="text-[10px] text-omnave-secondary-text leading-tight mt-0.5 font-poppins">
-                        {goal.description}
-                      </span>
-                    </div>
-                  </motion.li>
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-14 w-full bg-omnave-surface border border-omnave-border rounded-2xl" />
                 ))}
-              </ul>
+              </div>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-[11px] font-bold tracking-[0.2em] text-omnave-secondary-text uppercase font-poppins">Daily Goals</span>
+                  <span 
+                    className="text-[10px] font-semibold text-[#6949a8] bg-[#6949a8]/10 px-2 py-0.5 rounded-full font-poppins"
+                    aria-label={`${completedGoalsCount} of ${totalGoalsCount} goals completed`}
+                  >
+                    {completedGoalsCount}/{totalGoalsCount} Done
+                  </span>
+                </div>
+
+                {/* List of 3 nested goals */}
+                <ul className="space-y-3" role="list">
+                  {(dailyGoals.length === 0 
+                    ? [
+                        { id: "daily-upload", title: "Upload a PDF", description: "Import a study document.", completed: lessonsList.length > 0 },
+                        { id: "daily-quiz", title: "Complete a Quiz", description: "Take a diagnostic quiz.", completed: quizScoresList.length > 0 },
+                        { id: "daily-streak", title: "Maintain Streak", description: "Keep your momentum active.", completed: streak > 0 }
+                    ]
+                    : dailyGoals.slice(0, 3)
+                  ).map((goal) => (
+                    <motion.li 
+                      key={goal.id}
+                      onClick={() => handleGoalClick(goal.id)}
+                      whileTap={{ scale: 0.98 }}
+                      transition={springTransition}
+                      className={`flex items-center gap-3 p-3 rounded-[15px] bg-black/[0.02] border border-omnave-border cursor-pointer select-none`}
+                    >
+                      {/* Circular Checkbox button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleGoalClick(goal.id);
+                        }}
+                        className="w-11 h-11 flex items-center justify-center -ml-3 shrink-0 rounded-full hover:bg-black/[0.04] focus:outline-none transition-colors border-none bg-transparent cursor-pointer"
+                        aria-label={goal.completed ? `Mark ${goal.title} as incomplete` : `Mark ${goal.title} as completed`}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded-full flex items-center justify-center border transition-all ${
+                            goal.completed
+                              ? "bg-[#6949a8] border-[#6949a8] text-white"
+                              : "border-omnave-border bg-transparent hover:border-[#6949a8]/50"
+                          }`}
+                        >
+                          {goal.completed && <Check size={12} strokeWidth={3} />}
+                        </div>
+                      </button>
+
+                      <div className="flex flex-col text-left min-w-0">
+                        <span
+                          className={`text-xs font-bold block font-poppins ${
+                            goal.completed ? "text-omnave-muted-text line-through" : "text-omnave-primary-text"
+                          }`}
+                        >
+                          {goal.title}
+                        </span>
+                        <span className="text-[10px] text-omnave-secondary-text leading-tight mt-0.5 font-poppins">
+                          {goal.description}
+                        </span>
+                      </div>
+                    </motion.li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+        </StaggerItem>
 
         {/* 6. RECENT MATERIALS CARD */}
-        {loading ? (
-          <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[160px]" />
-        ) : (
-          <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col gap-5">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold tracking-[0.2em] text-omnave-secondary-text uppercase font-poppins">
-                Recent Materials
-              </span>
-              <Link
-                href="/library"
-                className="inline-flex items-center gap-1 text-[11px] font-bold text-[#6949a8] hover:text-[#563b8c] transition-colors uppercase tracking-[0.05em] select-none font-poppins"
-              >
-                <span>View All</span>
-                <ArrowRight size={12} strokeWidth={2} />
-              </Link>
-            </div>
-
-            {/* Responsive grid container: grid on Desktop/Tablet, horizontal overflow scrolling on Mobile */}
-            {displayMaterials.length === 0 ? (
-              <motion.div
-                onClick={() => router.push("/upload")}
-                whileTap={{ scale: 0.98 }}
-                className="py-6 text-center text-xs text-omnave-secondary-text font-medium border border-dashed border-omnave-border rounded-[15px] bg-black/[0.01] font-poppins cursor-pointer hover:bg-black/[0.03] transition-colors select-none"
-              >
-                No study materials found. Upload your first document to populate your library.
-              </motion.div>
-            ) : (
-              <div className="flex sm:grid sm:grid-cols-2 overflow-x-auto sm:overflow-x-visible gap-4 pb-2 sm:pb-0 snap-x hide-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                {displayMaterials.map((item) => (
-                  <motion.div
-                    key={item.id}
-                    onClick={() => router.push(`/lesson/${item.id}`)}
-                    whileTap={{ scale: 0.95 }}
-                    transition={springTransition}
-                    className="min-w-[240px] sm:min-w-0 snap-start shrink-0 sm:shrink flex flex-col justify-between gap-4 p-4 bg-black/[0.01] border border-omnave-border rounded-[15px] group cursor-pointer select-none"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-black/[0.03] border border-omnave-border flex items-center justify-center shrink-0 text-omnave-secondary-text">
-                        <FileText size={16} strokeWidth={1.5} />
-                      </div>
-                      <div className="flex flex-col gap-0.5 min-w-0 text-left">
-                        <h3 className="text-xs font-bold tracking-tight text-omnave-primary-text truncate group-hover:text-[#6949a8] font-poppins">
-                          {item.title}
-                        </h3>
-                        <p className="text-[10px] text-omnave-secondary-text font-normal font-poppins">
-                          {item.cardCount} cards
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="w-full flex flex-col gap-1.5">
-                      {/* Progress Bar — gradient per ODL gamification rule */}
-                      <div className="w-full h-[2px] bg-omnave-border rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-[#6949a8] to-[#86d1ff] rounded-full transition-all duration-300"
-                          style={{ width: `${Math.max(item.progress, 5)}%` }}
-                        />
-                      </div>
-                      <span className="text-[9px] text-omnave-secondary-text text-left font-medium font-poppins">
-                        {item.progress}% completed
-                      </span>
-                    </div>
-                  </motion.div>
-                ))}
+        <StaggerItem variants={homeStaggerVariants}>
+          {loading ? (
+            <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[160px]" />
+          ) : (
+            <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col gap-5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold tracking-[0.2em] text-omnave-secondary-text uppercase font-poppins">
+                  Recent Materials
+                </span>
+                <Link
+                  href="/library"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-[#6949a8] hover:text-[#563b8c] transition-colors uppercase tracking-[0.05em] select-none font-poppins"
+                >
+                  <span>View All</span>
+                  <ArrowRight size={12} strokeWidth={2} />
+                </Link>
               </div>
-            )}
-          </div>
-        )}
 
-      </div>
+              {displayMaterials.length === 0 ? (
+                <motion.div
+                  onClick={() => router.push("/upload")}
+                  whileTap={{ scale: 0.98 }}
+                  className="py-6 text-center text-xs text-omnave-secondary-text font-medium border border-dashed border-omnave-border rounded-[15px] bg-black/[0.01] font-poppins cursor-pointer hover:bg-black/[0.03] transition-colors select-none"
+                >
+                  No study materials found. Upload your first document to populate your library.
+                </motion.div>
+              ) : (
+                <div className="flex sm:grid sm:grid-cols-2 overflow-x-auto sm:overflow-x-visible gap-4 pb-2 sm:pb-0 snap-x hide-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {displayMaterials.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      onClick={() => router.push(`/lesson/${item.id}`)}
+                      whileTap={{ scale: 0.95 }}
+                      transition={springTransition}
+                      className="min-w-[240px] sm:min-w-0 snap-start shrink-0 sm:shrink flex flex-col justify-between gap-4 p-4 bg-black/[0.01] border border-omnave-border rounded-[15px] group cursor-pointer select-none"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-black/[0.03] border border-omnave-border flex items-center justify-center shrink-0 text-omnave-secondary-text">
+                          <FileText size={16} strokeWidth={1.5} />
+                        </div>
+                        <div className="flex flex-col gap-0.5 min-w-0 text-left">
+                          <h3 className="text-xs font-bold tracking-tight text-omnave-primary-text truncate group-hover:text-[#6949a8] font-poppins">
+                            {item.title}
+                          </h3>
+                          <p className="text-[10px] text-omnave-secondary-text font-normal font-poppins">
+                            {item.cardCount} cards
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="w-full flex flex-col gap-1.5">
+                        <div className="w-full h-[2px] bg-omnave-border rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-[#6949a8] to-[#86d1ff] rounded-full transition-all duration-300"
+                            style={{ width: `${Math.max(item.progress, 5)}%` }}
+                          />
+                        </div>
+                        <span className="text-[9px] text-omnave-secondary-text text-left font-medium font-poppins">
+                          {item.progress}% completed
+                        </span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </StaggerItem>
+
+      </StaggerContainer>
     </main>
   );
 }
