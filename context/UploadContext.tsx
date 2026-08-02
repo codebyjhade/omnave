@@ -612,6 +612,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
         });
 
         let apiStatus = 'PROCESSING';
+        let succJson: any = null;
         if (!response.ok) {
           let apiErrMsg = 'AI processing request failed.';
           try {
@@ -622,26 +623,51 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           throw new Error(apiErrMsg);
         } else {
           try {
-            const succJson = await response.json();
+            succJson = await response.json();
             if (succJson?.status) apiStatus = succJson.status;
           } catch {}
         }
 
         if (signal.aborted) return;
 
+        const actualId = succJson?.materialId || finalMaterialId;
+        registeredMaterialId = actualId;
+
+        if (actualId !== finalMaterialId) {
+          // Update the jobs state to replace the old ID with the new actualId
+          setJobs((prev) =>
+            prev.map((j) =>
+              j.id === finalMaterialId
+                ? { ...j, id: actualId, materialId: actualId }
+                : j
+            )
+          );
+
+          // Update activeQueue to remove finalMaterialId and add actualId
+          setActiveQueue((prev) =>
+            prev.map((id) => (id === finalMaterialId ? actualId : id))
+          );
+
+          // Transfer abortControllersRef from old ID to new ID
+          if (abortControllersRef.current[finalMaterialId]) {
+            abortControllersRef.current[actualId] = abortControllersRef.current[finalMaterialId];
+            delete abortControllersRef.current[finalMaterialId];
+          }
+        }
+
         if (apiStatus === 'COMPLETED') {
           // Success (Cache hit)
           setJobs((prev) =>
             prev.map((j) =>
-              j.id === finalMaterialId
+              j.id === actualId
                 ? { ...j, status: 'completed', progress: 100, targetProgress: 100, message: 'Study kit ready!', estimatedTime: 'Completed' }
                 : j
             )
           );
-          setActiveQueue((prev) => prev.filter((id) => id !== finalMaterialId));
+          setActiveQueue((prev) => prev.filter((id) => id !== actualId));
 
           addNotification({
-            id: `processed-${finalMaterialId}`,
+            id: `processed-${actualId}`,
             type: 'lesson',
             title: 'Material Processed',
             desc: `"${cleanTitle}" is ready.`,
@@ -652,7 +678,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           const { data: fullLesson } = await supabase
             .from('materials')
             .select('*')
-            .eq('id', finalMaterialId)
+            .eq('id', actualId)
             .single();
 
           if (fullLesson) {
@@ -664,7 +690,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           router.refresh();
         } else {
           // Start live DB polling queue for document worker
-          startPollingForMaterial(finalMaterialId, cleanTitle);
+          startPollingForMaterial(actualId, cleanTitle);
         }
 
       } catch (error) {
