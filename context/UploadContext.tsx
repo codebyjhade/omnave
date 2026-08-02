@@ -41,7 +41,7 @@ interface UploadContextValue {
   showUpgradeModal: boolean;
   setShowUpgradeModal: (show: boolean) => void;
   jobs: ProcessingJob[];
-  removeJob: (id: string) => void;
+  removeJob: (id: string) => Promise<void>;
 }
 
 const UploadContext = createContext<UploadContextValue | undefined>(undefined);
@@ -299,7 +299,8 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           .from('materials')
           .select('*')
           .eq('user_id', user.id)
-          .eq('is_processed', false);
+          .eq('is_processed', false)
+          .neq('status', 'failed');
 
         if (error) {
           console.error('[UploadContext] Error fetching active materials on mount:', error);
@@ -341,8 +342,18 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     fetchActiveMaterials();
   }, [user, startPollingForMaterial]);
 
-  const removeJob = useCallback((id: string) => {
-    setJobs((prev) => prev.filter((j) => j.id !== id));
+  const removeJob = useCallback(async (id: string) => {
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      await supabase.from('materials').delete().eq('id', id);
+    } catch (err) {
+      console.error('[UploadContext] Failed to hard delete material from database:', err);
+    } finally {
+      setJobs((prev) => prev.filter((j) => j.id !== id));
+    }
   }, []);
 
   const cancelJob = useCallback(async (jobId: string) => {
