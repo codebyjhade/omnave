@@ -343,6 +343,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
   }, [user, startPollingForMaterial]);
 
   const removeJob = useCallback(async (id: string) => {
+    setJobs((prev) => prev.filter((j) => j.id !== id));
     try {
       const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -351,12 +352,16 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       await supabase.from('materials').delete().eq('id', id);
     } catch (err) {
       console.error('[UploadContext] Failed to hard delete material from database:', err);
-    } finally {
-      setJobs((prev) => prev.filter((j) => j.id !== id));
     }
   }, []);
 
   const cancelJob = useCallback(async (jobId: string) => {
+    // Move local state mutations to the very top (optimistic UI)
+    setJobs((prev) => prev.filter((job) => job.id !== jobId));
+    setActiveQueue((prev) => prev.filter((id) => id !== jobId));
+    removeLessonFromState(jobId);
+    removeNotification(`processing-${jobId}`);
+
     // Abort HTTP upload request
     if (abortControllersRef.current[jobId]) {
       abortControllersRef.current[jobId].abort();
@@ -374,11 +379,6 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       delete elapsedIntervalsRef.current[jobId];
     }
 
-    // Remove from local and user states
-    setActiveQueue((prev) => prev.filter((id) => id !== jobId));
-    removeLessonFromState(jobId);
-    removeNotification(`processing-${jobId}`);
-
     // If registered, call backend cancellation API
     if (!jobId.startsWith('temp-')) {
       try {
@@ -395,7 +395,6 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       }
     }
  
-    setJobs((prev) => prev.filter((job) => job.id !== jobId));
     toast('Processing cancelled.', 'info');
   }, [removeLessonFromState, removeNotification, toast, refreshUser]);
 
@@ -411,6 +410,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
   const processBackgroundUpload = useCallback(
     async (file: File) => {
       const tempJobId = `temp-${Date.now()}`;
+      let registeredMaterialId: string | null = null;
       
       const newJob: ProcessingJob = {
         id: tempJobId,
@@ -572,6 +572,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
         clearInterval(tempElapsedInterval);
         
         const finalMaterialId = newMaterial.id;
+        registeredMaterialId = finalMaterialId;
         abortControllersRef.current[finalMaterialId] = abortController;
         delete abortControllersRef.current[tempJobId];
 
@@ -669,11 +670,19 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
         }
         
         const errMsg = error instanceof Error ? error.message : 'Error processing document.';
-        const activeId = activeQueue.includes(tempJobId) ? tempJobId : null; // fallback check
+        const activeId = registeredMaterialId || tempJobId;
+
+        if (activeId && !activeId.startsWith('temp-')) {
+          try {
+            await supabase.from('materials').update({ status: 'failed', is_processed: true }).eq('id', activeId);
+          } catch (dbErr) {
+            console.error('[UploadContext] Silent DB update error in catch block:', dbErr);
+          }
+        }
 
         setJobs((prev) =>
           prev.map((j) =>
-            j.id === tempJobId || (activeId && j.id === activeId)
+            j.id === activeId
               ? { ...j, status: 'failed', progress: 0, targetProgress: 0, message: errMsg, estimatedTime: 'Failed' }
               : j
           )

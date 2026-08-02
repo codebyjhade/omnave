@@ -1,3 +1,5 @@
+export const maxDuration = 60;
+
 import { serve } from "inngest/next";
 import { inngest } from "@/lib/inngest/client";
 import { processMaterial } from "@/lib/inngest/functions";
