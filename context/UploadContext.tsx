@@ -344,14 +344,18 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
 
   const removeJob = useCallback(async (id: string) => {
     setJobs((prev) => prev.filter((j) => j.id !== id));
-    try {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-      await supabase.from('materials').delete().eq('id', id);
-    } catch (err) {
-      console.error('[UploadContext] Failed to hard delete material from database:', err);
+    if (!id.startsWith('temp-')) {
+      try {
+        await fetch("/api/process-material/delete", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ materialId: id }),
+        });
+      } catch (err) {
+        console.error('[UploadContext] Failed to delete material from database via API:', err);
+      }
     }
   }, []);
 

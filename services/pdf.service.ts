@@ -1,4 +1,6 @@
-import { PDFParse } from "pdf-parse";
+if (typeof global !== "undefined" && typeof global.DOMMatrix === "undefined") {
+  (global as any).DOMMatrix = class DOMMatrix {};
+}
 
 export async function extractTextFromPdfUrl(fileUrl: string): Promise<string> {
   try {
@@ -15,6 +17,7 @@ export async function extractTextFromPdfUrl(fileUrl: string): Promise<string> {
     
     console.log(`PDF downloaded successfully. Buffer size: ${buffer.length} bytes. Parsing...`);
     
+    const { PDFParse } = await import("pdf-parse");
     // Parse using the modern class-based PDFParse API to maintain TypeScript ESM compatibility
     const parser = new PDFParse({ data: buffer });
     const data = await parser.getText();
@@ -44,6 +47,7 @@ export async function parsePdfFromUrl(fileUrl: string): Promise<{ text: string; 
     
     console.log(`PDF downloaded successfully for parsing. Buffer size: ${buffer.length} bytes. Parsing...`);
     
+    const { PDFParse } = await import("pdf-parse");
     const parser = new PDFParse({ data: buffer });
     const data = await parser.getText();
     if (!data.text) throw new Error("pdf-parse returned empty text");
