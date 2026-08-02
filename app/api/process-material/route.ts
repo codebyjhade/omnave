@@ -6,9 +6,11 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
+  let activeMaterialId: string | null = null;
   try {
     const body = await req.json();
     const { materialId, text, fileUrl } = body;
+    activeMaterialId = materialId;
 
     // Require materialId, and EITHER pre-extracted text OR a fileUrl
     if (!materialId || (!text && !fileUrl)) {
@@ -268,6 +270,16 @@ export async function POST(req: Request) {
 
   } catch (error: unknown) {
     console.error("Failed to trigger AI processing:", error);
+    if (activeMaterialId) {
+      try {
+        await supabaseServer
+          .from("materials")
+          .update({ status: "failed", is_processed: true })
+          .eq("id", activeMaterialId);
+      } catch (dbError) {
+        console.error("Failed to update database failure state in catch block:", dbError);
+      }
+    }
     const errMsg = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json(
       { error: errMsg },
