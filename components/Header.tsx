@@ -36,11 +36,16 @@ export default function Header() {
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  // Strict Tween Transition Master Clock to prevent Spring bouncing
-  const sharedTransition = useMemo(() => ({ 
-    type: "tween" as const, 
-    duration: 0.25, 
-    ease: "easeInOut" as const 
+  // ─── Motion Master Timing Contract ───────────────────────────────────────────
+  // Single source of truth for ALL header icon entry/exit/layout animations.
+  // Crisp custom cubic-bezier gives a premium, snappy feel on a shared clock.
+  const motionMasterTiming = { type: "tween" as const, duration: 0.22, ease: [0.32, 0.72, 0, 1] as const };
+
+  // Kept for non-icon elements (left column cross-fade) — same clock, explicit type
+  const sharedTransition = useMemo(() => ({
+    type: "tween" as const,
+    duration: 0.22,
+    ease: [0.32, 0.72, 0, 1] as const,
   }), []);
 
   // Sync Search state with URL query parameters for /library
@@ -295,8 +300,8 @@ export default function Header() {
     );
   }
 
-  // Adaptive button classes for dark/light headers
-  const iconBtnClass = `p-2 rounded-full h-10 w-10 flex items-center justify-center cursor-pointer shadow-premium-glass border z-40 shrink-0 transition-all ${
+  // Adaptive button classes for dark/light headers — locked to exact px dimensions to prevent Flexbox compression
+  const iconBtnClass = `p-2 rounded-full w-[40px] h-[40px] min-w-[40px] min-h-[40px] max-w-[40px] max-h-[40px] flex items-center justify-center cursor-pointer shadow-premium-glass border z-40 shrink-0 block overflow-hidden transition-all ${
     isFlatWhiteRoute 
       ? 'bg-white text-gray-900 border-gray-100 hover:bg-gray-50' 
       : 'bg-white text-[#6949a8] border-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70'
@@ -326,8 +331,8 @@ export default function Header() {
           </AnimatePresence>
         </div>
 
-        {/* Right Column: Dynamic Action Buttons with unified popLayout exit positioning */}
-        <motion.div layout transition={sharedTransition} className="flex items-center gap-3 relative">
+        {/* Right Column: Dynamic Action Buttons — layout tweens parent width, locked children prevent icon distortion */}
+        <motion.div layout="position" transition={motionMasterTiming} className="flex items-center gap-3 relative shrink-0">
           <AnimatePresence mode="popLayout">
             
             {/* Bell Button (Shared layout) */}
@@ -336,16 +341,18 @@ export default function Header() {
                 id="notification-bell-btn"
                 key="bell-btn"
                 layoutId="bell-button-layout"
+                layout="position"
                 initial={{ x: 20, opacity: 0 }}
                 animate={isPulsing ? { x: 0, opacity: 1, scale: [1, 1.25, 0.95, 1.1, 1] } : { x: 0, opacity: 1, scale: 1 }}
                 exit={{ x: 20, opacity: 0 }}
                 transition={isPulsing ? {
                   scale: { duration: 0.6, ease: "easeOut" },
-                  default: sharedTransition
-                } : sharedTransition}
+                  default: motionMasterTiming
+                } : motionMasterTiming}
                 onClick={() => setIsNotificationOpen(!isNotificationOpen)}
                 whileTap={{ scale: 0.90 }}
                 className={iconBtnClass}
+                style={{ borderRadius: '50%' }}
                 aria-label="View notifications"
               >
                 <Bell size={20}/>
@@ -360,13 +367,15 @@ export default function Header() {
               <motion.button 
                 key="settings-btn"
                 layoutId="settings-button-layout"
+                layout="position"
                 initial={{ x: 20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: 20, opacity: 0 }}
-                transition={sharedTransition}
+                transition={motionMasterTiming}
                 onClick={() => router.push('/settings')}
                 whileTap={{ scale: 0.90 }}
                 className={iconBtnClass}
+                style={{ borderRadius: '50%' }}
                 aria-label="Open settings menu"
               >
                 <Settings size={20}/>
@@ -377,13 +386,15 @@ export default function Header() {
             {pathname === '/progress' && (
               <motion.button 
                 key="share-btn"
+                layout="position"
                 initial={{ x: 20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: 20, opacity: 0 }}
-                transition={sharedTransition}
+                transition={motionMasterTiming}
                 onClick={handleShare}
                 whileTap={{ scale: 0.90 }}
                 className={iconBtnClass}
+                style={{ borderRadius: '50%' }}
                 aria-label="Share stats"
               >
                 <Share2 size={18} />
@@ -394,15 +405,17 @@ export default function Header() {
             {pathname === '/library' && (
               <motion.div
                 key="sort-btn-wrapper"
+                layout="position"
                 initial={{ x: 20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: 20, opacity: 0 }}
-                transition={sharedTransition}
+                transition={motionMasterTiming}
                 className="relative shrink-0"
               >
                 <button
                   onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
-                  className="w-11 h-11 bg-white rounded-full flex items-center justify-center border-none cursor-pointer shadow-[0px_4px_10px_rgba(0,0,0,0.05)] hover:bg-gray-50 active:scale-95 transition-all"
+                  className="w-[40px] h-[40px] min-w-[40px] min-h-[40px] max-w-[40px] max-h-[40px] bg-white rounded-full flex items-center justify-center border-none cursor-pointer shadow-[0px_4px_10px_rgba(0,0,0,0.05)] hover:bg-gray-50 active:scale-95 transition-all shrink-0 block overflow-hidden"
+                  style={{ borderRadius: '50%' }}
                   title="Sort Library"
                 >
                   <SlidersHorizontal size={18} className="text-[#6949a8]" />
@@ -427,14 +440,16 @@ export default function Header() {
             {pathname === '/settings' && (
               <motion.button 
                 key="search-circular-btn"
+                layout="position"
                 initial={{ x: 20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: 20, opacity: 0 }}
-                transition={sharedTransition}
-                className="bg-white text-[#6949a8] p-2 rounded-full h-10 w-10 flex items-center justify-center cursor-pointer shadow-premium-glass border-none focus-visible:outline-none z-40 shrink-0"
+                transition={motionMasterTiming}
+                className="bg-white text-[#6949a8] p-2 rounded-full w-[40px] h-[40px] min-w-[40px] min-h-[40px] max-w-[40px] max-h-[40px] flex items-center justify-center cursor-pointer shadow-premium-glass border-none focus-visible:outline-none z-40 shrink-0 block overflow-hidden"
+                style={{ borderRadius: '50%' }}
                 aria-label="Search settings"
               >
-                <motion.div layoutId="search-icon-layout" transition={sharedTransition}>
+                <motion.div layoutId="search-icon-layout" layout="position" transition={motionMasterTiming}>
                   <Search size={20} />
                 </motion.div>
               </motion.button>
@@ -444,15 +459,17 @@ export default function Header() {
             {pathname.startsWith('/lesson/') && currentLessonData && (
               <motion.div 
                 key="lesson-progress-circle"
+                layout="position"
                 initial={{ x: 20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: 20, opacity: 0 }}
-                transition={sharedTransition}
-                className={`w-10 h-10 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 z-40 ${
+                transition={motionMasterTiming}
+                className={`w-[40px] h-[40px] min-w-[40px] min-h-[40px] max-w-[40px] max-h-[40px] rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 z-40 block overflow-hidden ${
                   isFlatWhiteRoute
                     ? 'border-2 border-gray-200 bg-white text-gray-900 shadow-sm'
                     : 'border-2 border-white/20 bg-white/10 text-white'
                 }`}
+                style={{ borderRadius: '50%' }}
               >
                 {currentLessonData.progress}%
               </motion.div>

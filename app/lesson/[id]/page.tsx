@@ -188,7 +188,7 @@ export default function LessonView() {
     }`}>
       {/* Main Stage (Conditional Mode Render) - Expanded to max-w-3xl for spaciousness */}
       <div className="w-full flex-1 flex flex-col max-w-3xl mx-auto pt-4 px-3 text-left">
-        <div className="flex-1 w-full bg-white rounded-[32px] shadow-[0px_10px_40px_rgba(0,0,0,0.06)] border border-gray-100 overflow-hidden flex flex-col mb-4 mt-0">
+        <div className="flex-1 w-full bg-white border border-gray-100 rounded-[24px] shadow-[0_8px_40px_rgba(0,0,0,0.08)] flex flex-col overflow-hidden mb-6">
           
           <AnimatePresence mode="wait">
             {activeMode === 'summary' && (
@@ -198,7 +198,7 @@ export default function LessonView() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                className="flex-1 w-full overflow-y-auto px-3 py-5 font-poppins"
+                className="flex-1 w-full overflow-y-auto p-5 font-poppins"
               >
                 <MarkdownRenderer text={data?.summary || "No summary content."} variant="summary" theme="light" />
               </motion.div>
@@ -211,7 +211,7 @@ export default function LessonView() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                className="w-full flex-1 min-h-[450px] px-3 py-5"
+                className="w-full flex-1 min-h-[450px] p-5"
               >
                 <FlashcardEngine 
                   lessonId={id as string} 
@@ -229,7 +229,7 @@ export default function LessonView() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                className="w-full flex-1 flex flex-col overflow-y-auto px-3 py-5"
+                className="w-full flex-1 flex flex-col overflow-y-auto p-5"
               >
                 {/* Sticky Sub-Header Toggle */}
                 <div className="flex justify-center mb-6">
@@ -296,7 +296,7 @@ export default function LessonView() {
  
       {/* Floating Context Switcher (Bottom Nav Pill) - Hidden during active quiz takeover */}
       {!isAssessmentActive && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-[320px] bg-white rounded-full shadow-[0px_10px_30px_rgba(0,0,0,0.15)] border border-gray-100 flex items-center justify-between p-1.5 font-poppins select-none">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90vw] max-w-[320px] bg-white rounded-full shadow-[0px_10px_30px_rgba(0,0,0,0.15)] border border-gray-100 flex items-center justify-between p-1.5 font-poppins select-none">
           <button 
             onClick={() => setActiveMode('summary')}
             className={`flex-1 py-2.5 flex items-center justify-center transition-all duration-200 border-none cursor-pointer ${
