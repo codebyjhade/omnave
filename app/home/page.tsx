@@ -296,11 +296,11 @@ export default function HomePage() {
   const springTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
 
   return (
-    <main
+    <div
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className="w-full min-h-screen bg-[#6949a8] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] relative flex flex-col overflow-y-auto pwa-safe-root"
+      className="w-full flex-1 flex flex-col"
     >
       {/* Custom PWA Pull-to-Refresh Spinner UI */}
       <div 
@@ -332,10 +332,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <Header />
-
-      {/* Grounded, Friendly EdTech vertical layout wrapper with curved canvas */}
-      <StaggerContainer staggerChildren={0} className="flex-1 w-full max-w-5xl mx-auto px-[25px] pt-8 pb-[120px] rounded-t-[40px] flex flex-col gap-[20px] bg-[#FFFFFF] -mt-12 relative z-20">
+      <StaggerContainer staggerChildren={0.08} className="w-full flex flex-col gap-6">
 
         {/* 1. TODAY'S GOAL */}
         <StaggerItem variants={homeStaggerVariants}>
@@ -683,6 +680,6 @@ export default function HomePage() {
         </StaggerItem>
 
       </StaggerContainer>
-    </main>
+    </div>
   );
 }

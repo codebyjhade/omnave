@@ -16,6 +16,8 @@ import OnboardingGuard from "@/components/OnboardingGuard";
 import { PWAProvider } from "@/components/PWAProvider";
 import { ToastProvider } from "@/components/ToastProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { NavigationProvider } from "@/context/NavigationContext";
+import WorkspaceShell from "@/components/layout/WorkspaceShell";
 
 export const metadata: Metadata = {
   title: "Omnave",
@@ -60,16 +62,12 @@ export default function RootLayout({
                 <OnboardingGuard>
                   <UploadProvider>
                     <AssessmentProvider>
-                      {/* PAGE CONTENT */}
-                      <div className="relative z-10 w-full min-h-screen flex flex-col">
-                        <div className="flex-1 w-full">
+                      <NavigationProvider>
+                        <WorkspaceShell>
                           {children}
-                        </div>
-                      </div>
-
-                      {/* GLOBAL HUDS - Restored to fix the missing header */}
-                      <BottomNav/>
-                      <TabScrollRestorer />
+                        </WorkspaceShell>
+                        <TabScrollRestorer />
+                      </NavigationProvider>
                     </AssessmentProvider>
                   </UploadProvider>
                 </OnboardingGuard>

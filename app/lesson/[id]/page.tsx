@@ -1,14 +1,16 @@
 "use client";
  
-import { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
-import { ChevronLeft, FileText, Zap, Target, MessageCircle } from "lucide-react";
+import { FileText, Zap, Target, MessageCircle } from "lucide-react";
 import { useToast } from "@/components/ToastProvider";
 import { useUserContext } from "@/context/UserContext";
 import { useProgress } from "@/hooks/useProgress";
 import { calculateKitProgress } from "@/hooks/useProgressStats";
 import { MarkdownRenderer } from "@/components/lesson";
+import { useAssessmentGuard } from "@/context/AssessmentContext";
+import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
  
 const AssessmentEngine = dynamic(
@@ -29,78 +31,77 @@ const ChatPanel = dynamic(
 export default function LessonView() {
   const router = useRouter();
   const { id } = useParams();
-  const { user, loading: contextLoading } = useUserContext();
-  const { quizScores } = useProgress();
   const { toast } = useToast();
+  const { user } = useUserContext();
   const planType = user?.plan_type || 'free';
+  const { quizScores } = useProgress();
+  const { isAssessmentActive, setIsAssessmentActive } = useAssessmentGuard();
  
-  // Data State
+  const [activeMode, setActiveMode] = useState<'summary' | 'flashcards' | 'quiz' | 'chat'>('summary');
+  const [assessmentType, setAssessmentType] = useState<'quiz' | 'exam'>('quiz');
+  
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
- 
-  // Active workspace mode
-  const [activeMode, setActiveMode] = useState<'summary' | 'flashcards' | 'quiz' | 'chat'>('summary');
-  
-  // Assessment View State
-  const [assessmentType, setAssessmentType] = useState<'quiz' | 'exam'>('quiz');
- 
-  // Chat Panel states
   const [chatInput, setChatInput] = useState("");
-  const [chatHistory, setChatHistory] = useState<{ role: "user" | "ai"; text: string }[]>([]);
+  const [chatHistory, setChatHistory] = useState<Array<{ role: "user" | "ai"; text: string }>>([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
   const [selectedText, setSelectedText] = useState("");
-  
   const chatScrollRef = useRef<HTMLDivElement>(null);
  
-  // Hydrate Chat History from LocalStorage on mount
+  // Restore Active Tab parameter if coming back from redirect
   useEffect(() => {
-    if (id) {
+    const hash = window.location.hash;
+    if (hash === "#quiz") {
+      setActiveMode("quiz");
+    } else if (hash === "#flashcards") {
+      setActiveMode("flashcards");
+    }
+  }, []);
+
+  // Safe Guard: Reset active assessment state to false if user switches tabs to prevent header/nav disappearance
+  useEffect(() => {
+    if (activeMode !== 'quiz' && isAssessmentActive) {
+      setIsAssessmentActive(false);
+    }
+  }, [activeMode, isAssessmentActive, setIsAssessmentActive]);
+ 
+  useEffect(() => {
+    const fetchMaterial = async () => {
       try {
-        const saved = localStorage.getItem(`omnilearn:chat:${id}`);
-        if (saved) {
-          setChatHistory(JSON.parse(saved));
-        }
+        setLoading(true);
+        const supabase = createBrowserClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+        const { data: material, error } = await supabase
+          .from("materials")
+          .select("*")
+          .eq("id", id)
+          .single();
+ 
+        if (error) throw error;
+        setData(material);
       } catch (err) {
-        console.error("Failed to hydrate chat history:", err);
+        console.error("Error fetching material:", err);
+        toast("Failed to load study kit.", "error");
+      } finally {
+        setLoading(false);
       }
-    }
-  }, [id]);
+    };
  
-  // Persist Chat History to LocalStorage on changes
-  useEffect(() => {
-    if (id) {
-      try {
-        localStorage.setItem(`omnilearn:chat:${id}`, JSON.stringify(chatHistory));
-      } catch (err) {
-        console.error("Failed to persist chat history:", err);
-      }
-    }
-  }, [id, chatHistory]);
+    if (id) fetchMaterial();
+  }, [id, toast]);
  
-  // Auto-scroll to bottom when chat updates
-  useEffect(() => {
-    if (chatScrollRef.current) {
-      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-    }
-  }, [chatHistory, isChatLoading]);
+  const handleAskQuestion = async () => {
+    if (!chatInput.trim() || isChatLoading) return;
  
-  // Clear Chat Logic
-  const handleClearChat = useCallback(() => {
-    setChatHistory([]);
-    try {
-      localStorage.removeItem(`omnilearn:chat:${id}`);
-    } catch (err) {
-      console.error("Failed to clear chat history:", err);
-    }
-  }, [id]);
+    const prompt = selectedText 
+      ? `Regarding this context:\n"${selectedText}"\n\nQuestion: ${chatInput}` 
+      : chatInput;
  
-  // Handle AI Chat Logic
-  const handleAskQuestion = async (customText?: string) => {
-    const promptText = (customText || chatInput).trim();
-    if (!promptText) return;
- 
-    setChatHistory((prev) => [...prev, { role: "user", text: promptText }]);
+    const newUserMsg: { role: "user" | "ai"; text: string } = { role: "user", text: chatInput };
+    setChatHistory(prev => [...prev, newUserMsg]);
     setChatInput("");
     setIsChatLoading(true);
     setChatError(null);
@@ -108,100 +109,34 @@ export default function LessonView() {
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: promptText,
-          summary: data?.summary || "",
-          history: chatHistory.slice(-10).map(msg => ({
-            role: msg.role === "user" ? "user" : "assistant",
-            content: msg.text
+          materialId: id,
+          messages: [...chatHistory, newUserMsg].map(m => ({
+            role: m.role === 'ai' ? 'model' : 'user',
+            content: m.text
           }))
-        }),
+        })
       });
  
-      if (!response.ok) {
-        let errMsg = "AI tutor failed to respond.";
-        try {
-          const json = await response.json();
-          if (json?.message) errMsg = json.message;
-          else if (json?.error) errMsg = json.error;
-        } catch {}
-        throw new Error(errMsg);
-      }
- 
+      if (!response.ok) throw new Error("Tutor chat failed to respond");
+      
       const resData = await response.json();
-      if (!resData.success || !resData.reply) {
-        throw new Error(resData.message || "Failed to generate AI response.");
-      }
- 
-      setChatHistory((prev) => [
-        ...prev,
-        {
-          role: "ai",
-          text: resData.reply,
-        },
-      ]);
-    } catch (err: unknown) {
-      console.error("AI chat error:", err);
-      const errMsg = err instanceof Error ? err.message : String(err);
-      setChatError(errMsg || "Something went wrong. Please try again.");
+      setChatHistory(prev => [...prev, { role: "ai", text: resData.text }]);
+    } catch (err: any) {
+      console.error(err);
+      setChatError("Failed to get response from AI Tutor. Try again.");
     } finally {
       setIsChatLoading(false);
     }
   };
  
-  // Supabase Fetching and Polling
-  useEffect(() => {
-    let isMounted = true;
-    let pollInterval: NodeJS.Timeout;
- 
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
- 
-    const fetchLesson = async () => {
-      const { data: lessonData } = await supabase
-        .from('materials')
-        .select('*')
-        .eq('id', id)
-        .single();
- 
-      if (isMounted) {
-        if (lessonData) {
-          setData(lessonData);
-          if (lessonData.is_processed) {
-            clearInterval(pollInterval);
-          }
-        }
-        setLoading(false);
-      }
-    };
- 
-    if (id) {
-      fetchLesson();
-      pollInterval = setInterval(fetchLesson, 3000);
-    }
- 
-    return () => {
-      isMounted = false;
-      clearInterval(pollInterval);
-    };
-  }, [id]);
- 
-  // AI Generation processing redirect
-  useEffect(() => {
-    if (!loading && data && (!data.is_processed || data.status === "PROCESSING")) {
-      toast("Your material is still processing in the background.", "info");
-      router.replace('/library');
-    }
-  }, [loading, data, router, toast]);
- 
-  const memoizedFlashcards = useMemo(() => {
-    return data?.flashcards || [];
-  }, [data?.flashcards]);
+  const handleClearChat = () => {
+    setChatHistory([]);
+    setChatInput("");
+    setSelectedText("");
+    setChatError(null);
+  };
  
   const handleNavigateToQuiz = () => {
     setActiveMode("quiz");
@@ -211,25 +146,9 @@ export default function LessonView() {
     setActiveMode("summary");
   };
  
-  if (loading || contextLoading) {
-    return (
-      <main className="min-h-[100dvh] bg-slate-50 flex flex-col items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-[#6949a8] border-t-transparent rounded-full" />
-      </main>
-    );
-  }
- 
-  if (!data) {
-    return (
-      <main className="min-h-[100dvh] bg-slate-50 flex flex-col items-center justify-center p-6 text-gray-500 font-poppins">
-        Study Kit not found.
-      </main>
-    );
-  }
- 
-  if (!data.is_processed || data.status === "PROCESSING") {
-    return null; // Return null while redirecting
-  }
+  const memoizedFlashcards = useMemo(() => {
+    return data ? data.flashcards || [] : [];
+  }, [data]);
  
   const getCleanTitle = (path?: string | null) => {
     if (!path) return "Study Material";
@@ -241,148 +160,189 @@ export default function LessonView() {
   const displayTitle = data?.title || getCleanTitle(data?.file_path);
   const progress = data ? calculateKitProgress(data, quizScores) : 0;
  
-  return (
-    <main className="min-h-[100dvh] bg-slate-50 flex flex-col pb-[calc(env(safe-area-inset-bottom)+100px)] relative w-full">
-      {/* Focused Sticky Top Header */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-100 px-5 py-4 flex items-center justify-between shadow-sm select-none">
-        <button
+  if (loading) {
+    return (
+      <div className="flex-1 w-full flex items-center justify-center min-h-[300px]">
+        <div className="animate-spin w-8 h-8 border-4 border-[#6949a8] border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+ 
+  if (!data) {
+    return (
+      <div className="flex-1 w-full flex flex-col items-center justify-center min-h-[300px] text-gray-500 font-poppins p-6 text-center">
+        <p className="text-sm font-semibold">Study Kit not found.</p>
+        <button 
           onClick={() => router.push('/library')}
-          className="p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none border-none bg-transparent"
-          aria-label="Go back to Library"
+          className="mt-4 px-4 py-2 bg-[#6949a8] hover:bg-[#563b8c] text-white text-xs font-semibold rounded-full border-none cursor-pointer active:scale-95 transition-all shadow-sm"
         >
-          <ChevronLeft size={20} />
+          Return to Library
         </button>
-        <span className="font-bold text-gray-900 font-poppins truncate max-w-[200px]">
-          {displayTitle}
-        </span>
-        <div className="w-8 h-8 rounded-full border-2 border-purple-100 flex items-center justify-center text-[9px] font-bold text-[#6949a8]">
-          {progress}%
-        </div>
-      </header>
+      </div>
+    );
+  }
  
-      {/* Main Stage (Conditional Mode Render) */}
-      <div className="flex-1 w-full max-w-2xl mx-auto p-5 text-left flex flex-col">
-        <div className="flex-1 w-full bg-white rounded-[32px] shadow-[0px_10px_40px_rgba(0,0,0,0.06)] border border-gray-100 overflow-hidden flex flex-col mb-4 mt-2">
-          {activeMode === 'summary' && (
-            <div className="flex-1 w-full overflow-y-auto p-6 md:p-8 font-poppins">
-              <MarkdownRenderer text={data.summary || "No summary content."} variant="summary" theme="light" />
-            </div>
-          )}
+  return (
+    <div className={`w-full flex-1 flex flex-col relative transition-all duration-200 ${
+      isAssessmentActive ? 'pb-8' : 'pb-32'
+    }`}>
+      {/* Main Stage (Conditional Mode Render) - Expanded to max-w-3xl for spaciousness */}
+      <div className="w-full flex-1 flex flex-col max-w-3xl mx-auto pt-4 px-3 text-left">
+        <div className="flex-1 w-full bg-white rounded-[32px] shadow-[0px_10px_40px_rgba(0,0,0,0.06)] border border-gray-100 overflow-hidden flex flex-col mb-4 mt-0">
+          
+          <AnimatePresence mode="wait">
+            {activeMode === 'summary' && (
+              <motion.div
+                key="summary"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="flex-1 w-full overflow-y-auto px-3 py-5 font-poppins"
+              >
+                <MarkdownRenderer text={data?.summary || "No summary content."} variant="summary" theme="light" />
+              </motion.div>
+            )}
  
-          {activeMode === 'flashcards' && (
-            <div className="w-full flex-1 min-h-[450px] p-6">
-              <FlashcardEngine 
-                lessonId={id as string} 
-                flashcards={memoizedFlashcards} 
-                onNavigateToQuiz={handleNavigateToQuiz} 
-                onNavigateToSummary={handleNavigateToSummary}
-              />
-            </div>
-          )}
+            {activeMode === 'flashcards' && (
+              <motion.div
+                key="flashcards"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="w-full flex-1 min-h-[450px] px-3 py-5"
+              >
+                <FlashcardEngine 
+                  lessonId={id as string} 
+                  flashcards={memoizedFlashcards} 
+                  onNavigateToQuiz={handleNavigateToQuiz} 
+                  onNavigateToSummary={handleNavigateToSummary}
+                />
+              </motion.div>
+            )}
  
-          {activeMode === 'quiz' && (
-            <div className="w-full flex-1 flex flex-col overflow-y-auto p-6">
-              {/* Sticky Sub-Header Toggle */}
-              <div className="flex justify-center mb-6">
-                <div className="bg-gray-50 p-1 rounded-full border border-gray-100 shadow-[0px_4px_10px_rgba(0,0,0,0.02)] flex gap-1 font-poppins text-xs font-semibold select-none">
-                  <button
-                    onClick={() => setAssessmentType('quiz')}
-                    className={`px-4 py-2 rounded-full transition-all border-none cursor-pointer duration-200 ${
-                      assessmentType === 'quiz'
-                        ? 'bg-[#6949a8] text-white shadow-sm'
-                        : 'text-gray-500 bg-transparent hover:text-gray-700'
-                    }`}
-                  >
-                    Practice Quiz
-                  </button>
-                  <button
-                    onClick={() => {
-                      toast("Mock Exam mode is coming soon!", "info");
-                    }}
-                    className={`px-4 py-2 rounded-full transition-all border-none cursor-pointer duration-200 flex items-center gap-1 ${
-                      assessmentType === 'exam'
-                        ? 'bg-[#6949a8] text-white shadow-sm'
-                        : 'text-gray-555 bg-transparent hover:text-gray-700'
-                    }`}
-                  >
-                    Mock Exam {planType === 'free' && '🔒'}
-                  </button>
+            {activeMode === 'quiz' && (
+              <motion.div
+                key="quiz"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="w-full flex-1 flex flex-col overflow-y-auto px-3 py-5"
+              >
+                {/* Sticky Sub-Header Toggle */}
+                <div className="flex justify-center mb-6">
+                  <div className="bg-gray-50 p-1 rounded-full border border-gray-100 shadow-[0px_4px_10px_rgba(0,0,0,0.02)] flex gap-1 font-poppins text-xs font-semibold select-none">
+                    <button
+                      onClick={() => setAssessmentType('quiz')}
+                      className={`px-4 py-2 rounded-full transition-all border-none cursor-pointer duration-200 ${
+                        assessmentType === 'quiz'
+                          ? 'bg-[#6949a8] text-white shadow-sm'
+                          : 'text-gray-500 bg-transparent hover:text-gray-700'
+                      }`}
+                    >
+                      Practice Quiz
+                    </button>
+                    <button
+                      onClick={() => {
+                        toast("Mock Exam mode is coming soon!", "info");
+                      }}
+                      className={`px-4 py-2 rounded-full transition-all border-none cursor-pointer duration-200 flex items-center gap-1 ${
+                        assessmentType === 'exam'
+                          ? 'bg-[#6949a8] text-white shadow-sm'
+                          : 'text-gray-555 bg-transparent hover:text-gray-700'
+                      }`}
+                    >
+                      Mock Exam {planType === 'free' && '🔒'}
+                    </button>
+                  </div>
                 </div>
-              </div>
  
-              <AssessmentEngine 
-                lesson={data} 
-                activeTab={assessmentType} 
-              />
-            </div>
-          )}
+                <AssessmentEngine 
+                  lesson={data} 
+                  activeTab={assessmentType} 
+                />
+              </motion.div>
+            )}
  
-          {activeMode === 'chat' && (
-            <div className="w-full flex-1 overflow-hidden flex flex-col">
-              <ChatPanel
-                chatHistory={chatHistory}
-                chatInput={chatInput}
-                isChatLoading={isChatLoading}
-                chatError={chatError}
-                selectedText={selectedText}
-                onSend={handleAskQuestion}
-                onInputChange={setChatInput}
-                onClearSelectedText={() => setSelectedText("")}
-                scrollRef={chatScrollRef}
-                onClearChat={handleClearChat}
-              />
-            </div>
-          )}
+            {activeMode === 'chat' && (
+              <motion.div
+                key="chat"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="w-full flex-1 overflow-hidden flex flex-col"
+              >
+                <ChatPanel
+                  chatHistory={chatHistory}
+                  chatInput={chatInput}
+                  isChatLoading={isChatLoading}
+                  chatError={chatError}
+                  selectedText={selectedText}
+                  onSend={handleAskQuestion}
+                  onInputChange={setChatInput}
+                  onClearSelectedText={() => setSelectedText("")}
+                  scrollRef={chatScrollRef}
+                  onClearChat={handleClearChat}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
         </div>
       </div>
  
-      {/* Floating Context Switcher (Bottom Nav Pill) */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-[320px] bg-white rounded-full shadow-[0px_10px_30px_rgba(0,0,0,0.15)] border border-gray-100 flex items-center justify-between p-1.5 font-poppins select-none">
-        <button 
-          onClick={() => setActiveMode('summary')}
-          className={`flex-1 py-2.5 flex items-center justify-center transition-all duration-200 border-none cursor-pointer ${
-            activeMode === 'summary' 
-              ? 'bg-[#6949a8] text-white rounded-full shadow-md' 
-              : 'text-gray-400 bg-transparent hover:text-gray-600'
-          }`}
-          title="Summary"
-        >
-          <FileText size={18} />
-        </button>
-        <button 
-          onClick={() => setActiveMode('flashcards')}
-          className={`flex-1 py-2.5 flex items-center justify-center transition-all duration-200 border-none cursor-pointer ${
-            activeMode === 'flashcards' 
-              ? 'bg-[#6949a8] text-white rounded-full shadow-md' 
-              : 'text-gray-400 bg-transparent hover:text-gray-600'
-          }`}
-          title="Flashcards"
-        >
-          <Zap size={18} />
-        </button>
-        <button 
-          onClick={() => setActiveMode('quiz')}
-          className={`flex-1 py-2.5 flex items-center justify-center transition-all duration-200 border-none cursor-pointer ${
-            activeMode === 'quiz' 
-              ? 'bg-[#6949a8] text-white rounded-full shadow-md' 
-              : 'text-gray-400 bg-transparent hover:text-gray-600'
-          }`}
-          title="Quiz"
-        >
-          <Target size={18} />
-        </button>
-        <button 
-          onClick={() => setActiveMode('chat')}
-          className={`flex-1 py-2.5 flex items-center justify-center transition-all duration-200 border-none cursor-pointer ${
-            activeMode === 'chat' 
-              ? 'bg-[#6949a8] text-white rounded-full shadow-md' 
-              : 'text-gray-400 bg-transparent hover:text-gray-600'
-          }`}
-          title="Tutor Chat"
-        >
-          <MessageCircle size={18} />
-        </button>
-      </div>
-    </main>
+      {/* Floating Context Switcher (Bottom Nav Pill) - Hidden during active quiz takeover */}
+      {!isAssessmentActive && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-[320px] bg-white rounded-full shadow-[0px_10px_30px_rgba(0,0,0,0.15)] border border-gray-100 flex items-center justify-between p-1.5 font-poppins select-none">
+          <button 
+            onClick={() => setActiveMode('summary')}
+            className={`flex-1 py-2.5 flex items-center justify-center transition-all duration-200 border-none cursor-pointer ${
+              activeMode === 'summary' 
+                ? 'bg-[#6949a8] text-white rounded-full shadow-md' 
+                : 'text-gray-400 bg-transparent hover:text-gray-600'
+            }`}
+            title="Summary"
+          >
+            <FileText size={18} />
+          </button>
+          <button 
+            onClick={() => setActiveMode('flashcards')}
+            className={`flex-1 py-2.5 flex items-center justify-center transition-all duration-200 border-none cursor-pointer ${
+              activeMode === 'flashcards' 
+                ? 'bg-[#6949a8] text-white rounded-full shadow-md' 
+                : 'text-gray-400 bg-transparent hover:text-gray-600'
+            }`}
+            title="Flashcards"
+          >
+            <Zap size={18} />
+          </button>
+          <button 
+            onClick={() => setActiveMode('quiz')}
+            className={`flex-1 py-2.5 flex items-center justify-center transition-all duration-200 border-none cursor-pointer ${
+              activeMode === 'quiz' 
+                ? 'bg-[#6949a8] text-white rounded-full shadow-md' 
+                : 'text-gray-400 bg-transparent hover:text-gray-600'
+            }`}
+            title="Quiz"
+          >
+            <Target size={18} />
+          </button>
+          <button 
+            onClick={() => setActiveMode('chat')}
+            className={`flex-1 py-2.5 flex items-center justify-center transition-all duration-200 border-none cursor-pointer ${
+              activeMode === 'chat' 
+                ? 'bg-[#6949a8] text-white rounded-full shadow-md' 
+                : 'text-gray-400 bg-transparent hover:text-gray-600'
+            }`}
+            title="Tutor Chat"
+          >
+            <MessageCircle size={18} />
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

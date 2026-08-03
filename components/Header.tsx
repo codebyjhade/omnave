@@ -3,13 +3,28 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useUserContext, Notification } from "@/context/UserContext";
 import { useUploadContext } from "@/context/UploadContext";
-import { Bell, Settings, X, FileText, Check } from "lucide-react";
+import { Bell, Settings, X, FileText, Check, Share2, SlidersHorizontal, Search, ArrowLeft, ChevronLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useParams, useSearchParams } from "next/navigation";
+import { calculateKitProgress } from "@/hooks/useProgressStats";
 
 export default function Header() {
   const router = useRouter();
-  const { user, notifications, clearAllNotifications, markNotificationAsRead, loading } = useUserContext();
+  const pathname = usePathname() || "";
+  const params = useParams();
+  const searchParams = useSearchParams();
+  
+  const { 
+    user, 
+    notifications, 
+    clearAllNotifications, 
+    markNotificationAsRead, 
+    loading, 
+    lessons, 
+    quizScores,
+    streak 
+  } = useUserContext();
+  
   const { uploadStatus, uploadProgress, cancelUpload } = useUploadContext();
 
   const [mounted, setMounted] = useState(false);
@@ -18,7 +33,38 @@ export default function Header() {
   const [formattedDate, setFormattedDate] = useState("");
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isPulsing, setIsPulsing] = useState(false);
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
+
+  // Strict Tween Transition Master Clock to prevent Spring bouncing
+  const sharedTransition = useMemo(() => ({ 
+    type: "tween" as const, 
+    duration: 0.25, 
+    ease: "easeInOut" as const 
+  }), []);
+
+  // Sync Search state with URL query parameters for /library
+  const qParam = searchParams.get('q') || '';
+  const [localSearch, setLocalSearch] = useState(qParam);
+
+  useEffect(() => {
+    setLocalSearch(qParam);
+  }, [qParam]);
+
+  useEffect(() => {
+    if (pathname === '/library') {
+      const handler = setTimeout(() => {
+        const paramsObj = new URLSearchParams(window.location.search);
+        if (localSearch) {
+          paramsObj.set('q', localSearch);
+        } else {
+          paramsObj.delete('q');
+        }
+        router.replace(`/library?${paramsObj.toString()}`);
+      }, 250);
+      return () => clearTimeout(handler);
+    }
+  }, [localSearch, pathname, router]);
 
   // Listen for the spatial flying toast completion event to pulse the bell
   useEffect(() => {
@@ -31,7 +77,6 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
 
     const localHour = new Date().getHours();
@@ -45,11 +90,9 @@ export default function Header() {
 
     const fullName = user?.user_metadata?.full_name || user?.user_metadata?.nickname || user?.email?.split('@')[0] || "Learner";
     const nameFirst = fullName.split(' ')[0] || "Learner";
-    // Capitalize first letter
     const capitalizedName = nameFirst.charAt(0).toUpperCase() + nameFirst.slice(1);
     setFirstName(capitalizedName);
 
-    // Format current date: e.g. "Monday, July 27"
     const dateOptions: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
     setFormattedDate(new Date().toLocaleDateString("en-US", dateOptions).toUpperCase());
   }, [user]);
@@ -66,7 +109,7 @@ export default function Header() {
   }, []);
 
   const unreadNotifications = useMemo(() => {
-    return notifications.filter((n) => !n.isRead);
+    return notifications ? notifications.filter((n) => !n.isRead) : [];
   }, [notifications]);
 
   const hasUnread = unreadNotifications.length > 0 || uploadStatus === "uploading";
@@ -90,14 +133,159 @@ export default function Header() {
     }
   };
 
+  const activeSort = searchParams.get('sort') || 'newest';
+  const handleSortChange = (sortType: string) => {
+    const paramsObj = new URLSearchParams(window.location.search);
+    paramsObj.set('sort', sortType);
+    router.replace(`/library?${paramsObj.toString()}`);
+    setIsSortMenuOpen(false);
+  };
+
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          text: `I'm currently on a ${streak || 0}-day study streak on Omnave! 🚀`
+        });
+      }
+    } catch {}
+  };
+
+  // Find dynamic lesson progress and title on lesson/[id]
+  const currentLessonData = useMemo(() => {
+    if (pathname.startsWith('/lesson/')) {
+      const id = params?.id as string;
+      const lesson = lessons?.find((l) => l.id === id);
+      if (lesson) {
+        const progress = calculateKitProgress(lesson, quizScores);
+        const getCleanTitle = (path?: string | null) => {
+          if (!path) return "Study Material";
+          const base = path.split("/").pop() || "";
+          const name = base.replace(/^\d+_/, "");
+          return name.replace(".pdf", "") || "Study Material";
+        };
+        const title = lesson.title || getCleanTitle(lesson.file_path);
+        return { title, progress };
+      }
+    }
+    return null;
+  }, [pathname, params, lessons, quizScores]);
+
+  // Route styling checks
+  const isFlatWhiteRoute = pathname === '/progress' || pathname === '/profile' || pathname.startsWith('/lesson/');
+
+  // Determine which page content should show in the Left column of Header
+  const renderLeftSection = () => {
+    if (pathname === '/library') {
+      return (
+        <div className="w-full relative flex items-center pr-2">
+          <motion.div 
+            layoutId="search-icon-layout" 
+            transition={sharedTransition} 
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+          >
+            <Search size={18} />
+          </motion.div>
+          <input
+            type="text"
+            placeholder="Search study kits..."
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
+            className="w-full bg-white text-black pl-11 pr-4 py-3 rounded-full text-sm outline-none border-none shadow-[0px_4px_10px_rgba(0,0,0,0.05)] font-poppins"
+          />
+        </div>
+      );
+    }
+
+    if (pathname === '/settings') {
+      return (
+        <div className="flex items-center gap-3 min-w-0">
+          <motion.button
+            layoutId="back-button-layout"
+            transition={sharedTransition}
+            onClick={() => router.back()}
+            className="bg-white/15 text-white p-2 rounded-full h-10 w-10 flex items-center justify-center cursor-pointer hover:bg-white/25 active:scale-95 transition-all border-none focus-visible:outline-none"
+            aria-label="Go back"
+          >
+            <ArrowLeft size={20} />
+          </motion.button>
+          <h1 className="text-[18px] leading-[27px] font-poppins font-semibold text-white truncate">
+            Settings
+          </h1>
+        </div>
+      );
+    }
+
+    if (pathname.startsWith('/lesson/')) {
+      return (
+        <div className="flex items-center gap-3 min-w-0">
+          <motion.button
+            layoutId="back-button-layout"
+            transition={sharedTransition}
+            onClick={() => router.push('/library')}
+            className={`p-2 rounded-full h-10 w-10 flex items-center justify-center cursor-pointer active:scale-95 transition-all focus-visible:outline-none ${
+              isFlatWhiteRoute
+                ? 'bg-white border border-gray-200 text-gray-900 hover:bg-gray-50 shadow-sm'
+                : 'bg-white/15 text-white hover:bg-white/25 border-none'
+            }`}
+            aria-label="Go back to Library"
+          >
+            <ChevronLeft size={20} />
+          </motion.button>
+          <h1 className={`text-[15px] leading-[22px] font-poppins font-semibold truncate ${
+            isFlatWhiteRoute ? 'text-gray-900' : 'text-white'
+          }`}>
+            {currentLessonData?.title || "Study Material"}
+          </h1>
+        </div>
+      );
+    }
+
+    if (pathname === '/progress') {
+      return (
+        <h1 className={`text-[24px] font-poppins font-bold ${isFlatWhiteRoute ? 'text-gray-900' : 'text-white'}`}>
+          Progress
+        </h1>
+      );
+    }
+
+    if (pathname === '/profile') {
+      return (
+        <h1 className={`text-[24px] font-poppins font-bold ${isFlatWhiteRoute ? 'text-gray-900' : 'text-white'}`}>
+          Profile
+        </h1>
+      );
+    }
+
+    if (pathname === '/upload') {
+      return (
+        <h1 className="text-[18px] leading-[27px] font-poppins font-semibold text-white">
+          Upload Study Kit
+        </h1>
+      );
+    }
+
+    // Default: Home Page Greeting
+    return (
+      <div className="flex-1 min-w-0">
+        <h1 className={`text-[18px] leading-[27px] font-poppins font-semibold truncate ${isFlatWhiteRoute ? 'text-gray-900' : 'text-white'}`}>
+          {greeting}, {firstName}
+        </h1>
+        <p className={`font-poppins text-[12px] uppercase tracking-wider mt-1 ${isFlatWhiteRoute ? 'text-gray-500' : 'text-white/80'}`}>
+          {formattedDate}
+        </p>
+      </div>
+    );
+  };
+
+  const showBell = pathname === '/home' || pathname === '/progress' || pathname === '/profile' || pathname === '/upload';
+  const showSettings = pathname === '/home' || pathname === '/progress' || pathname === '/profile' || pathname === '/upload';
+
   if (!mounted) {
     return (
       <header className="w-full bg-[#6949a8] pt-12 pb-20 animate-pulse">
         <div className="max-w-5xl mx-auto px-[25px] flex justify-between items-center gap-4 select-none">
-          <div>
-            <div className="h-6 w-48 bg-white/20 rounded mb-2" />
-            <div className="h-3 w-32 bg-white/20 rounded" />
-          </div>
+          <div className="h-6 w-48 bg-white/20 rounded mb-2" />
           <div className="flex gap-3">
             <div className="w-10 h-10 rounded-full bg-white/20" />
             <div className="w-10 h-10 rounded-full bg-white/20" />
@@ -107,49 +295,172 @@ export default function Header() {
     );
   }
 
+  // Adaptive button classes for dark/light headers
+  const iconBtnClass = `p-2 rounded-full h-10 w-10 flex items-center justify-center cursor-pointer shadow-premium-glass border z-40 shrink-0 transition-all ${
+    isFlatWhiteRoute 
+      ? 'bg-white text-gray-900 border-gray-100 hover:bg-gray-50' 
+      : 'bg-white text-[#6949a8] border-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70'
+  }`;
+
   return (
-    <header className="w-full bg-[#6949a8] pt-7 pb-23 relative">
+    <header className={`w-full relative flex-none transition-all duration-200 ${
+      isFlatWhiteRoute 
+        ? 'bg-white pb-4 pt-7 border-b border-gray-100 shadow-sm' 
+        : 'bg-[#6949a8] pt-7 pb-23'
+    }`}>
       <div className="max-w-5xl mx-auto px-[25px] flex justify-between items-center gap-4 select-none relative z-30">
         
-        {/* Left Column: Greeting & Date */}
+        {/* Left Column: Title, search or navigation with dynamic cross-fade */}
         <div className="flex-1 min-w-0">
-          <h1 className="text-[18px] leading-[27px] font-poppins font-semibold text-white truncate">
-            {greeting}, {firstName}
-          </h1>
-          <p className="text-white/80 font-poppins text-[12px] uppercase tracking-wider mt-1">
-            {formattedDate}
-          </p>
+          <AnimatePresence mode="popLayout">
+            <motion.div
+              key={pathname.startsWith('/lesson/') ? '/lesson' : pathname}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={sharedTransition}
+              className="w-full flex items-center"
+            >
+              {renderLeftSection()}
+            </motion.div>
+          </AnimatePresence>
         </div>
 
-        {/* Right Column: Actions (White Circle Buttons) */}
-        <div className="flex items-center gap-3 relative">
-          
-          {/* Bell button */}
-          <motion.button 
-            id="notification-bell-btn"
-            animate={isPulsing ? { scale: [1, 1.25, 0.95, 1.1, 1] } : { scale: 1 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-            whileTap={{ scale: 0.90 }}
-            className="bg-white text-[#6949a8] p-2 rounded-full h-10 w-10 flex items-center justify-center cursor-pointer shadow-premium-glass border-none relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
-            aria-label="View notifications"
-          >
-            <Bell size={20}/>
-            {!loading && hasUnread && (
-              <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#00d047] rounded-full border border-white" />
+        {/* Right Column: Dynamic Action Buttons with unified popLayout exit positioning */}
+        <motion.div layout transition={sharedTransition} className="flex items-center gap-3 relative">
+          <AnimatePresence mode="popLayout">
+            
+            {/* Bell Button (Shared layout) */}
+            {showBell && (
+              <motion.button 
+                id="notification-bell-btn"
+                key="bell-btn"
+                layoutId="bell-button-layout"
+                initial={{ x: 20, opacity: 0 }}
+                animate={isPulsing ? { x: 0, opacity: 1, scale: [1, 1.25, 0.95, 1.1, 1] } : { x: 0, opacity: 1, scale: 1 }}
+                exit={{ x: 20, opacity: 0 }}
+                transition={isPulsing ? {
+                  scale: { duration: 0.6, ease: "easeOut" },
+                  default: sharedTransition
+                } : sharedTransition}
+                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                whileTap={{ scale: 0.90 }}
+                className={iconBtnClass}
+                aria-label="View notifications"
+              >
+                <Bell size={20}/>
+                {!loading && hasUnread && (
+                  <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#00d047] rounded-full border border-white" />
+                )}
+              </motion.button>
             )}
-          </motion.button>
 
-          <motion.button 
-            onClick={() => router.push('/settings')}
-            whileTap={{ scale: 0.90 }}
-            className="bg-white text-[#6949a8] p-2 rounded-full h-10 w-10 flex items-center justify-center cursor-pointer shadow-premium-glass border-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
-            aria-label="Open settings menu"
-          >
-            <Settings size={20}/>
-          </motion.button>
+            {/* Settings Button (Shared layout) */}
+            {showSettings && (
+              <motion.button 
+                key="settings-btn"
+                layoutId="settings-button-layout"
+                initial={{ x: 20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 20, opacity: 0 }}
+                transition={sharedTransition}
+                onClick={() => router.push('/settings')}
+                whileTap={{ scale: 0.90 }}
+                className={iconBtnClass}
+                aria-label="Open settings menu"
+              >
+                <Settings size={20}/>
+              </motion.button>
+            )}
 
-          {/* macOS Notification Popover dropdown (ODL design) */}
+            {/* Share Button (Progress Page only - Exiting right) */}
+            {pathname === '/progress' && (
+              <motion.button 
+                key="share-btn"
+                initial={{ x: 20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 20, opacity: 0 }}
+                transition={sharedTransition}
+                onClick={handleShare}
+                whileTap={{ scale: 0.90 }}
+                className={iconBtnClass}
+                aria-label="Share stats"
+              >
+                <Share2 size={18} />
+              </motion.button>
+            )}
+
+            {/* Filter/Sort Button (Library Page only - Exiting right) */}
+            {pathname === '/library' && (
+              <motion.div
+                key="sort-btn-wrapper"
+                initial={{ x: 20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 20, opacity: 0 }}
+                transition={sharedTransition}
+                className="relative shrink-0"
+              >
+                <button
+                  onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
+                  className="w-11 h-11 bg-white rounded-full flex items-center justify-center border-none cursor-pointer shadow-[0px_4px_10px_rgba(0,0,0,0.05)] hover:bg-gray-50 active:scale-95 transition-all"
+                  title="Sort Library"
+                >
+                  <SlidersHorizontal size={18} className="text-[#6949a8]" />
+                </button>
+                {isSortMenuOpen && (
+                  <div className="absolute top-14 right-0 w-40 bg-white rounded-2xl shadow-[0px_8px_20px_rgba(0,0,0,0.1)] border border-gray-100 overflow-hidden z-50 py-1 flex flex-col font-poppins">
+                    {(['newest', 'oldest', 'a-z', 'progress'] as const).map((sortType) => (
+                      <button
+                        key={sortType}
+                        onClick={() => handleSortChange(sortType)}
+                        className={`px-4 py-2.5 text-left text-xs font-semibold hover:bg-gray-50 transition-colors border-none cursor-pointer ${activeSort === sortType ? 'text-[#6949a8] bg-[#6949a8]/5' : 'text-gray-600'}`}
+                      >
+                        {sortType === 'newest' ? 'Newest First' : sortType === 'oldest' ? 'Oldest First' : sortType === 'a-z' ? 'A-Z' : 'Highest Progress'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Search circular button (Settings Page only - Exiting right, shared search icon) */}
+            {pathname === '/settings' && (
+              <motion.button 
+                key="search-circular-btn"
+                initial={{ x: 20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 20, opacity: 0 }}
+                transition={sharedTransition}
+                className="bg-white text-[#6949a8] p-2 rounded-full h-10 w-10 flex items-center justify-center cursor-pointer shadow-premium-glass border-none focus-visible:outline-none z-40 shrink-0"
+                aria-label="Search settings"
+              >
+                <motion.div layoutId="search-icon-layout" transition={sharedTransition}>
+                  <Search size={20} />
+                </motion.div>
+              </motion.button>
+            )}
+
+            {/* Progress Circle percentage (Lesson Page only - Exiting right) */}
+            {pathname.startsWith('/lesson/') && currentLessonData && (
+              <motion.div 
+                key="lesson-progress-circle"
+                initial={{ x: 20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 20, opacity: 0 }}
+                transition={sharedTransition}
+                className={`w-10 h-10 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 z-40 ${
+                  isFlatWhiteRoute
+                    ? 'border-2 border-gray-200 bg-white text-gray-900 shadow-sm'
+                    : 'border-2 border-white/20 bg-white/10 text-white'
+                }`}
+              >
+                {currentLessonData.progress}%
+              </motion.div>
+            )}
+
+          </AnimatePresence>
+
+          {/* macOS Notification Popover dropdown (positioned absolutely outside normal flow) */}
           <AnimatePresence>
             {isNotificationOpen && (
               <motion.div
@@ -164,7 +475,7 @@ export default function Header() {
                 <div className="relative flex items-center justify-center px-4 pt-3.5 pb-3 border-b border-[#EBEBEB] bg-black/[0.01]">
                   <button
                     onClick={() => setIsNotificationOpen(false)}
-                    className="absolute right-4 p-1 text-[#525252] hover:text-black rounded-lg hover:bg-black/5 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white border-none bg-transparent"
+                    className="absolute right-4 p-1 text-[#525252] hover:text-black rounded-lg hover:bg-black/5 transition-colors cursor-pointer border-none bg-transparent"
                     aria-label="Close notifications"
                   >
                     <X size={14} />
@@ -172,10 +483,10 @@ export default function Header() {
 
                   <span className="text-xs font-bold text-black font-poppins">Notifications</span>
 
-                  {notifications.length > 0 && (
+                  {notifications && notifications.length > 0 && (
                     <button
                       onClick={clearAllNotifications}
-                      className="absolute left-4 text-[10px] font-bold text-[#525252] hover:text-black uppercase tracking-widest transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-omnave-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white rounded-md px-1.5 py-0.5 border-none bg-transparent"
+                      className="absolute left-4 text-[10px] font-bold text-[#525252] hover:text-black uppercase tracking-widest transition-colors cursor-pointer border-none bg-transparent"
                     >
                       Clear All
                     </button>
@@ -185,7 +496,6 @@ export default function Header() {
                 {/* Active Task (AI Uploading Progress in Background) */}
                 {uploadStatus === "uploading" && (
                   <div className="p-4 bg-[#6949a8]/5 border-b border-[#EBEBEB] flex flex-row items-center gap-4 relative text-left">
-                    {/* 1. Micro-Engine container (left side) */}
                     <div className="w-12 h-12 flex items-center justify-center bg-white rounded-xl border border-[#EBEBEB] shadow-inner shrink-0">
                       <motion.div
                         animate={{ 
@@ -216,7 +526,6 @@ export default function Header() {
                       </motion.div>
                     </div>
 
-                    {/* 2. Task info & Controls (right side) */}
                     <div className="flex-1 flex flex-col min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-[10px] font-bold tracking-widest text-[#6949a8] uppercase">Active Task</span>
@@ -245,12 +554,12 @@ export default function Header() {
 
                 {/* Popover List */}
                 <div className="divide-y divide-[#EBEBEB] max-h-[300px] overflow-y-auto">
-                  {notifications.length === 0 && uploadStatus !== "uploading" ? (
+                  {(!notifications || notifications.length === 0) && uploadStatus !== "uploading" ? (
                     <div className="p-8 text-center text-xs text-[#525252] select-none">
                       You&apos;re all caught up!
                     </div>
                   ) : (
-                    notifications.map((n) => {
+                    notifications && notifications.map((n) => {
                       const isProcessed = n.id.startsWith("processed-");
                       return (
                         <div 
@@ -280,7 +589,7 @@ export default function Header() {
             )}
           </AnimatePresence>
 
-        </div>
+        </motion.div>
       </div>
     </header>
   );

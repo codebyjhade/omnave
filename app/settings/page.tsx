@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
 import { createBrowserClient } from '@supabase/ssr';
 import { 
-  ArrowLeft, 
-  Search, 
   ChevronRight, 
   Globe, 
   Moon, 
@@ -46,29 +44,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 text-gray-900 pb-[100px] font-sans antialiased">
-      {/* Sticky Header */}
-      <header className="sticky top-0 bg-white border-b border-gray-100 px-4 py-4 flex items-center justify-between z-50 shadow-sm">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => router.back()}
-            className="p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none"
-            aria-label="Go back"
-          >
-            <ArrowLeft size={22} />
-          </button>
-          <h1 className="text-lg font-bold text-gray-900 font-poppins">Settings</h1>
-        </div>
-        <button 
-          className="p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none"
-          aria-label="Search settings"
-        >
-          <Search size={22} />
-        </button>
-      </header>
-
-      {/* Main Container */}
-      <div className="max-w-md mx-auto px-4">
+    <div className="w-full flex-1 flex flex-col pt-2 max-w-md mx-auto px-4 text-gray-900">
         
         {/* PREFERENCES SECTION */}
         <h2 className="text-[11px] font-bold tracking-[0.15em] text-gray-400 uppercase font-poppins ml-2 mb-2 mt-6">
@@ -263,8 +239,6 @@ export default function SettingsPage() {
             <ChevronRight className="text-red-400" size={18} />
           </button>
         </div>
-
-      </div>
-    </main>
+    </div>
   );
 }

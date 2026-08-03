@@ -1,14 +1,11 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
-import { createBrowserClient } from "@supabase/ssr";
-import { useUserContext, Notification } from "@/context/UserContext";
-import { useUploadContext } from "@/context/UploadContext";
+import { useUserContext } from "@/context/UserContext";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/components/ToastProvider";
+import { createBrowserClient } from '@supabase/ssr';
 import { 
-  Bell, 
   User, 
   Mail, 
   Lock, 
@@ -21,10 +18,10 @@ import {
   BellRing,
   Globe,
   GitBranch,
-  LogOut,
-  X,
-  Check
+  LogOut
 } from "lucide-react";
+import StaggerContainer from "@/components/ui/animation/StaggerContainer";
+import StaggerItem from "@/components/ui/animation/StaggerItem";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -35,12 +32,8 @@ export default function ProfilePage() {
     loading: isAuthLoading,
     gamificationStats,
     quizScores,
-    lessons: notes,
-    notifications = [],
-    clearAllNotifications,
-    markNotificationAsRead,
+    lessons: notes
   } = useUserContext();
-  const { uploadStatus, uploadProgress, cancelUpload } = useUploadContext();
 
   const [mounted, setMounted] = useState(false);
   const [profileName, setProfileName] = useState("Bryan");
@@ -48,45 +41,6 @@ export default function ProfilePage() {
   const [initial, setInitial] = useState("B");
   const [userTags, setUserTags] = useState<string[]>([]);
   const [isSigningOut, setIsSigningOut] = useState(false);
-
-  const [showNotifications, setShowNotifications] = useState(false);
-  const popoverRef = useRef<HTMLDivElement>(null);
-
-  const unreadNotifications = useMemo(() => {
-    return notifications ? notifications.filter((n) => !n.isRead) : [];
-  }, [notifications]);
-
-  const hasUnread = unreadNotifications.length > 0 || uploadStatus === "uploading";
-
-  // Click outside to close notification popover
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
-        setShowNotifications(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const getNotificationIcon = (type: string, isRead: boolean) => {
-    const colorClass = isRead ? "text-[#525252]" : "text-[#6949a8]";
-    switch (type) {
-      case "quiz":
-        return <Check size={18} className={colorClass} />;
-      default:
-        return <FileText size={18} className={colorClass} />;
-    }
-  };
-
-  const handleNotificationClick = (n: Notification) => {
-    markNotificationAsRead(n.id);
-    setShowNotifications(false);
-    if (n.id.startsWith("processed-")) {
-      const lessonId = n.id.replace("processed-", "");
-      router.push(`/lesson/${lessonId}`);
-    }
-  };
 
   // Listen for trigger dispatched by external navigations
   useEffect(() => {
@@ -97,30 +51,37 @@ export default function ProfilePage() {
 
   useEffect(() => {
     setMounted(true);
-    if (user) {
-      const name =
-        user.user_metadata?.nickname ||
-        user.user_metadata?.full_name ||
-        user.email?.split("@")[0] ||
-        "Bryan";
-      setProfileName(name.charAt(0).toUpperCase() + name.slice(1));
-      setEmail(user.email || "");
-      setInitial(name.charAt(0).toUpperCase() || "B");
+  }, []);
 
-      let tags: string[] = [];
-      if (user.user_metadata?.tags) {
-        tags = Array.isArray(user.user_metadata.tags)
-          ? user.user_metadata.tags
-          : [user.user_metadata.tags];
-      } else if (user.user_metadata?.major) {
-        tags = [user.user_metadata.major];
+  useEffect(() => {
+    if (user) {
+      const emailVal = user.email || "";
+      setEmail(emailVal);
+      
+      const metaName = user.user_metadata?.full_name || user.user_metadata?.nickname;
+      if (metaName) {
+        setProfileName(metaName);
+        setInitial(metaName.charAt(0).toUpperCase());
+      } else {
+        const parts = emailVal.split("@");
+        const namePart = parts[0] || "Learner";
+        const capped = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+        setProfileName(capped);
+        setInitial(capped.charAt(0).toUpperCase());
       }
-      if (tags.length === 0) tags = ["BS Computer Science"];
+
+      const tags: string[] = [];
+      if (user.plan_type) {
+        tags.push(user.plan_type === 'pro' ? "PRO LEARNER" : "FREE TIER");
+      } else {
+        tags.push("FREE TIER");
+      }
       setUserTags(tags);
     }
   }, [user]);
 
   const handleSignOut = async () => {
+    if (isSigningOut) return;
     try {
       setIsSigningOut(true);
       const supabase = createBrowserClient(
@@ -181,9 +142,9 @@ export default function ProfilePage() {
 
   if (!mounted || isAuthLoading) {
     return (
-      <main className="min-h-[100dvh] bg-white flex items-center justify-center">
+      <div className="flex-1 w-full flex items-center justify-center min-h-[300px]">
         <div className="animate-spin w-8 h-8 border-4 border-[#6949a8] border-t-transparent rounded-full" />
-      </main>
+      </div>
     );
   }
 
@@ -199,7 +160,7 @@ export default function ProfilePage() {
   }) => (
     <button 
       onClick={onClick}
-      className="w-full flex items-center justify-between py-4 px-2 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors duration-150 text-left outline-none cursor-pointer rounded-xl"
+      className="w-full flex items-center justify-between py-4 px-2 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors duration-150 text-left outline-none cursor-pointer rounded-xl border-none bg-transparent"
     >
       <div className="flex items-center">
         <div className="bg-purple-50 text-[#6949a8] p-2.5 rounded-xl mr-4 flex items-center justify-center">
@@ -212,165 +173,17 @@ export default function ProfilePage() {
   );
 
   return (
-    <main className="min-h-[100dvh] bg-white overflow-y-auto pb-[120px] px-[25px] pt-[calc(env(safe-area-inset-top)+30px)]">
-      
-      {/* Header Row */}
-      <div className="flex items-center justify-between select-none max-w-md mx-auto mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 font-poppins">
-          Profile
-        </h1>
-        <div className="relative">
-          <button 
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="w-10 h-10 rounded-full border border-gray-100 bg-white flex items-center justify-center text-[#6949a8] hover:bg-gray-50 active:scale-95 transition-all cursor-pointer relative"
-          >
-            <Bell size={18} />
-            {!isAuthLoading && hasUnread && (
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#00d047] rounded-full border border-white" />
-            )}
-          </button>
-
-          <AnimatePresence>
-            {showNotifications && (
-              <motion.div
-                ref={popoverRef}
-                initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                transition={{ type: "spring", damping: 20, stiffness: 300 }}
-                className="absolute top-12 right-0 w-[calc(100vw-2rem)] sm:w-80 rounded-[15px] bg-white border-none shadow-[0px_10px_10px_rgba(0,0,0,0.09)] overflow-hidden z-[9999]"
-              >
-                {/* Popover Header */}
-                <div className="relative flex items-center justify-center px-4 pt-3.5 pb-3 border-b border-[#EBEBEB] bg-black/[0.01]">
-                  <button
-                    onClick={() => setShowNotifications(false)}
-                    className="absolute right-4 p-1 text-[#525252] hover:text-black rounded-lg hover:bg-black/5 transition-colors cursor-pointer border-none bg-transparent"
-                    aria-label="Close notifications"
-                  >
-                    <X size={14} />
-                  </button>
-
-                  <span className="text-xs font-bold text-black font-poppins">Notifications</span>
-
-                  {notifications && notifications.length > 0 && (
-                    <button
-                      onClick={clearAllNotifications}
-                      className="absolute left-4 text-[10px] font-bold text-[#525252] hover:text-black uppercase tracking-widest transition-colors cursor-pointer border-none bg-transparent"
-                    >
-                      Clear All
-                    </button>
-                  )}
-                </div>
-
-                {/* Active Task (AI Uploading Progress in Background) */}
-                {uploadStatus === "uploading" && (
-                  <div className="p-4 bg-[#6949a8]/5 border-b border-[#EBEBEB] flex flex-row items-center gap-4 relative text-left">
-                    <div className="w-12 h-12 flex items-center justify-center bg-white rounded-xl border border-[#EBEBEB] shadow-inner shrink-0">
-                      <motion.div
-                        animate={{ 
-                          scale: [1, 1.05, 0.96, 1.03, 1],
-                          filter: [
-                            "drop-shadow(0 0 4px rgba(105,73,168,0.4))",
-                            "drop-shadow(0 0 8px rgba(105,73,168,0.7))",
-                            "drop-shadow(0 0 4px rgba(105,73,168,0.4))"
-                          ]
-                        }}
-                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                        className="w-full h-full flex items-center justify-center px-1"
-                      >
-                        <svg viewBox="0 0 200 60" width="34" className="overflow-visible select-none">
-                          <text 
-                            x="50%" 
-                            y="50%" 
-                            dominantBaseline="middle" 
-                            textAnchor="middle" 
-                            fill="transparent" 
-                            stroke="#6949a8" 
-                            strokeWidth="4"
-                            className="animate-svg-trace font-brand tracking-widest text-4xl lowercase"
-                          >
-                            omnave
-                          </text>
-                        </svg>
-                      </motion.div>
-                    </div>
-
-                    <div className="flex-1 flex flex-col min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] font-bold tracking-widest text-[#6949a8] uppercase">Active Task</span>
-                        <button
-                          onClick={cancelUpload}
-                          className="text-[#525252] hover:text-red-500 text-[10px] font-extrabold uppercase tracking-widest transition-colors cursor-pointer select-none border-none bg-transparent"
-                        >
-                          [x] Cancel
-                        </button>
-                      </div>
-                      
-                      <p className="text-xs font-semibold text-black truncate pr-4 mt-0.5">AI is analyzing your material...</p>
-                      
-                      <div className="flex items-center gap-3 mt-1.5">
-                        <div className="flex-1 bg-[#EBEBEB] h-1.5 rounded-full overflow-hidden border border-[#EBEBEB]">
-                          <div 
-                            className="bg-gradient-to-r from-[#6949a8] to-[#86d1ff] h-full rounded-full transition-all duration-300 ease-out" 
-                            style={{ width: `${uploadProgress}%` }}
-                          />
-                        </div>
-                        <span className="text-[10px] font-bold text-black shrink-0">{uploadProgress}%</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Popover List */}
-                <div className="divide-y divide-[#EBEBEB] max-h-[300px] overflow-y-auto">
-                  {(!notifications || notifications.length === 0) && uploadStatus !== "uploading" ? (
-                    <div className="p-8 text-center text-xs text-[#525252] select-none font-medium">
-                      You&apos;re all caught up!
-                    </div>
-                  ) : (
-                    notifications && notifications.map((n) => {
-                      const isProcessed = n.id.startsWith("processed-");
-                      return (
-                        <div 
-                          key={n.id} 
-                          onClick={() => handleNotificationClick(n)}
-                          className={`p-4 flex gap-3.5 hover:bg-black/[0.01] transition-colors text-left cursor-pointer ${!n.isRead ? "bg-[#6949a8]/[0.02]" : ""}`}
-                        >
-                          <div className="mt-0.5 shrink-0 select-none">
-                            {getNotificationIcon(n.type, n.isRead)}
-                          </div>
-                          <div className="flex flex-col gap-0.5 min-w-0">
-                            <span className="text-xs font-bold text-black truncate">{n.title}</span>
-                            <p className="text-[11px] text-[#525252] leading-normal">{n.desc}</p>
-                            {isProcessed && (
-                              <span className="text-[10px] text-[#6949a8] font-semibold mt-1 flex items-center gap-1 group-hover:underline">
-                                View Lesson ➔
-                              </span>
-                            )}
-                            <span className="text-[9px] text-[#525252]/60 font-medium mt-1">{n.time}</span>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-
-      <div className="w-full max-w-md mx-auto flex flex-col">
+    <div className="w-full flex-1 flex flex-col">
+      <StaggerContainer staggerChildren={0.06} className="w-full flex flex-col gap-6">
         
         {/* Hero Identity Card */}
-        <div className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-6 border border-gray-50 flex items-center justify-between gap-4 mb-6 select-none text-left">
-          
+        <StaggerItem className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-6 border border-gray-50 flex items-center justify-between gap-4 mb-6 select-none text-left">
           {/* Left Group (Avatar + Fluid Text) */}
           <div className="flex items-start gap-4 flex-1">
             {/* Avatar */}
             <div className="relative shrink-0">
               <div className="w-16 h-16 rounded-full bg-[#6949a8] flex items-center justify-center text-white text-2xl font-bold font-poppins">
-                B
+                {initial}
               </div>
               <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
             </div>
@@ -378,7 +191,7 @@ export default function ProfilePage() {
             {/* Text Container */}
             <div className="flex flex-col mt-0.5">
               <h2 className="text-[22px] font-bold text-gray-900 leading-tight font-poppins">
-                Bryan
+                {profileName}
               </h2>
               <p className="text-[14px] text-gray-500 font-medium leading-snug mt-0.5 font-poppins">
                 Upcoming College Student
@@ -389,11 +202,10 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
-
-        </div>
+        </StaggerItem>
 
         {/* App Utility Stats Grid */}
-        <div className="grid grid-cols-2 gap-4 mb-6 select-none">
+        <StaggerItem className="grid grid-cols-2 gap-4 mb-6 select-none">
           <div className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-5 border border-gray-50 flex flex-col items-center justify-center text-center relative overflow-hidden">
             <FileText className="w-5 h-5 text-[#6949a8] mb-2" />
             <span className="text-3xl font-black text-[#6949a8] mb-1 font-poppins leading-none">
@@ -413,10 +225,10 @@ export default function ProfilePage() {
               AI Flashcards
             </span>
           </div>
-        </div>
+        </StaggerItem>
 
         {/* Workspace Storage Indicator */}
-        <div className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-5 border border-gray-50 mb-8 select-none text-left">
+        <StaggerItem className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-5 border border-gray-50 mb-8 select-none text-left">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider font-poppins">
               Workspace Storage
@@ -431,10 +243,10 @@ export default function ProfilePage() {
               style={{ width: `${dynamicMb}%` }}
             />
           </div>
-        </div>
+        </StaggerItem>
 
         {/* Section 1: Account Information */}
-        <div className="text-left mb-6">
+        <StaggerItem className="text-left mb-6">
           <h2 className="text-sm font-bold text-gray-900 mb-2 px-1 font-poppins">
             Account Information
           </h2>
@@ -442,10 +254,10 @@ export default function ProfilePage() {
             <SettingsRow icon={User} label="Edit Profile" onClick={() => handleRowClick("Edit Profile")} />
             <SettingsRow icon={Mail} label="Change Email" onClick={() => handleRowClick("Change Email")} />
           </div>
-        </div>
+        </StaggerItem>
 
         {/* Section 2: Security */}
-        <div className="text-left mb-6">
+        <StaggerItem className="text-left mb-6">
           <h2 className="text-sm font-bold text-gray-900 mb-2 px-1 font-poppins">
             Security
           </h2>
@@ -453,10 +265,10 @@ export default function ProfilePage() {
             <SettingsRow icon={Lock} label="Change Password" onClick={() => handleRowClick("Change Password")} />
             <SettingsRow icon={ShieldCheck} label="Two-Factor Authentication" onClick={() => handleRowClick("Two-Factor")} />
           </div>
-        </div>
+        </StaggerItem>
 
         {/* Section 3: Preferences */}
-        <div className="text-left mb-6">
+        <StaggerItem className="text-left mb-6">
           <h2 className="text-sm font-bold text-gray-900 mb-2 px-1 font-poppins">
             Preferences
           </h2>
@@ -464,10 +276,10 @@ export default function ProfilePage() {
             <SettingsRow icon={Moon} label="App Theme" onClick={() => handleRowClick("App Theme")} />
             <SettingsRow icon={BellRing} label="Notifications" onClick={() => handleRowClick("Notifications")} />
           </div>
-        </div>
+        </StaggerItem>
 
         {/* Section 4: Connected Services */}
-        <div className="text-left mb-8">
+        <StaggerItem className="text-left mb-8">
           <h2 className="text-sm font-bold text-gray-900 mb-2 px-1 font-poppins">
             Connected Services
           </h2>
@@ -488,7 +300,7 @@ export default function ProfilePage() {
             {/* GitHub Service Row */}
             <button 
               onClick={() => toast("GitHub integration is coming soon!", "info")}
-              className="w-full flex items-center justify-between py-4 px-2 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors duration-150 text-left outline-none cursor-pointer rounded-xl"
+              className="w-full flex items-center justify-between py-4 px-2 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors duration-150 text-left outline-none cursor-pointer rounded-xl border-none bg-transparent"
             >
               <div className="flex items-center">
                 <div className="bg-purple-50 text-[#6949a8] p-2.5 rounded-xl mr-4 flex items-center justify-center">
@@ -501,17 +313,17 @@ export default function ProfilePage() {
               </span>
             </button>
           </div>
-        </div>
+        </StaggerItem>
 
         {/* Danger Zone */}
-        <div className="text-left mb-8">
+        <StaggerItem className="text-left mb-8">
           <h2 className="text-sm font-bold text-red-500 mb-2 px-1 font-poppins">
             Danger Zone
           </h2>
           <div className="bg-white rounded-[20px] shadow-[0px_6px_15px_rgba(0,0,0,0.04)] border border-red-100 p-2">
             <button 
               onClick={handleSignOut}
-              className="w-full flex items-center justify-between py-4 px-2 hover:bg-red-50/50 transition-colors duration-150 text-left outline-none cursor-pointer rounded-xl"
+              className="w-full flex items-center justify-between py-4 px-2 hover:bg-red-50/50 transition-colors duration-150 text-left outline-none cursor-pointer rounded-xl border-none bg-transparent"
             >
               <div className="flex items-center">
                 <div className="bg-red-50 text-red-500 p-2.5 rounded-xl mr-4 flex items-center justify-center">
@@ -522,10 +334,9 @@ export default function ProfilePage() {
               <ChevronRight className="text-red-300 w-4 h-4" />
             </button>
           </div>
-        </div>
+        </StaggerItem>
 
-      </div>
-
-    </main>
+      </StaggerContainer>
+    </div>
   );
 }
