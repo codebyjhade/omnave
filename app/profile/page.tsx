@@ -133,7 +133,7 @@ export default function ProfilePage() {
 
   const dynamicMb = useMemo(() => {
     const count = notes?.length || 0;
-    const computed = Math.min(95, Math.max(15, count * 1.5));
+    const computed = Math.min(95, Math.max(0, count * 1.5));
     return parseFloat(computed.toFixed(1));
   }, [notes]);
 
@@ -249,7 +249,9 @@ export default function ProfilePage() {
                 {profileName}
               </h2>
               <p className="text-[14px] text-gray-500 font-medium leading-snug mt-0.5 font-poppins">
-                Upcoming College Student
+                {user?.user_metadata?.study_focus
+                  ? `Studying ${user.user_metadata.study_focus}`
+                  : "Omnave Learner"}
               </p>
               <div className="flex items-center gap-1.5 text-[12px] text-gray-400 font-medium mt-2 font-poppins">
                 <Calendar className="w-3.5 h-3.5 text-gray-400" />

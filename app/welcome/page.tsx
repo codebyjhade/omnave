@@ -23,6 +23,7 @@ export default function WelcomePage() {
 
   // Form State
   const [studyFocus, setStudyFocus] = useState<string | null>(null);
+  const [otherStudyFocus, setOtherStudyFocus] = useState<string>("");
   const [learningStyles, setLearningStyles] = useState<string[]>([]);
   const [goal, setGoal] = useState<string | null>(null);
   const [studyTime, setStudyTime] = useState<string | null>(null);
@@ -67,9 +68,12 @@ export default function WelcomePage() {
     if (!user) return;
     setIsSubmitting(true);
     try {
+      const resolvedFocus = studyFocus === "Other" && otherStudyFocus.trim()
+        ? otherStudyFocus.trim()
+        : studyFocus;
       const { error } = await supabase.auth.updateUser({
         data: {
-          study_focus: studyFocus,
+          study_focus: resolvedFocus,
           learning_styles: learningStyles,
           goal: goal,
           study_time: studyTime,
@@ -192,17 +196,45 @@ export default function WelcomePage() {
                       <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2.5">What are you studying?</label>
                       <div className="flex flex-wrap gap-2">
                         {studyFocusOptions.map((option) => (
-                          <button key={option} onClick={() => setStudyFocus(option)} className={`py-2 px-4 rounded-full text-xs font-semibold border transition-all ${studyFocus === option ? "bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white border-transparent shadow-[0_4px_20px_rgba(105,73,168,0.4)]" : "bg-white text-gray-700 border-gray-200 hover:border-[#6949a8] hover:shadow-sm"}`}>
+                          <button
+                            key={option}
+                            onClick={() => setStudyFocus(option)}
+                            className={`py-2 px-4 rounded-full text-xs font-semibold border border-transparent ring-offset-0 transition-all ${
+                              studyFocus === option
+                                ? "bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white ring-2 ring-[#6949a8] ring-offset-2 shadow-[0_4px_20px_rgba(105,73,168,0.4)]"
+                                : "bg-white text-gray-700 ring-1 ring-gray-200 hover:ring-[#6949a8] hover:shadow-sm"
+                            }`}
+                          >
                             {option}
                           </button>
                         ))}
                       </div>
+                      {studyFocus === "Other" && (
+                        <div className="mt-3">
+                          <input
+                            type="text"
+                            value={otherStudyFocus}
+                            onChange={(e) => setOtherStudyFocus(e.target.value)}
+                            placeholder="e.g. Architecture, Nursing..."
+                            autoFocus
+                            className="w-full bg-white text-gray-800 text-sm font-medium placeholder-gray-400 px-4 py-3 rounded-2xl border border-gray-200 shadow-[0px_4px_10px_rgba(0,0,0,0.05)] outline-none focus:ring-2 focus:ring-[#6949a8]/40 focus:border-[#6949a8] transition-all"
+                          />
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2.5">How do you like to learn?</label>
                       <div className="flex flex-wrap gap-2">
                         {learningStyleOptions.map((option) => (
-                          <button key={option} onClick={() => toggleLearningStyle(option)} className={`py-2 px-4 rounded-full text-xs font-semibold border transition-all ${learningStyles.includes(option) ? "bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white border-transparent shadow-[0_4px_20px_rgba(105,73,168,0.4)]" : "bg-white text-gray-700 border-gray-200 hover:border-[#6949a8] hover:shadow-sm"}`}>
+                          <button
+                            key={option}
+                            onClick={() => toggleLearningStyle(option)}
+                            className={`py-2 px-4 rounded-full text-xs font-semibold border border-transparent ring-offset-0 transition-all ${
+                              learningStyles.includes(option)
+                                ? "bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white ring-2 ring-[#6949a8] ring-offset-2 shadow-[0_4px_20px_rgba(105,73,168,0.4)]"
+                                : "bg-white text-gray-700 ring-1 ring-gray-200 hover:ring-[#6949a8] hover:shadow-sm"
+                            }`}
+                          >
                             {option}
                           </button>
                         ))}
@@ -221,7 +253,15 @@ export default function WelcomePage() {
                       <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2.5">What's your primary goal?</label>
                       <div className="flex flex-wrap gap-2">
                         {goalOptions.map((option) => (
-                          <button key={option} onClick={() => setGoal(option)} className={`py-2.5 px-4 rounded-full text-xs font-semibold border transition-all ${goal === option ? "bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white border-transparent shadow-[0_4px_20px_rgba(105,73,168,0.4)]" : "bg-white text-gray-700 border-gray-200 hover:border-[#6949a8]"}`}>
+                          <button
+                            key={option}
+                            onClick={() => setGoal(option)}
+                            className={`py-2.5 px-4 rounded-full text-xs font-semibold border border-transparent ring-offset-0 transition-all ${
+                              goal === option
+                                ? "bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white ring-2 ring-[#6949a8] ring-offset-2 shadow-[0_4px_20px_rgba(105,73,168,0.4)]"
+                                : "bg-white text-gray-700 ring-1 ring-gray-200 hover:ring-[#6949a8]"
+                            }`}
+                          >
                             {option}
                           </button>
                         ))}
@@ -231,7 +271,15 @@ export default function WelcomePage() {
                       <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2.5">Study time commitment per day</label>
                       <div className="flex flex-wrap gap-2">
                         {studyTimeOptions.map((option) => (
-                          <button key={option} onClick={() => setStudyTime(option)} className={`py-2.5 px-5 rounded-full text-xs font-semibold border transition-all ${studyTime === option ? "bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white border-transparent shadow-[0_4px_20px_rgba(105,73,168,0.4)]" : "bg-white text-gray-700 border-gray-200 hover:border-[#6949a8]"}`}>
+                          <button
+                            key={option}
+                            onClick={() => setStudyTime(option)}
+                            className={`py-2.5 px-5 rounded-full text-xs font-semibold border border-transparent ring-offset-0 transition-all ${
+                              studyTime === option
+                                ? "bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white ring-2 ring-[#6949a8] ring-offset-2 shadow-[0_4px_20px_rgba(105,73,168,0.4)]"
+                                : "bg-white text-gray-700 ring-1 ring-gray-200 hover:ring-[#6949a8]"
+                            }`}
+                          >
                             {option}
                           </button>
                         ))}
@@ -318,7 +366,7 @@ export default function WelcomePage() {
                   }}
                   onAnimationComplete={() => {
                     setTimeout(() => {
-                      window.location.href = '/home';
+                      router.replace('/home');
                     }, 2500);
                   }}
                   style={{ filter: "drop-shadow(0px 0px 18px rgba(105,73,168,0.9))" }}

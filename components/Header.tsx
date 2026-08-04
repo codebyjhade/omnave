@@ -288,7 +288,10 @@ export default function Header() {
 
   if (!mounted) {
     return (
-      <header className="w-full bg-[#6949a8] pt-12 pb-20 animate-pulse">
+      <header
+        className="w-full bg-[#6949a8]/80 backdrop-blur-xl relative z-10 flex-none pb-20 animate-pulse"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 48px)' }}
+      >
         <div className="max-w-5xl mx-auto px-[25px] flex justify-between items-center gap-4 select-none">
           <div className="h-6 w-48 bg-white/20 rounded mb-2" />
           <div className="flex gap-3">
@@ -310,11 +313,16 @@ export default function Header() {
   }`;
 
   return (
-    <header className={`w-full relative flex-none transition-all duration-200 ${
-      isFlatWhiteRoute 
-        ? 'bg-white pb-4 pt-7 border-b border-gray-100 shadow-sm' 
-        : 'bg-[#6949a8] pt-7 pb-23'
-    }`}>
+    <header
+      className={`w-full relative z-10 flex-none transition-all duration-200 ${
+        isFlatWhiteRoute
+          ? 'bg-white/75 backdrop-blur-xl pb-4 border-b border-gray-100 shadow-sm'
+          : 'bg-[#6949a8]/80 backdrop-blur-xl pb-23'
+      }`}
+      style={{
+        paddingTop: 'calc(env(safe-area-inset-top) + 28px)',
+      }}
+    >
       <div className="max-w-5xl mx-auto px-[25px] flex justify-between items-center gap-4 select-none relative z-30">
         
         {/* Left Column: Title, search or navigation with dynamic cross-fade */}
