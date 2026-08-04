@@ -289,12 +289,12 @@ export default function Header() {
   if (!mounted) {
     return (
       <header
-        className="w-full bg-[#6949a8]/80 backdrop-blur-xl relative z-10 flex-none pb-20 animate-pulse"
+        className="w-full bg-[#6949a8]/80 backdrop-blur-xl relative z-10 flex-none h-[164px] animate-pulse"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 48px)' }}
       >
-        <div className="max-w-5xl mx-auto px-[25px] flex justify-between items-center gap-4 select-none">
+        <div className="max-w-5xl mx-auto px-[25px] flex justify-between items-start gap-4 select-none">
           <div className="h-6 w-48 bg-white/20 rounded mb-2" />
-          <div className="flex gap-3">
+          <div className="flex gap-3 mt-1">
             <div className="w-10 h-10 rounded-full bg-white/20" />
             <div className="w-10 h-10 rounded-full bg-white/20" />
           </div>
@@ -314,16 +314,16 @@ export default function Header() {
 
   return (
     <header
-      className={`w-full relative z-10 flex-none transition-all duration-200 ${
+      className={`w-full relative z-10 flex-none transition-all duration-300 ${
         isFlatWhiteRoute
-          ? 'bg-white/75 backdrop-blur-xl pb-4 border-b border-gray-100 shadow-sm'
-          : 'bg-[#6949a8]/80 backdrop-blur-xl pb-23'
+          ? 'bg-white/75 backdrop-blur-xl h-[100px] border-b border-gray-100 shadow-sm'
+          : 'bg-[#6949a8]/80 backdrop-blur-xl h-[164px]'
       }`}
       style={{
         paddingTop: 'calc(env(safe-area-inset-top) + 28px)',
       }}
     >
-      <div className="max-w-5xl mx-auto px-[25px] flex justify-between items-center gap-4 select-none relative z-30">
+      <div className="max-w-5xl mx-auto px-[25px] flex justify-between items-start gap-4 select-none relative z-30">
         
         {/* Left Column: Title, search or navigation with dynamic cross-fade */}
         <div className="flex-1 min-w-0">
@@ -342,7 +342,7 @@ export default function Header() {
         </div>
 
         {/* Right Column: Dynamic Action Buttons — layout tweens parent width, locked children prevent icon distortion */}
-        <motion.div layout="position" transition={motionMasterTiming} className="flex items-center gap-3 relative shrink-0">
+        <motion.div layout="position" transition={motionMasterTiming} className="flex items-center gap-3 relative shrink-0 mt-1">
           <AnimatePresence mode="popLayout">
             
             {/* Bell Button (Shared layout) */}

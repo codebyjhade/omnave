@@ -36,12 +36,12 @@ export default function BottomNav() {
           label="Home"
         />
         
-        {/* Lesson */}
+        {/* Library */}
         <NavItem 
           href="/library"
           active={pathname === '/library' || pathname?.startsWith('/library/')}
           icon={<BookOpen size={24} strokeWidth={2} />} 
-          label="Lesson"
+          label="Library"
         />
 
         {/* Upload */}
