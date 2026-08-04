@@ -90,10 +90,38 @@ export default function WelcomePage() {
     }
   };
 
+  // ─── Skeleton Loading State ──────────────────────────────────────────────────
+  // Structural skeleton that mirrors the exact geometry of step 0's welcome card.
+  // Dimensions are derived 1:1 from the real card below (rounded-3xl, p-8,
+  // max-w-md, text-3xl h-9, text-[15px] two-line ~h-10, py-4 button ~h-[54px]).
+  // ZERO CLS: the card shell is the same max-w-md w-full as the real render.
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-[#6949a8] border-t-transparent rounded-full" />
+      <main className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden font-sans antialiased">
+        {/* Ambient background orbs — identical to real render so no positional jump */}
+        <div className="absolute inset-0 bg-slate-50 -z-20" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-200/10 rounded-full blur-3xl -z-10" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-200/10 rounded-full blur-3xl -z-10" />
+
+        {/* Card shell — max-w-md w-full rounded-3xl p-8: exact match to real card */}
+        <div className="bg-white/80 backdrop-blur-xl border border-gray-100/50 rounded-3xl shadow-2xl p-8 max-w-md w-full relative z-10 flex flex-col justify-between">
+          <div className="text-center py-4 flex flex-col items-center">
+            {/* Logo placeholder — 64×64 circle, mb-6: matches Image width/height */}
+            <div className="shimmer-bg rounded-full w-16 h-16 mb-6" aria-hidden="true" />
+
+            {/* h1 placeholder — text-3xl ≈ 36px line-height, mb-3 */}
+            <div className="shimmer-bg rounded-md h-9 w-48 mb-3" aria-hidden="true" />
+
+            {/* p placeholder — text-[15px] two lines, mb-8, max-w-sm */}
+            <div className="w-full max-w-sm space-y-2 mb-8">
+              <div className="shimmer-bg rounded-md h-4 w-full" aria-hidden="true" />
+              <div className="shimmer-bg rounded-md h-4 w-4/5 mx-auto" aria-hidden="true" />
+            </div>
+
+            {/* CTA button placeholder — w-full py-4 rounded-full ≈ h-[54px] */}
+            <div className="shimmer-bg rounded-full w-full h-[54px]" aria-hidden="true" />
+          </div>
+        </div>
       </main>
     );
   }

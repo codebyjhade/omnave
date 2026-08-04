@@ -337,7 +337,18 @@ export default function HomePage() {
         {/* 1. TODAY'S GOAL */}
         <StaggerItem variants={homeStaggerVariants}>
           {loading ? (
-            <div className="w-full bg-[#FFFFFF] rounded-[15px] p-5 shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[80px]" />
+            // Skeleton: h-[100px] matches TodaysGoal's exact height; p-[20px] matches its padding.
+            // Left: 40×40 icon circle + two text lines. Right: 60×60 ring circle.
+            <div className="w-full h-[100px] bg-white rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-row items-center justify-between" aria-hidden="true">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="shimmer-bg rounded-full w-10 h-10 shrink-0" />
+                <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                  <div className="shimmer-bg rounded-md h-[18px] w-32" />
+                  <div className="shimmer-bg rounded-md h-[13px] w-44" />
+                </div>
+              </div>
+              <div className="shimmer-bg rounded-full w-[60px] h-[60px] min-w-[60px] shrink-0" />
+            </div>
           ) : (
             <TodaysGoal completed={completedGoalsCount} total={totalGoalsCount} />
           )}
@@ -350,7 +361,18 @@ export default function HomePage() {
             Up Next
           </h2>
           {loading ? (
-            <div className="w-full h-[90px] bg-[#6949a8]/20 rounded-[15px] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] animate-pulse" />
+            // Skeleton: h-[90px] p-[20px] matches the Up Next card exactly.
+            // Left: 40×40 icon circle + heading line + subheading line. Right: 20×20 chevron nub.
+            <div className="w-full h-[90px] bg-[#6949a8]/20 rounded-[15px] p-[20px] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] flex flex-row items-center justify-between gap-4" aria-hidden="true">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="shimmer-bg rounded-full w-10 h-10 shrink-0 bg-white/30" />
+                <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                  <div className="shimmer-bg rounded-md h-[18px] w-36 bg-white/30" />
+                  <div className="shimmer-bg rounded-md h-[13px] w-48 bg-white/30" />
+                </div>
+              </div>
+              <div className="shimmer-bg rounded-md w-5 h-5 shrink-0 bg-white/30" />
+            </div>
           ) : !currentLesson ? (
             <motion.div
               onClick={() => router.push("/upload")}
@@ -407,9 +429,30 @@ export default function HomePage() {
         {/* 3. PROGRESS MINI-GRID (Level & Streak Squares) */}
         <StaggerItem variants={homeStaggerVariants}>
           {loading ? (
-            <div className="grid grid-cols-2 gap-[20px] w-full">
-              <div className="bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[110px]" />
-              <div className="bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[110px]" />
+            // Skeleton: 2-col grid gap-[20px]. Each card: p-[20px], same shadow/radius as real cards.
+            // Bones: eyebrow label h-[10px], stat value text-3xl ≈ h-8, XP bar h-[2px] with label.
+            <div className="grid grid-cols-2 gap-[20px] w-full" aria-hidden="true">
+              {/* Level card skeleton */}
+              <div className="bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col justify-between" style={{ minHeight: '110px' }}>
+                <div className="flex flex-col gap-2">
+                  <div className="shimmer-bg rounded-md h-[10px] w-8" />
+                  <div className="shimmer-bg rounded-md h-8 w-10" />
+                </div>
+                <div className="flex flex-col gap-1.5 mt-2">
+                  <div className="shimmer-bg rounded-md h-[9px] w-20" />
+                  <div className="shimmer-bg rounded-full h-[2px] w-full" />
+                </div>
+              </div>
+              {/* Streak card skeleton */}
+              <div className="bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col justify-between" style={{ minHeight: '110px' }}>
+                <div className="flex flex-col gap-2">
+                  <div className="shimmer-bg rounded-md h-[10px] w-12" />
+                  <div className="shimmer-bg rounded-md h-8 w-14" />
+                </div>
+                <div className="mt-2">
+                  <div className="shimmer-bg rounded-md h-[9px] w-28" />
+                </div>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-[20px] w-full">
@@ -473,7 +516,21 @@ export default function HomePage() {
         {/* 4. OMNAVE AI CARD — Flat brand purple with logo + sparkle watermark */}
         <StaggerItem variants={homeStaggerVariants}>
           {loading ? (
-            <div className="w-full h-[167px] bg-[#6949a8]/20 rounded-[15px] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] animate-pulse" />
+            // Skeleton: h-[167px] p-[20px] matches AI card. Left col w-[60%]:
+            // row 1 = 36×36 logo circle + title line. Row 2 = 2 description lines. Row 3 = pill CTA.
+            <div className="w-full h-[167px] bg-[#6949a8]/20 rounded-[15px] p-[20px] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] flex flex-row justify-between items-center overflow-hidden" aria-hidden="true">
+              <div className="flex flex-col gap-[10px] w-[60%]">
+                <div className="flex items-center gap-3">
+                  <div className="shimmer-bg rounded-full w-9 h-9 shrink-0 bg-white/30" />
+                  <div className="shimmer-bg rounded-md h-[18px] w-24 bg-white/30" />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <div className="shimmer-bg rounded-md h-[12px] w-full bg-white/30" />
+                  <div className="shimmer-bg rounded-md h-[12px] w-4/5 bg-white/30" />
+                </div>
+                <div className="shimmer-bg rounded-full h-9 w-28 mt-1 bg-white/30" />
+              </div>
+            </div>
           ) : (
             <div className="w-full h-[167px] bg-[#6949a8] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] rounded-[15px] p-[20px] flex flex-row justify-between items-center overflow-hidden relative">
 
@@ -528,14 +585,22 @@ export default function HomePage() {
         {/* 5. DAILY GOALS CARD */}
         <StaggerItem variants={homeStaggerVariants}>
           {loading ? (
-            <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[220px]">
+            // Skeleton: p-[20px] card. Header: eyebrow label + pill badge.
+            // 3 × goal rows: each h-14 rounded-[15px] with 20×20 checkbox circle + 2 text lines.
+            <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)]" aria-hidden="true">
               <div className="flex justify-between items-center mb-4">
-                <div className="h-3.5 w-24 bg-omnave-border rounded-md" />
-                <div className="h-4 w-12 bg-omnave-border rounded-full" />
+                <div className="shimmer-bg rounded-md h-[11px] w-24" />
+                <div className="shimmer-bg rounded-full h-[18px] w-14" />
               </div>
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-14 w-full bg-omnave-surface border border-omnave-border rounded-2xl" />
+                  <div key={i} className="h-14 w-full border border-omnave-border rounded-[15px] flex items-center gap-3 px-3">
+                    <div className="shimmer-bg rounded-full w-5 h-5 shrink-0" />
+                    <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                      <div className="shimmer-bg rounded-md h-3 w-32" />
+                      <div className="shimmer-bg rounded-md h-2.5 w-48" />
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -612,7 +677,32 @@ export default function HomePage() {
         {/* 6. RECENT MATERIALS CARD */}
         <StaggerItem variants={homeStaggerVariants}>
           {loading ? (
-            <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] animate-pulse min-h-[160px]" />
+            // Skeleton: p-[20px] card. Header: eyebrow + "View All" nub.
+            // 2 × material cards in flex row: min-w-[240px] each, p-4, with:
+            //   32×32 icon square, title line, card-count line, and 2px progress bar.
+            <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col gap-5" aria-hidden="true">
+              <div className="flex items-center justify-between">
+                <div className="shimmer-bg rounded-md h-[11px] w-32" />
+                <div className="shimmer-bg rounded-md h-[11px] w-14" />
+              </div>
+              <div className="flex gap-4 overflow-hidden">
+                {[1, 2].map((i) => (
+                  <div key={i} className="min-w-[240px] shrink-0 flex flex-col justify-between gap-4 p-4 border border-omnave-border rounded-[15px]">
+                    <div className="flex items-start gap-3">
+                      <div className="shimmer-bg rounded-lg w-8 h-8 shrink-0" />
+                      <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                        <div className="shimmer-bg rounded-md h-3 w-36" />
+                        <div className="shimmer-bg rounded-md h-[10px] w-16" />
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1.5 w-full">
+                      <div className="shimmer-bg rounded-full h-[2px] w-full" />
+                      <div className="shimmer-bg rounded-md h-[9px] w-20" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col gap-5">
               <div className="flex items-center justify-between">

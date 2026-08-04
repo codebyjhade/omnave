@@ -16,15 +16,67 @@ import {
   LogOut 
 } from 'lucide-react';
 
+import { useUserContext } from '@/context/UserContext';
+import { Skeleton } from '@/components/Skeleton';
+
 export default function SettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { loading } = useUserContext();
 
   // Local state for toggle switches to make it feel responsive
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [pushNotif, setPushNotif] = useState(true);
   const [emailNotif, setEmailNotif] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+
+  if (loading) {
+    return (
+      <div className="w-full flex-1 flex flex-col pt-2 max-w-md mx-auto px-4 text-gray-900" aria-hidden="true">
+        {/* PREFERENCES SECTION SKELETON */}
+        <Skeleton className="h-4 w-28 ml-2 mb-2 mt-6 rounded-md text-left" />
+        <div className="bg-white rounded-[20px] shadow-[0px_4px_10px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden">
+          {[1, 2].map((i) => (
+            <div key={i} className="flex items-center justify-between p-4 bg-white border-b border-gray-50 last:border-none h-[72px]">
+              <div className="flex items-center">
+                <Skeleton className="w-10 h-10 rounded-xl mr-4 shrink-0 animate-pulse" />
+                <Skeleton className="h-4 w-24 rounded-md animate-pulse" />
+              </div>
+              <Skeleton className="w-20 h-5 rounded-full shrink-0" />
+            </div>
+          ))}
+        </div>
+
+        {/* NOTIFICATIONS SECTION SKELETON */}
+        <Skeleton className="h-4 w-32 ml-2 mb-2 mt-6 rounded-md text-left" />
+        <div className="bg-white rounded-[20px] shadow-[0px_4px_10px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden">
+          {[1, 2].map((i) => (
+            <div key={i} className="flex items-center justify-between p-4 bg-white border-b border-gray-50 last:border-none h-[72px]">
+              <div className="flex items-center">
+                <Skeleton className="w-10 h-10 rounded-xl mr-4 shrink-0" />
+                <Skeleton className="h-4 w-28 rounded-md" />
+              </div>
+              <Skeleton className="w-12 h-7 rounded-full shrink-0" />
+            </div>
+          ))}
+        </div>
+
+        {/* MORE SECTION SKELETON */}
+        <Skeleton className="h-4 w-20 ml-2 mb-2 mt-6 rounded-md text-left" />
+        <div className="bg-white rounded-[20px] shadow-[0px_4px_10px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center justify-between p-4 bg-white border-b border-gray-50 last:border-none h-[72px]">
+              <div className="flex items-center">
+                <Skeleton className="w-10 h-10 rounded-xl mr-4 shrink-0" />
+                <Skeleton className="h-4 w-36 rounded-md" />
+              </div>
+              <Skeleton className="w-4 h-4 rounded-md shrink-0" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const handleSignOut = async () => {
     if (isSigningOut) return;

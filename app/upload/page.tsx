@@ -10,15 +10,46 @@ import { motion } from "framer-motion";
 import StaggerContainer from "@/components/ui/animation/StaggerContainer";
 import StaggerItem from "@/components/ui/animation/StaggerItem";
 
+import { Skeleton } from "@/components/Skeleton";
+
 export default function UploadPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { uploadStatus, processBackgroundUpload, cancelUpload, jobs = [], removeJob, cancelJob } = useUploadContext();
-  const { user } = useUserContext();
+  const { user, loading } = useUserContext();
 
   const [file, setFile] = useState<File | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (loading) {
+    return (
+      <div className="w-full flex-1 flex flex-col" aria-hidden="true">
+        <div className="w-full max-w-lg mx-auto flex flex-col items-center">
+          {/* AI Pill Badge Skeleton */}
+          <Skeleton className="w-40 h-[30px] rounded-full mb-6" />
+
+          {/* Upload Dropzone Card Skeleton */}
+          <div className="bg-white rounded-[15px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-3 w-full border border-gray-100 mb-6">
+            <div className="border-2 border-dashed border-gray-100 rounded-[15px] flex flex-col items-center py-10 px-6">
+              <Skeleton className="w-14 h-14 rounded-full mb-4" />
+              <Skeleton className="w-44 h-[44px] rounded-full animate-pulse" />
+              <Skeleton className="w-28 h-3 mt-4 rounded-md" />
+            </div>
+          </div>
+
+          {/* Active Processing List Skeleton */}
+          <div className="w-full mt-4 flex flex-col gap-4 text-left">
+            <Skeleton className="h-6 w-36 rounded-md" />
+            <div className="bg-transparent border-2 border-dashed border-gray-200 rounded-[15px] p-8 flex flex-col items-center justify-center gap-2">
+              <Skeleton className="w-10 h-10 rounded-full" />
+              <Skeleton className="h-4 w-40 rounded-md" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();

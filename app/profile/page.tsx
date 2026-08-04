@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import StaggerContainer from "@/components/ui/animation/StaggerContainer";
 import StaggerItem from "@/components/ui/animation/StaggerItem";
+import { Skeleton } from "@/components/Skeleton";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -58,7 +59,7 @@ export default function ProfilePage() {
       const emailVal = user.email || "";
       setEmail(emailVal);
       
-      const metaName = user.user_metadata?.full_name || user.user_metadata?.nickname;
+      const metaName = user.user_metadata?.full_name || user.user_metadata?.name;
       if (metaName) {
         setProfileName(metaName);
         setInitial(metaName.charAt(0).toUpperCase());
@@ -142,8 +143,62 @@ export default function ProfilePage() {
 
   if (!mounted || isAuthLoading) {
     return (
-      <div className="flex-1 w-full flex items-center justify-center min-h-[300px]">
-        <div className="animate-spin w-8 h-8 border-4 border-[#6949a8] border-t-transparent rounded-full" />
+      <div className="w-full flex-1 flex flex-col" aria-hidden="true">
+        {/* Profile Identity Card Skeleton */}
+        <div className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-6 border border-gray-50 flex items-center justify-between gap-4 mb-6 text-left h-[116px]">
+          <div className="flex items-start gap-4 flex-1">
+            <Skeleton className="w-16 h-16 rounded-full shrink-0" />
+            <div className="flex flex-col gap-1.5 mt-0.5 flex-1">
+              <Skeleton className="h-6 w-32 rounded-md animate-pulse" />
+              <Skeleton className="h-4 w-40 rounded-md" />
+              <div className="flex items-center gap-1.5 mt-2">
+                <Skeleton className="w-3.5 h-3.5 rounded-full shrink-0" />
+                <Skeleton className="h-3 w-44 rounded-md" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* App Utility Stats Grid Skeleton */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          {[1, 2].map((i) => (
+            <div
+              key={i}
+              className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-5 border border-gray-50 flex flex-col items-center justify-center text-center h-[110px]"
+            >
+              <Skeleton className="w-5 h-5 rounded-md mb-2" />
+              <Skeleton className="h-8 w-12 rounded-md mb-1.5" />
+              <Skeleton className="h-3 w-24 rounded-md" />
+            </div>
+          ))}
+        </div>
+
+        {/* Workspace Storage Indicator Skeleton */}
+        <div className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-5 border border-gray-50 mb-8 text-left h-[96px]">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-3.5 w-32 rounded-md" />
+            <Skeleton className="h-3.5 w-28 rounded-md" />
+          </div>
+          <Skeleton className="w-full h-2.5 rounded-full mt-2" />
+        </div>
+
+        {/* Account and Security lists Skeletons */}
+        {[1, 2, 3].map((sectionIdx) => (
+          <div key={sectionIdx} className="text-left mb-6">
+            <Skeleton className="h-4 w-36 mb-2 ml-1 rounded-md" />
+            <div className="bg-white rounded-[20px] shadow-[0px_6px_15px_rgba(0,0,0,0.04)] border border-gray-100 p-2">
+              {[1, 2].map((rowIdx) => (
+                <div key={rowIdx} className="w-full flex items-center justify-between py-4 px-2 border-b border-gray-50 last:border-0 h-[56px]">
+                  <div className="flex items-center">
+                    <Skeleton className="w-10 h-10 rounded-xl mr-4 shrink-0" />
+                    <Skeleton className="h-4 w-28 rounded-md" />
+                  </div>
+                  <Skeleton className="w-4 h-4 rounded-md shrink-0" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

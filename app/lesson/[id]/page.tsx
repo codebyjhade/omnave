@@ -28,6 +28,8 @@ const ChatPanel = dynamic(
   { ssr: false }
 );
  
+import { Skeleton } from "@/components/Skeleton";
+
 export default function LessonView() {
   const router = useRouter();
   const { id } = useParams();
@@ -58,7 +60,7 @@ export default function LessonView() {
       setActiveMode("flashcards");
     }
   }, []);
-
+ 
   // Safe Guard: Reset active assessment state to false if user switches tabs to prevent header/nav disappearance
   useEffect(() => {
     if (activeMode !== 'quiz' && isAssessmentActive) {
@@ -162,8 +164,109 @@ export default function LessonView() {
  
   if (loading) {
     return (
-      <div className="flex-1 w-full flex items-center justify-center min-h-[300px]">
-        <div className="animate-spin w-8 h-8 border-4 border-[#6949a8] border-t-transparent rounded-full" />
+      <div className="w-full flex-1 flex flex-col max-w-3xl mx-auto pt-4 px-3 text-left" aria-hidden="true">
+        {activeMode === 'summary' && (
+          <div className="flex-1 w-full bg-white border border-gray-100 rounded-[24px] shadow-[0_8px_40px_rgba(0,0,0,0.08)] flex flex-col p-6 min-h-[450px] mb-6">
+            <div className="flex flex-col gap-6 text-left">
+              {/* Title / Heading Skeleton */}
+              <div className="flex flex-col gap-2">
+                <Skeleton className="h-7 w-2/3 rounded-md animate-pulse" />
+                <Skeleton className="h-4 w-1/3 rounded-md" />
+              </div>
+              {/* Paragraph 1 */}
+              <div className="flex flex-col gap-2.5 mt-2">
+                <Skeleton className="h-4 w-full rounded-md" />
+                <Skeleton className="h-4 w-full rounded-md" />
+                <Skeleton className="h-4 w-11/12 rounded-md" />
+                <Skeleton className="h-4 w-4/5 rounded-md" />
+              </div>
+              {/* Paragraph 2 */}
+              <div className="flex flex-col gap-2.5 mt-4">
+                <Skeleton className="h-5 w-40 rounded-md" />
+                <Skeleton className="h-4 w-full rounded-md" />
+                <Skeleton className="h-4 w-full rounded-md" />
+                <Skeleton className="h-4 w-3/4 rounded-md" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeMode === 'chat' && (
+          <div className="flex-1 w-full bg-white border border-gray-100 rounded-[24px] shadow-[0_8px_40px_rgba(0,0,0,0.08)] flex flex-col overflow-hidden mb-6 min-h-[450px]">
+            {/* Chat Header Skeleton (Tutor Chat with integrated assistant strictly named OmnaveAI) */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+              <div className="flex items-center space-x-2">
+                <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+                <div className="flex flex-col gap-1.5 text-left">
+                  <Skeleton className="h-3.5 w-24 rounded-md" />
+                  <Skeleton className="h-2 w-10 rounded-md" />
+                </div>
+              </div>
+              <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+            </div>
+            {/* Message bubbles list */}
+            <div className="p-5 flex-1 flex flex-col gap-6 bg-white overflow-hidden">
+              <Skeleton className="h-12 w-[180px] rounded-2xl rounded-tr-none self-end" />
+              <div className="flex gap-2.5 items-start self-start max-w-[80%]">
+                <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+                <Skeleton className="h-24 w-[280px] rounded-2xl rounded-tl-none animate-pulse" />
+              </div>
+              <Skeleton className="h-10 w-[140px] rounded-2xl rounded-tr-none self-end" />
+            </div>
+            {/* Input area */}
+            <div className="p-4 border-t border-gray-100 shrink-0 bg-white">
+              <Skeleton className="h-[48px] w-full rounded-full" />
+            </div>
+          </div>
+        )}
+
+        {activeMode === 'flashcards' && (
+          <div className="flex-1 w-full bg-white border border-gray-100 rounded-[24px] shadow-[0_8px_40px_rgba(0,0,0,0.08)] flex flex-col p-5 min-h-[450px] mb-6 justify-between">
+            <div className="flex justify-between items-center mb-6">
+              <Skeleton className="h-6 w-20 rounded-md" />
+              <Skeleton className="h-6 w-28 rounded-md" />
+            </div>
+            {/* Slide Frame */}
+            <div className="flex-1 border border-gray-100 rounded-[20px] flex flex-col items-center justify-center p-6 mb-6 min-h-[220px]">
+              <Skeleton className="h-4 w-3/4 rounded-md mb-2 animate-pulse" />
+              <Skeleton className="h-4 w-1/2 rounded-md" />
+            </div>
+            {/* Leitner rating buttons */}
+            <div className="flex justify-center gap-2">
+              <Skeleton className="h-10 w-20 rounded-xl" />
+              <Skeleton className="h-10 w-20 rounded-xl" />
+              <Skeleton className="h-10 w-20 rounded-xl" />
+            </div>
+          </div>
+        )}
+
+        {activeMode === 'quiz' && (
+          <div className="flex-1 w-full bg-white border border-gray-100 rounded-[24px] shadow-[0_8px_40px_rgba(0,0,0,0.08)] flex flex-col p-5 min-h-[450px] mb-6">
+            {/* Sub-Header toggle */}
+            <div className="flex justify-center mb-6">
+              <Skeleton className="h-[36px] w-[220px] rounded-full" />
+            </div>
+            {/* Question Card */}
+            <div className="border border-gray-100 rounded-2xl p-5 mb-4 flex flex-col gap-2 min-h-[100px]">
+              <Skeleton className="h-4 w-full rounded-md animate-pulse" />
+              <Skeleton className="h-4 w-2/3 rounded-md" />
+            </div>
+            {/* Option blocks */}
+            <div className="flex flex-col gap-3">
+              <Skeleton className="h-12 w-full rounded-xl" />
+              <Skeleton className="h-12 w-full rounded-xl" />
+              <Skeleton className="h-12 w-full rounded-xl" />
+            </div>
+          </div>
+        )}
+
+        {/* Floating Context Switcher (Bottom Nav Pill) Skeleton */}
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90vw] max-w-[320px] bg-white rounded-full shadow-[0px_10px_30px_rgba(0,0,0,0.15)] border border-gray-100 flex items-center justify-between p-1.5">
+          <Skeleton className="h-[36px] flex-1 rounded-full mx-1" />
+          <Skeleton className="h-[36px] flex-1 rounded-full mx-1" />
+          <Skeleton className="h-[36px] flex-1 rounded-full mx-1" />
+          <Skeleton className="h-[36px] flex-1 rounded-full mx-1" />
+        </div>
       </div>
     );
   }

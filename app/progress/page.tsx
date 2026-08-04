@@ -15,6 +15,8 @@ import { motion } from "framer-motion";
 import StaggerContainer from "@/components/ui/animation/StaggerContainer";
 import StaggerItem from "@/components/ui/animation/StaggerItem";
 
+import { Skeleton } from "@/components/Skeleton";
+
 export default function ProgressPage() {
   const router = useRouter();
   const { 
@@ -83,8 +85,81 @@ export default function ProgressPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 w-full flex items-center justify-center min-h-[300px]">
-        <div className="animate-spin w-8 h-8 border-4 border-[#6949a8] border-t-transparent rounded-full" />
+      <div className="w-full flex-1 flex flex-col pt-2" aria-hidden="true">
+        {/* Overview Widgets Grid Skeleton */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-5 border border-gray-50 flex flex-col justify-center items-start relative h-[88px]"
+            >
+              <Skeleton className="absolute top-4 right-4 w-5 h-5 rounded-md" />
+              <Skeleton className="h-8 w-12 rounded-md mb-1.5 animate-pulse" />
+              <Skeleton className="h-3 w-24 rounded-md" />
+            </div>
+          ))}
+        </div>
+
+        {/* Learning Consistency (Compact Heatmap) Card Skeleton */}
+        <div className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-6 border border-gray-50 mb-6 flex flex-col gap-4">
+          <Skeleton className="h-6 w-48 rounded-md" />
+          <div className="flex gap-1 overflow-hidden h-[96px] w-full">
+            {/* Mock heatmap columns */}
+            {Array.from({ length: 24 }).map((_, colIdx) => (
+              <div key={colIdx} className="flex flex-col gap-1">
+                {Array.from({ length: 7 }).map((_, rowIdx) => (
+                  <Skeleton key={rowIdx} className="w-3 h-3 rounded-sm shrink-0" />
+                ))}
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-1 justify-end mt-1">
+            <Skeleton className="h-3 w-8 rounded-md" />
+            <Skeleton className="w-2.5 h-2.5 rounded-sm" />
+            <Skeleton className="w-2.5 h-2.5 rounded-sm" />
+            <Skeleton className="w-2.5 h-2.5 rounded-sm" />
+            <Skeleton className="w-2.5 h-2.5 rounded-sm" />
+            <Skeleton className="h-3 w-8 rounded-md" />
+          </div>
+        </div>
+
+        {/* Lessons Learned Card Skeleton */}
+        <div className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-6 border border-gray-50 mb-6 flex flex-col gap-4">
+          <Skeleton className="h-6 w-36 rounded-md" />
+          <div className="flex flex-row items-stretch h-24 w-full gap-3">
+            <div className="flex flex-col justify-between w-6 h-full pb-4">
+              <Skeleton className="h-2.5 w-4 rounded-md" />
+              <Skeleton className="h-2.5 w-4 rounded-md" />
+              <Skeleton className="h-2.5 w-4 rounded-md" />
+            </div>
+            <div className="flex-1 flex flex-row items-end justify-between h-full border-b border-gray-100 pb-4">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
+                  <div className="w-5 bg-purple-50 rounded-full h-full flex items-end overflow-hidden">
+                    <Skeleton className="w-full h-1/2 rounded-full" />
+                  </div>
+                  <Skeleton className="h-2.5 w-3 rounded-md mt-1" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Study Kit Mastery Card Skeleton */}
+        <div className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-6 border border-gray-50 flex flex-col gap-4">
+          <Skeleton className="h-6 w-40 rounded-md" />
+          <div className="flex flex-col gap-5">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-4">
+                  <Skeleton className="h-4 w-1/2 rounded-md animate-pulse" />
+                  <Skeleton className="h-4 w-10 rounded-md" />
+                </div>
+                <Skeleton className="w-full h-2 rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
