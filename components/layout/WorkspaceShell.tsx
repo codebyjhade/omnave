@@ -40,7 +40,7 @@ export default function WorkspaceShell({ children }: { children: React.ReactNode
   const isFlatWhiteRoute = pathname === '/progress' || pathname === '/profile' || pathname.startsWith('/lesson/');
 
   return (
-    <div className={`relative z-10 w-full min-h-screen flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pwa-safe-root transition-colors duration-200 ${
+    <div className={`relative z-10 w-full min-h-screen flex flex-col pb-[env(safe-area-inset-bottom)] pwa-safe-root transition-colors duration-200 ${
       isFlatWhiteRoute ? 'bg-white' : 'bg-[#6949a8]'
     }`}>
       {/* 1. FIXED HEADER AREA - Hidden during active quiz takeover */}

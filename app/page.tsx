@@ -127,7 +127,10 @@ export default function LandingPage() {
       </div>
 
       {/* ─── 1. NAVIGATION BAR ─── */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-200 px-6 py-4 transition-all">
+      <header
+        className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-200 px-6 pb-4 transition-all"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }}
+      >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             <div className="relative w-8 h-8 flex items-center justify-center">
@@ -172,7 +175,8 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-x-0 top-[69px] z-40 bg-white/95 border-b border-gray-200 px-6 py-8 flex flex-col gap-4 md:hidden backdrop-blur-xl"
+            className="fixed inset-x-0 z-40 bg-white/95 border-b border-gray-200 px-6 py-8 flex flex-col gap-4 md:hidden backdrop-blur-xl"
+            style={{ top: 'calc(env(safe-area-inset-top) + 69px)' }}
           >
             <button 
               onClick={() => openAuth('login')}
@@ -191,7 +195,10 @@ export default function LandingPage() {
       </AnimatePresence>
 
       {/* ─── 2. HERO SECTION ─── */}
-      <section className="relative z-10 pt-32 pb-20 px-6 max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-12 lg:gap-8">
+      <section
+        className="relative z-10 pb-20 px-6 max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-12 lg:gap-8"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 128px)' }}
+      >
         
         {/* Left Side Copy */}
         <div className="flex-1 text-left flex flex-col gap-6 select-none">
