@@ -301,7 +301,9 @@ export default function Header() {
   }
 
   // Adaptive button classes for dark/light headers — locked to exact px dimensions to prevent Flexbox compression
-  const iconBtnClass = `p-2 rounded-full w-[40px] h-[40px] min-w-[40px] min-h-[40px] max-w-[40px] max-h-[40px] flex items-center justify-center cursor-pointer shadow-premium-glass border z-40 shrink-0 block overflow-hidden transition-all ${
+  // No `transition-all` or `active:scale-95` here — CSS transitions fight Framer Motion's
+  // layout projection and cause the border-radius / transform snap on shared-layout handoff.
+  const iconBtnClass = `p-2 rounded-full w-[40px] h-[40px] min-w-[40px] min-h-[40px] max-w-[40px] max-h-[40px] flex items-center justify-center cursor-pointer shadow-premium-glass border z-40 shrink-0 block overflow-hidden ${
     isFlatWhiteRoute 
       ? 'bg-white text-gray-900 border-gray-100 hover:bg-gray-50' 
       : 'bg-white text-[#6949a8] border-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70'
@@ -336,6 +338,9 @@ export default function Header() {
           <AnimatePresence mode="popLayout">
             
             {/* Bell Button (Shared layout) */}
+            {/* NOTE: scale-pulse keyframe removed — the 40px overflow-hidden container clips any
+                scale > 1, producing a visible snap-back on handoff. The isPulsing state is kept
+                to drive the green-dot indicator only; no secondary animation clock is injected. */}
             {showBell && (
               <motion.button 
                 id="notification-bell-btn"
@@ -343,12 +348,9 @@ export default function Header() {
                 layoutId="bell-button-layout"
                 layout="position"
                 initial={{ x: 20, opacity: 0 }}
-                animate={isPulsing ? { x: 0, opacity: 1, scale: [1, 1.25, 0.95, 1.1, 1] } : { x: 0, opacity: 1, scale: 1 }}
+                animate={{ x: 0, opacity: 1 }}
                 exit={{ x: 20, opacity: 0 }}
-                transition={isPulsing ? {
-                  scale: { duration: 0.6, ease: "easeOut" },
-                  default: motionMasterTiming
-                } : motionMasterTiming}
+                transition={motionMasterTiming}
                 onClick={() => setIsNotificationOpen(!isNotificationOpen)}
                 whileTap={{ scale: 0.90 }}
                 className={iconBtnClass}
@@ -414,7 +416,7 @@ export default function Header() {
               >
                 <button
                   onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
-                  className="w-[40px] h-[40px] min-w-[40px] min-h-[40px] max-w-[40px] max-h-[40px] bg-white rounded-full flex items-center justify-center border-none cursor-pointer shadow-[0px_4px_10px_rgba(0,0,0,0.05)] hover:bg-gray-50 active:scale-95 transition-all shrink-0 block overflow-hidden"
+                  className="w-[40px] h-[40px] min-w-[40px] min-h-[40px] max-w-[40px] max-h-[40px] bg-white rounded-full flex items-center justify-center border-none cursor-pointer shadow-[0px_4px_10px_rgba(0,0,0,0.05)] hover:bg-gray-50 shrink-0 block overflow-hidden"
                   style={{ borderRadius: '50%' }}
                   title="Sort Library"
                 >
