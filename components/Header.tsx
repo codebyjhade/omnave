@@ -289,7 +289,7 @@ export default function Header() {
   if (!mounted) {
     return (
       <header
-        className="w-full bg-[#6949a8]/80 backdrop-blur-xl relative z-10 flex-none h-[164px] animate-pulse"
+        className="w-full bg-[#6949a8]/80 backdrop-blur-xl relative z-10 flex-none pb-[88px] animate-pulse"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 48px)' }}
       >
         <div className="max-w-5xl mx-auto px-[25px] flex justify-between items-start gap-4 select-none">
@@ -316,8 +316,8 @@ export default function Header() {
     <header
       className={`w-full relative z-10 flex-none transition-all duration-300 ${
         isFlatWhiteRoute
-          ? 'bg-white/75 backdrop-blur-xl h-[100px] border-b border-gray-100 shadow-sm'
-          : 'bg-[#6949a8]/80 backdrop-blur-xl h-[164px]'
+          ? 'bg-white/75 backdrop-blur-xl pb-4 border-b border-gray-100 shadow-sm'
+          : 'bg-[#6949a8]/80 backdrop-blur-xl pb-[88px]'
       }`}
       style={{
         paddingTop: 'calc(env(safe-area-inset-top) + 28px)',

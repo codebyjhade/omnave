@@ -45,7 +45,7 @@ export default function WorkspaceShell({ children }: { children: React.ReactNode
     }`}>
       {/* 1. FIXED HEADER AREA - Hidden during active quiz takeover */}
       {!isQuizActive && (
-        <React.Suspense fallback={<div className="w-full bg-[#6949a8]/80 backdrop-blur-xl relative z-10 flex-none h-[164px] animate-pulse" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 48px)' }} />}>
+        <React.Suspense fallback={<div className="w-full bg-[#6949a8]/80 backdrop-blur-xl relative z-10 flex-none pb-[88px] animate-pulse" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 48px)' }} />}>
           <Header />
         </React.Suspense>
       )}
