@@ -59,7 +59,10 @@ export default function WelcomePage() {
   };
 
   const isStepValid = () => {
-    if (step === 1) return studyFocus !== null && learningStyles.length > 0;
+    if (step === 1) {
+      const isFocusValid = studyFocus === 'Other' ? otherStudyFocus.trim().length > 0 : studyFocus !== null;
+      return isFocusValid && learningStyles.length > 0;
+    }
     if (step === 2) return goal !== null && studyTime !== null;
     return true;
   };
@@ -199,10 +202,10 @@ export default function WelcomePage() {
                           <button
                             key={option}
                             onClick={() => setStudyFocus(option)}
-                            className={`py-2 px-4 rounded-full text-xs font-semibold border border-transparent ring-offset-0 transition-all ${
+                            className={`py-2 px-4 rounded-full text-xs font-semibold border transition-all duration-200 select-none ${
                               studyFocus === option
-                                ? "bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white ring-2 ring-[#6949a8] ring-offset-2 shadow-[0_4px_20px_rgba(105,73,168,0.4)]"
-                                : "bg-white text-gray-700 ring-1 ring-gray-200 hover:ring-[#6949a8] hover:shadow-sm"
+                                ? "border-transparent bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white shadow-[0_4px_15px_rgba(105,73,168,0.4)]"
+                                : "border-gray-200 bg-white text-gray-700 hover:border-[#6949a8]/40 hover:bg-gray-50"
                             }`}
                           >
                             {option}
@@ -229,10 +232,10 @@ export default function WelcomePage() {
                           <button
                             key={option}
                             onClick={() => toggleLearningStyle(option)}
-                            className={`py-2 px-4 rounded-full text-xs font-semibold border border-transparent ring-offset-0 transition-all ${
+                            className={`py-2 px-4 rounded-full text-xs font-semibold border transition-all duration-200 select-none ${
                               learningStyles.includes(option)
-                                ? "bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white ring-2 ring-[#6949a8] ring-offset-2 shadow-[0_4px_20px_rgba(105,73,168,0.4)]"
-                                : "bg-white text-gray-700 ring-1 ring-gray-200 hover:ring-[#6949a8] hover:shadow-sm"
+                                ? "border-transparent bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white shadow-[0_4px_15px_rgba(105,73,168,0.4)]"
+                                : "border-gray-200 bg-white text-gray-700 hover:border-[#6949a8]/40 hover:bg-gray-50"
                             }`}
                           >
                             {option}
@@ -256,10 +259,10 @@ export default function WelcomePage() {
                           <button
                             key={option}
                             onClick={() => setGoal(option)}
-                            className={`py-2.5 px-4 rounded-full text-xs font-semibold border border-transparent ring-offset-0 transition-all ${
+                            className={`py-2.5 px-4 rounded-full text-xs font-semibold border transition-all duration-200 select-none ${
                               goal === option
-                                ? "bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white ring-2 ring-[#6949a8] ring-offset-2 shadow-[0_4px_20px_rgba(105,73,168,0.4)]"
-                                : "bg-white text-gray-700 ring-1 ring-gray-200 hover:ring-[#6949a8]"
+                                ? "border-transparent bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white shadow-[0_4px_15px_rgba(105,73,168,0.4)]"
+                                : "border-gray-200 bg-white text-gray-700 hover:border-[#6949a8]/40 hover:bg-gray-50"
                             }`}
                           >
                             {option}
@@ -274,10 +277,10 @@ export default function WelcomePage() {
                           <button
                             key={option}
                             onClick={() => setStudyTime(option)}
-                            className={`py-2.5 px-5 rounded-full text-xs font-semibold border border-transparent ring-offset-0 transition-all ${
+                            className={`py-2.5 px-5 rounded-full text-xs font-semibold border transition-all duration-200 select-none ${
                               studyTime === option
-                                ? "bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white ring-2 ring-[#6949a8] ring-offset-2 shadow-[0_4px_20px_rgba(105,73,168,0.4)]"
-                                : "bg-white text-gray-700 ring-1 ring-gray-200 hover:ring-[#6949a8]"
+                                ? "border-transparent bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white shadow-[0_4px_15px_rgba(105,73,168,0.4)]"
+                                : "border-gray-200 bg-white text-gray-700 hover:border-[#6949a8]/40 hover:bg-gray-50"
                             }`}
                           >
                             {option}
