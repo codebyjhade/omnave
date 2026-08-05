@@ -202,10 +202,10 @@ export default function WelcomePage() {
                           <button
                             key={option}
                             onClick={() => setStudyFocus(option)}
-                            className={`py-2 px-4 rounded-full text-xs font-semibold border transition-all duration-200 select-none ${
+                            className={`py-2 px-4 rounded-full text-xs font-semibold transition-all duration-200 select-none transform-gpu ${
                               studyFocus === option
-                                ? "border-transparent bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white shadow-[0_4px_15px_rgba(105,73,168,0.4)]"
-                                : "border-gray-200 bg-white text-gray-700 hover:border-[#6949a8]/40 hover:bg-gray-50"
+                                ? "ring-0 bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white shadow-[0_4px_15px_rgba(105,73,168,0.4)]"
+                                : "ring-1 ring-inset ring-gray-200 bg-white text-gray-700 hover:ring-[#6949a8]/40 hover:bg-gray-50"
                             }`}
                           >
                             {option}
@@ -232,10 +232,10 @@ export default function WelcomePage() {
                           <button
                             key={option}
                             onClick={() => toggleLearningStyle(option)}
-                            className={`py-2 px-4 rounded-full text-xs font-semibold border transition-all duration-200 select-none ${
+                            className={`py-2 px-4 rounded-full text-xs font-semibold transition-all duration-200 select-none transform-gpu ${
                               learningStyles.includes(option)
-                                ? "border-transparent bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white shadow-[0_4px_15px_rgba(105,73,168,0.4)]"
-                                : "border-gray-200 bg-white text-gray-700 hover:border-[#6949a8]/40 hover:bg-gray-50"
+                                ? "ring-0 bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white shadow-[0_4px_15px_rgba(105,73,168,0.4)]"
+                                : "ring-1 ring-inset ring-gray-200 bg-white text-gray-700 hover:ring-[#6949a8]/40 hover:bg-gray-50"
                             }`}
                           >
                             {option}
@@ -259,10 +259,10 @@ export default function WelcomePage() {
                           <button
                             key={option}
                             onClick={() => setGoal(option)}
-                            className={`py-2.5 px-4 rounded-full text-xs font-semibold border transition-all duration-200 select-none ${
+                            className={`py-2.5 px-4 rounded-full text-xs font-semibold transition-all duration-200 select-none transform-gpu ${
                               goal === option
-                                ? "border-transparent bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white shadow-[0_4px_15px_rgba(105,73,168,0.4)]"
-                                : "border-gray-200 bg-white text-gray-700 hover:border-[#6949a8]/40 hover:bg-gray-50"
+                                ? "ring-0 bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white shadow-[0_4px_15px_rgba(105,73,168,0.4)]"
+                                : "ring-1 ring-inset ring-gray-200 bg-white text-gray-700 hover:ring-[#6949a8]/40 hover:bg-gray-50"
                             }`}
                           >
                             {option}
@@ -277,10 +277,10 @@ export default function WelcomePage() {
                           <button
                             key={option}
                             onClick={() => setStudyTime(option)}
-                            className={`py-2.5 px-5 rounded-full text-xs font-semibold border transition-all duration-200 select-none ${
+                            className={`py-2.5 px-5 rounded-full text-xs font-semibold transition-all duration-200 select-none transform-gpu ${
                               studyTime === option
-                                ? "border-transparent bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white shadow-[0_4px_15px_rgba(105,73,168,0.4)]"
-                                : "border-gray-200 bg-white text-gray-700 hover:border-[#6949a8]/40 hover:bg-gray-50"
+                                ? "ring-0 bg-gradient-to-r from-[#6949a8] to-[#8a63d2] text-white shadow-[0_4px_15px_rgba(105,73,168,0.4)]"
+                                : "ring-1 ring-inset ring-gray-200 bg-white text-gray-700 hover:ring-[#6949a8]/40 hover:bg-gray-50"
                             }`}
                           >
                             {option}
