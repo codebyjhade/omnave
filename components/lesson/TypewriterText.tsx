@@ -4,14 +4,15 @@ import { useEffect, useState, memo } from "react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface TypewriterTextProps {
-  text: string;
+  text?: string;
   variant?: "chat" | "summary";
 }
 
-export const TypewriterText = memo(function TypewriterText({ text, variant = "chat" }: TypewriterTextProps) {
+export const TypewriterText = memo(function TypewriterText({ text = "", variant = "chat" }: TypewriterTextProps) {
   const [displayedText, setDisplayedText] = useState("");
 
   useEffect(() => {
+    if (!text) return;
     let i = 0;
     setDisplayedText("");
     const interval = setInterval(() => {

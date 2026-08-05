@@ -95,24 +95,27 @@ export default function LessonView() {
     if (id) fetchMaterial();
   }, [id, toast]);
  
-  const handleAskQuestion = async () => {
-    if (!chatInput.trim() || isChatLoading) return;
- 
-    const prompt = selectedText 
-      ? `Regarding this context:\n"${selectedText}"\n\nQuestion: ${chatInput}` 
-      : chatInput;
- 
-    const newUserMsg: { role: "user" | "ai"; text: string } = { role: "user", text: chatInput };
+  const handleAskQuestion = async (overrideText?: string) => {
+    const finalInput = overrideText || chatInput;
+    if (!finalInput.trim() || isChatLoading) return;
+
+    const prompt = selectedText
+      ? `Regarding this context:\n"${selectedText}"\n\nQuestion: ${finalInput}`
+      : finalInput;
+
+    const newUserMsg: { role: "user" | "ai"; text: string } = { role: "user", text: finalInput };
     setChatHistory(prev => [...prev, newUserMsg]);
     setChatInput("");
     setIsChatLoading(true);
     setChatError(null);
- 
+
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          message: prompt,
+          summary: data?.summary || "",
           materialId: id,
           messages: [...chatHistory, newUserMsg].map(m => ({
             role: m.role === 'ai' ? 'model' : 'user',
@@ -120,11 +123,19 @@ export default function LessonView() {
           }))
         })
       });
- 
+
       if (!response.ok) throw new Error("Tutor chat failed to respond");
-      
+
       const resData = await response.json();
-      setChatHistory(prev => [...prev, { role: "ai", text: resData.text }]);
+      console.log("API Response:", resData);
+      const finalAiText =
+        resData.reply ||
+        resData.text ||
+        resData.message ||
+        resData.response ||
+        resData.answer ||
+        JSON.stringify(resData);
+      setChatHistory(prev => [...prev, { role: "ai", text: finalAiText }]);
     } catch (err: any) {
       console.error(err);
       setChatError("Failed to get response from AI Tutor. Try again.");

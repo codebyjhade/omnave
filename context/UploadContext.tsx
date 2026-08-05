@@ -383,9 +383,24 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       delete elapsedIntervalsRef.current[jobId];
     }
 
-    // If registered, call backend cancellation API
+    // If registered, call backend cancellation API and stamp DB tombstone
     if (!jobId.startsWith('temp-')) {
       try {
+        // Primary: stamp the DB row immediately so the Python worker sees it cancelled
+        // and stops processing even if the cancel API fetch below is slow or fails.
+        const supabase = createBrowserClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+        await supabase
+          .from('materials')
+          .update({ status: 'cancelled', is_processed: true })
+          .eq('id', jobId);
+      } catch (dbErr) {
+        console.error('[UploadContext] cancelJob DB tombstone error:', dbErr);
+      }
+      try {
+        // Secondary redundancy: also hit the cancel API endpoint.
         await fetch("/api/process-material/cancel", {
           method: "POST",
           headers: {
@@ -696,6 +711,23 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
           console.log('[UploadContext] processing aborted');
+          // Stamp the DB tombstone on hard abort so the Python worker
+          // does not continue processing a row the user already cancelled.
+          const abortedId = registeredMaterialId || tempJobId;
+          if (abortedId && !abortedId.startsWith('temp-')) {
+            try {
+              const supabase = createBrowserClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+              );
+              await supabase
+                .from('materials')
+                .update({ status: 'cancelled', is_processed: true })
+                .eq('id', abortedId);
+            } catch (dbErr) {
+              console.error('[UploadContext] AbortError DB tombstone error:', dbErr);
+            }
+          }
           return;
         }
         
