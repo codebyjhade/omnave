@@ -9,6 +9,7 @@ import dynamic from "next/dynamic";
 import SplashScreen from "@/components/SplashScreen";
 
 const AuthModal = dynamic(() => import("@/components/AuthModal"), { ssr: false });
+import InstallGuideModal from "@/components/InstallGuideModal";
 
 import { 
   FileText, 
@@ -42,6 +43,7 @@ export default function LandingPage() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isAlreadyInstalled, setIsAlreadyInstalled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
 
   // 1. Session Check & Redirect
   useEffect(() => {
@@ -95,7 +97,7 @@ export default function LandingPage() {
       }
     } else {
       // iOS or unsupported browser fallback instruction
-      alert("To install Omnave on your home screen:\n\n• On iOS (Safari): Tap Share, then select 'Add to Home Screen'.\n• On Desktop (Chrome/Edge): Click the install icon in the top right URL bar.");
+      setShowInstallGuide(true);
     }
   };
 
@@ -687,6 +689,8 @@ export default function LandingPage() {
           />
         )}
       </AnimatePresence>
+
+      <InstallGuideModal isOpen={showInstallGuide} onClose={() => setShowInstallGuide(false)} />
 
     </div>
   );
