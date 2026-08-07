@@ -6,8 +6,6 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createBrowserClient } from "@supabase/ssr";
 import dynamic from "next/dynamic";
-import SplashScreen from "@/components/SplashScreen";
-
 const AuthModal = dynamic(() => import("@/components/AuthModal"), { ssr: false });
 import InstallGuideModal from "@/components/InstallGuideModal";
 
