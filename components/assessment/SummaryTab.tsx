@@ -3,24 +3,57 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Sparkles } from "lucide-react";
 import { ChatPanel, MarkdownRenderer } from "@/components/lesson";
+import { ChatMessage } from "@/components/lesson/ChatPanel";
 import { useUserContext } from "@/context/UserContext";
 
 interface SummaryTabProps {
   summary: string;
+  lessonId?: string;
 }
 
-export const SummaryTab = React.memo(function SummaryTab({ summary }: SummaryTabProps) {
+export const SummaryTab = React.memo(function SummaryTab({ summary, lessonId }: SummaryTabProps) {
   const { refreshUser } = useUserContext();
   // Highlight Selection State
   const [selectedText, setSelectedText] = useState("");
   
   // Chat State
   const [chatInput, setChatInput] = useState("");
-  const [chatHistory, setChatHistory] = useState<{ role: "user" | "ai"; text: string }[]>([]);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
   
   const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  // Restore chat history from localStorage on mount
+  useEffect(() => {
+    if (!lessonId) return;
+    try {
+      const saved = localStorage.getItem(`omnave_chat_${lessonId}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Force all messages restored from localStorage to have isAnimated: true
+          const restored: ChatMessage[] = parsed.map((m: any) => ({
+            ...m,
+            isAnimated: true,
+          }));
+          setChatHistory(restored);
+        }
+      }
+    } catch (e) {
+      console.error("Error loading chat memory from localStorage:", e);
+    }
+  }, [lessonId]);
+
+  // Persist chat history to localStorage
+  useEffect(() => {
+    if (!lessonId || chatHistory.length === 0) return;
+    try {
+      localStorage.setItem(`omnave_chat_${lessonId}`, JSON.stringify(chatHistory));
+    } catch (e) {
+      console.error("Error saving chat memory to localStorage:", e);
+    }
+  }, [chatHistory, lessonId]);
 
   // Auto-scroll to bottom when chat updates
   useEffect(() => {
@@ -47,12 +80,18 @@ export const SummaryTab = React.memo(function SummaryTab({ summary }: SummaryTab
     return () => document.removeEventListener("selectionchange", handleSelectionChange);
   }, []);
 
+  const handleMessageAnimationComplete = (idx: number) => {
+    setChatHistory((prev) =>
+      prev.map((msg, i) => (i === idx ? { ...msg, isAnimated: true } : msg))
+    );
+  };
+
   // Handle AI Chat Logic
   const handleAskQuestion = async (customText?: string) => {
     const promptText = (customText || chatInput).trim();
     if (!promptText) return;
 
-    setChatHistory((prev) => [...prev, { role: "user", text: promptText }]);
+    setChatHistory((prev) => [...prev, { role: "user", text: promptText, isAnimated: true }]);
     setChatInput("");
     setIsChatLoading(true);
     setChatError(null);
@@ -89,6 +128,7 @@ export const SummaryTab = React.memo(function SummaryTab({ summary }: SummaryTab
         {
           role: "ai",
           text: data.reply,
+          isAnimated: false, // Brand new message plays typewriter animation once
         },
       ]);
       await refreshUser();
@@ -114,7 +154,7 @@ export const SummaryTab = React.memo(function SummaryTab({ summary }: SummaryTab
           <Sparkles size={14} className="text-omnave-primary" />
           <span>Explain Like I'm 5</span>
         </button>
- 
+
         <div className="bg-[#130E24]/60 backdrop-blur-xl border border-white/5 p-6 md:p-8 rounded-[24px] shadow-premium-glass transition-colors duration-150 relative group">
           <div className="absolute top-4 right-4 bg-white/5 border border-white/10 px-3 py-1 rounded-full text-[9px] font-bold text-white/40 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none">
             Highlight text to ask tutor
@@ -136,6 +176,7 @@ export const SummaryTab = React.memo(function SummaryTab({ summary }: SummaryTab
         onInputChange={setChatInput}
         onClearSelectedText={() => setSelectedText("")}
         scrollRef={chatScrollRef}
+        onMessageAnimationComplete={handleMessageAnimationComplete}
       />
       
     </div>

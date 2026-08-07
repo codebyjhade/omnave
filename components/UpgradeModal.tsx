@@ -99,7 +99,7 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                 <ul className="space-y-3.5 my-auto text-sm text-white/70">
                   <li className="flex items-center gap-2.5">
                     <Check size={16} className="text-white/40 shrink-0" />
-                    <span>3 PDF Uploads / month</span>
+                    <span>100 Pages / week</span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <Check size={16} className="text-white/40 shrink-0" />

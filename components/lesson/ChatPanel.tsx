@@ -7,9 +7,10 @@ import { MarkdownRenderer } from "./MarkdownRenderer";
 import { TypewriterText } from "./TypewriterText";
 import { useUserContext } from "@/context/UserContext";
  
-interface ChatMessage {
+export interface ChatMessage {
   role: "user" | "ai";
   text: string;
+  isAnimated?: boolean;
 }
  
 interface ChatPanelProps {
@@ -23,6 +24,7 @@ interface ChatPanelProps {
   onClearSelectedText: () => void;
   scrollRef: RefObject<HTMLDivElement | null>;
   onClearChat?: () => void;
+  onMessageAnimationComplete?: (idx: number) => void;
 }
  
 const suggestionChips = [
@@ -52,6 +54,7 @@ export const ChatPanel = memo(function ChatPanel({
   onClearSelectedText,
   scrollRef,
   onClearChat,
+  onMessageAnimationComplete,
 }: ChatPanelProps) {
   const { user } = useUserContext();
   const planType = user?.plan_type || 'free';
@@ -157,8 +160,16 @@ export const ChatPanel = memo(function ChatPanel({
                 >
                   <div className="leading-relaxed whitespace-pre-wrap">
                     <div className={msg.role === "ai" ? "text-slate-800" : "text-white"}>
-                      {msg.role === "ai" && idx === chatHistory.length - 1 && !isChatLoading ? (
-                        <TypewriterText text={msg.text} variant="chat" />
+                      {msg.role === "ai" && idx === chatHistory.length - 1 && !isChatLoading && !msg.isAnimated ? (
+                        <TypewriterText 
+                          text={msg.text} 
+                          variant="chat" 
+                          onComplete={() => {
+                            if (onMessageAnimationComplete) {
+                              onMessageAnimationComplete(idx);
+                            }
+                          }}
+                        />
                       ) : (
                         <MarkdownRenderer text={msg.text} variant="chat" theme="light" />
                       )}

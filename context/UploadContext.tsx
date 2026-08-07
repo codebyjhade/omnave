@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation';
 import { useUserContext } from '@/context/UserContext';
 import { useToast } from '@/components/ToastProvider';
 import UpgradeModal from '@/components/UpgradeModal';
+import { cleanDocumentTitle } from '@/utils/formatTitle';
 
 export interface ProcessingJob {
   id: string;
@@ -93,6 +94,16 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(ticker);
   }, []);
 
+  // Cleanup all polling and elapsed intervals on provider unmount
+  useEffect(() => {
+    return () => {
+      Object.values(intervalsRef.current).forEach((interval) => clearInterval(interval));
+      Object.values(elapsedIntervalsRef.current).forEach((interval) => clearInterval(interval));
+      intervalsRef.current = {};
+      elapsedIntervalsRef.current = {};
+    };
+  }, []);
+
   // Real-time Database Polling function
   const startPollingForMaterial = useCallback((materialId: string, cleanTitle: string) => {
     if (intervalsRef.current[materialId]) return;
@@ -144,12 +155,32 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     elapsedIntervalsRef.current[materialId] = elapsedInterval;
 
     const pollInterval = setInterval(async () => {
+      // Guard Clause 1: If polling interval was cancelled/deleted, terminate timer immediately
+      if (!intervalsRef.current[materialId]) {
+        clearInterval(pollInterval);
+        if (elapsedIntervalsRef.current[materialId]) {
+          clearInterval(elapsedIntervalsRef.current[materialId]);
+          delete elapsedIntervalsRef.current[materialId];
+        }
+        return;
+      }
+
       try {
         const { data: checkData, error: checkError } = await supabase
           .from('materials')
           .select('is_processed, status')
           .eq('id', materialId)
           .single();
+
+        // Guard Clause 2: Check if job was cancelled while fetch was in-flight
+        if (!intervalsRef.current[materialId]) {
+          clearInterval(pollInterval);
+          if (elapsedIntervalsRef.current[materialId]) {
+            clearInterval(elapsedIntervalsRef.current[materialId]);
+            delete elapsedIntervalsRef.current[materialId];
+          }
+          return;
+        }
 
         if (checkError) {
           console.error('[UploadContext] polling check error:', checkError.message);
@@ -158,6 +189,16 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
 
         if (checkData) {
           const status = checkData.status || 'PROCESSING';
+
+          if (status === 'cancelled' || status === 'CANCELLED') {
+            clearInterval(pollInterval);
+            clearInterval(elapsedInterval);
+            delete intervalsRef.current[materialId];
+            delete elapsedIntervalsRef.current[materialId];
+            setActiveQueue((prev) => prev.filter((id) => id !== materialId));
+            setJobs((prev) => prev.filter((j) => j.id !== materialId));
+            return;
+          }
           
           if (status === 'failed' || status === 'FAILED') {
             clearInterval(pollInterval);
@@ -343,7 +384,26 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
   }, [user, startPollingForMaterial]);
 
   const removeJob = useCallback(async (id: string) => {
+    // FIX 1: Immediately destroy interval timers
+    if (intervalsRef.current[id]) {
+      clearInterval(intervalsRef.current[id]);
+      delete intervalsRef.current[id];
+    }
+    if (elapsedIntervalsRef.current[id]) {
+      clearInterval(elapsedIntervalsRef.current[id]);
+      delete elapsedIntervalsRef.current[id];
+    }
+    if (abortControllersRef.current[id]) {
+      abortControllersRef.current[id].abort();
+      delete abortControllersRef.current[id];
+    }
+
+    // FIX 3: Reset state variables completely
     setJobs((prev) => prev.filter((j) => j.id !== id));
+    setActiveQueue((prev) => prev.filter((item) => item !== id));
+    removeLessonFromState(id);
+    removeNotification(`processing-${id}`);
+
     if (!id.startsWith('temp-')) {
       try {
         await fetch("/api/process-material/delete", {
@@ -357,7 +417,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
         console.error('[UploadContext] Failed to delete material from database via API:', err);
       }
     }
-  }, []);
+  }, [removeLessonFromState, removeNotification]);
 
   const cancelJob = useCallback(async (jobId: string) => {
     // Move local state mutations to the very top (optimistic UI)
@@ -466,19 +526,28 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       const planType = user?.plan_type || 'free';
       const fileSizeMB = file.size / (1024 * 1024);
 
-      // Pre-flight check
-      const generationCount = user?.generation_count || 0;
-      if (user && planType === 'free' && generationCount >= 3) {
-        clearInterval(tempElapsedInterval);
-        setShowUpgradeModal(true);
-        setJobs((prev) =>
-          prev.map((j) =>
-            j.id === tempJobId
-              ? { ...j, status: 'failed', progress: 0, targetProgress: 0, message: 'Free tier upload limit of 3 files reached.', estimatedTime: 'Limit' }
-              : j
-          )
-        );
-        return;
+      // Pre-flight check: V8 Weekly Page Quota Check
+      if (user && planType === 'free') {
+        const { data: usageData } = await supabase
+          .from('user_usage')
+          .select('weekly_pages_used')
+          .eq('user_id', user.id)
+          .single();
+
+        const weeklyPagesUsed = usageData?.weekly_pages_used || 0;
+        if (weeklyPagesUsed >= 100) {
+          clearInterval(tempElapsedInterval);
+          setShowUpgradeModal(true);
+          setJobs((prev) =>
+            prev.map((j) =>
+              j.id === tempJobId
+                ? { ...j, status: 'failed', progress: 0, targetProgress: 0, message: 'Weekly page limit reached (100 pages/week).', estimatedTime: 'Limit' }
+                : j
+            )
+          );
+          toast('Weekly page limit reached (100 pages/week).', 'error');
+          return;
+        }
       }
 
       if (planType === 'free' && fileSizeMB > 15) {
@@ -508,7 +577,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       }
 
       const fileExt = file.name.split('.').pop();
-      const cleanTitle = file.name.replace(`.${fileExt}`, '');
+      const cleanTitle = cleanDocumentTitle(file.name);
       const safeFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
       const filePath = `${user?.id}/${Date.now()}_${safeFileName}`;
 
@@ -776,7 +845,14 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
   }, [activeJobs]);
 
   const clearUploadState = useCallback(() => {
+    Object.values(intervalsRef.current).forEach((interval) => clearInterval(interval));
+    Object.values(elapsedIntervalsRef.current).forEach((interval) => clearInterval(interval));
+    Object.values(abortControllersRef.current).forEach((controller) => controller.abort());
+    intervalsRef.current = {};
+    elapsedIntervalsRef.current = {};
+    abortControllersRef.current = {};
     setJobs([]);
+    setActiveQueue([]);
   }, []);
 
   const value = useMemo(

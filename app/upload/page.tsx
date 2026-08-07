@@ -12,6 +12,8 @@ import StaggerItem from "@/components/ui/animation/StaggerItem";
 
 import { Skeleton } from "@/components/Skeleton";
 
+import { cleanDocumentTitle } from "@/utils/formatTitle";
+
 export default function UploadPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -234,8 +236,8 @@ export default function UploadPage() {
                             <FileText size={20} />
                           </div>
                           <div className="flex flex-col min-w-0 text-left">
-                            <span className="font-bold text-sm text-gray-900 truncate block">
-                              {job.title}
+                            <span className="font-bold text-sm text-gray-900 truncate block max-w-[200px]">
+                              {cleanDocumentTitle(job.title)}
                             </span>
                             <span className={`text-xs font-semibold mt-0.5 block truncate ${
                               isCompleted ? 'text-emerald-600' : isFailed ? 'text-red-500' : 'text-[#6949a8]'

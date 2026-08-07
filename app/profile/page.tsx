@@ -42,6 +42,7 @@ export default function ProfilePage() {
   const [initial, setInitial] = useState("B");
   const [userTags, setUserTags] = useState<string[]>([]);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [weeklyPagesUsed, setWeeklyPagesUsed] = useState<number>(0);
 
   // Listen for trigger dispatched by external navigations
   useEffect(() => {
@@ -79,6 +80,30 @@ export default function ProfilePage() {
       }
       setUserTags(tags);
     }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchUsage = async () => {
+      try {
+        const supabase = createBrowserClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+        const { data: usageData } = await supabase
+          .from('user_usage')
+          .select('weekly_pages_used')
+          .eq('user_id', user.id)
+          .single();
+
+        if (usageData) {
+          setWeeklyPagesUsed(usageData.weekly_pages_used || 0);
+        }
+      } catch (e) {
+        console.error("Error fetching user_usage in profile page:", e);
+      }
+    };
+    fetchUsage();
   }, [user]);
 
   const handleSignOut = async () => {
@@ -284,22 +309,27 @@ export default function ProfilePage() {
           </div>
         </StaggerItem>
 
-        {/* Workspace Storage Indicator */}
+        {/* Weekly Page Quota Indicator */}
         <StaggerItem className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-5 border border-gray-50 mb-8 select-none text-left">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider font-poppins">
-              Workspace Storage
+              Weekly Page Quota
             </span>
             <span className="text-xs font-bold text-gray-700 font-poppins">
-              {dynamicMb}MB / 100MB
+              {weeklyPagesUsed} / 100 Pages
             </span>
           </div>
           <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden mt-2">
             <div 
-              className="bg-[#6949a8] h-full rounded-full transition-all duration-1000 ease-out" 
-              style={{ width: `${dynamicMb}%` }}
+              className={`${weeklyPagesUsed >= 100 ? "bg-red-500" : "bg-[#6949a8]"} h-full rounded-full transition-all duration-1000 ease-out`} 
+              style={{ width: `${Math.min(100, (weeklyPagesUsed / 100) * 100)}%` }}
             />
           </div>
+          {weeklyPagesUsed >= 100 && (
+            <p className="text-xs font-bold text-red-500 mt-2 font-poppins">
+              You've hit your free limit!
+            </p>
+          )}
         </StaggerItem>
 
         {/* Section 1: Account Information */}

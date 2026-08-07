@@ -6,9 +6,14 @@ import { MarkdownRenderer } from "./MarkdownRenderer";
 interface TypewriterTextProps {
   text?: string;
   variant?: "chat" | "summary";
+  onComplete?: () => void;
 }
 
-export const TypewriterText = memo(function TypewriterText({ text = "", variant = "chat" }: TypewriterTextProps) {
+export const TypewriterText = memo(function TypewriterText({
+  text = "",
+  variant = "chat",
+  onComplete,
+}: TypewriterTextProps) {
   const [displayedText, setDisplayedText] = useState("");
 
   useEffect(() => {
@@ -20,13 +25,14 @@ export const TypewriterText = memo(function TypewriterText({ text = "", variant 
       if (i >= text.length) {
         setDisplayedText(text);
         clearInterval(interval);
+        onComplete?.();
       } else {
         setDisplayedText(text.slice(0, i));
       }
     }, 25);
 
     return () => clearInterval(interval);
-  }, [text]);
+  }, [text, onComplete]);
 
   return <MarkdownRenderer text={displayedText} variant={variant} />;
 });

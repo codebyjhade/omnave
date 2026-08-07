@@ -88,7 +88,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               role="status"
             >
               {iconMap[t.kind]}
-              <span className="leading-snug">{t.message}</span>
+              <span className="leading-snug truncate max-w-[200px] sm:max-w-xs">{t.message}</span>
               <button
                 onClick={() => dismiss(t.id)}
                 className="ml-1 text-white/40 hover:text-white transition-colors cursor-pointer"

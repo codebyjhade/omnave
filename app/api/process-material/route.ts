@@ -158,14 +158,6 @@ export async function POST(req: Request) {
       }
     };
 
-    // Check 1 (Quota)
-    if (planType === "free" && generationCount >= 3) {
-      await cleanUpFailedUpload();
-      return NextResponse.json(
-        { error: "Monthly free quota reached." },
-        { status: 403 }
-      );
-    }
 
     // 2. Parse document and extract page count
     let extractedText = text;

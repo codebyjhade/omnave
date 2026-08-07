@@ -27,6 +27,11 @@ const ChatPanel = dynamic(
   () => import("@/components/lesson/ChatPanel").then((mod) => mod.ChatPanel),
   { ssr: false }
 );
+
+const SummaryTab = dynamic(
+  () => import("@/components/assessment/SummaryTab").then((mod) => mod.SummaryTab),
+  { ssr: false }
+);
  
 import { Skeleton } from "@/components/Skeleton";
 
@@ -314,7 +319,7 @@ export default function LessonView() {
                 transition={{ duration: 0.2, ease: "easeOut" }}
                 className="flex-1 w-full overflow-y-auto p-5 font-poppins"
               >
-                <MarkdownRenderer text={data?.summary || "No summary content."} variant="summary" theme="light" />
+                <SummaryTab summary={data?.summary || ""} lessonId={id as string} />
               </motion.div>
             )}
  

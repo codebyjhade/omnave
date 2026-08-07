@@ -319,11 +319,13 @@ export default function LibraryPage() {
 
                         {/* Middle: Text Container (Flex-1) */}
                         <div className="flex-1 flex flex-col min-w-0 ml-4 mr-2 text-left">
-                          <h3 className="text-sm font-bold text-gray-800 truncate font-poppins leading-tight">
+                          <h3 className="text-sm font-bold text-gray-800 truncate font-poppins leading-tight max-w-[200px]">
                             {cleanTitle}
                           </h3>
                           <span className="text-[10px] text-gray-400 font-medium font-poppins mt-0.5">
-                            {flashcardsCount > 0 ? `${flashcardsCount} flashcards` : "Generating..."}
+                            {note.is_processed !== false
+                              ? (flashcardsCount > 0 ? `${flashcardsCount} flashcards` : "Study Kit Ready")
+                              : "Generating..."}
                           </span>
 
                           {/* Reintegrated Sleek Progress Indicator */}
