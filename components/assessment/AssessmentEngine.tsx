@@ -590,6 +590,7 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                           else btnStyle = "border-gray-100 bg-gray-55/30 opacity-40 text-gray-405 py-4 px-5 rounded-[20px] text-left w-full";
                         }
 
+                        const optionLabel = String.fromCharCode(65 + i);
                         return (
                           <button
                             key={i}
@@ -597,8 +598,13 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
                             onClick={() => handleSelectAnswer(opt)}
                             className={`cursor-pointer flex items-center justify-between active:scale-[0.98] duration-100 text-sm ${btnStyle}`}
                           >
-                            <span>{opt}</span>
-                            {isSel && <CheckCircle2 size={16} className={isQuizRevealed && !isCor ? "text-red-500" : "text-white fill-[#6949a8]"} />}
+                            <div className="flex items-center gap-3">
+                              <span className="flex items-center justify-center w-7 h-7 rounded-full bg-black/5 text-xs font-bold shrink-0">
+                                {optionLabel}
+                              </span>
+                              <span>{opt}</span>
+                            </div>
+                            {isSel && <CheckCircle2 size={16} className={isQuizRevealed && !isCor ? "text-red-500 shrink-0" : "text-white fill-[#6949a8] shrink-0"} />}
                           </button>
                         );
                       });
