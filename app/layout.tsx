@@ -66,31 +66,6 @@ export default function RootLayout({
         <link rel="preload" href="/omnave.png" as="image" />
       </head>
       <body className={`${poppins.className} bg-white text-omnave-primary-text antialiased min-h-screen relative overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}>
-        {/* Zero-latency SSR inline splash placeholder to prevent hydration flash/glitch */}
-        <div
-          id="ssr-splash-screen"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 999999,
-            backgroundColor: '#ffffff',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px',
-          }}
-        >
-          <img
-            src="/omnave.png"
-            alt="Omnave"
-            style={{ width: '96px', height: '96px', objectFit: 'contain' }}
-          />
-          <span style={{ fontSize: '24px', fontWeight: 900, color: '#111827', fontFamily: 'sans-serif' }}>
-            Omnave
-          </span>
-        </div>
-
         <SplashScreen />
         <ThemeProvider>
           <PWAProvider>

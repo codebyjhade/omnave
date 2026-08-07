@@ -8,16 +8,10 @@ export default function SplashScreen() {
   const [isFadingOut, setIsFadingOut] = useState(false);
 
   useEffect(() => {
-    // Instantly remove SSR inline splash placeholder once React hydrates
-    const ssrElement = document.getElementById("ssr-splash-screen");
-    if (ssrElement) {
-      ssrElement.remove();
-    }
-
     // Hold static logo for 1500ms
     const timer = setTimeout(() => {
       setIsFadingOut(true);
-      // Wait for 500ms CSS fade-out transition to complete before unmounting
+      // Wait for 500ms CSS fade-out transition to complete before unmounting via React state
       const unmountTimer = setTimeout(() => {
         setIsVisible(false);
       }, 500);
