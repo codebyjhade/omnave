@@ -7,6 +7,7 @@ export interface GeneratedQuestion {
   explanation: string;
   difficulty: "easy" | "moderate" | "hard";
   subjectCategory: string;
+  lesson_topic?: string;
   matchingPairs?: { term: string; definition: string }[]; // For matching
 }
 
@@ -83,6 +84,7 @@ export function generateAssessment(
       explanation: q.correct_explanation || q.explanation || "Correct answer based on uploaded PDF.",
       difficulty: q.difficulty || "moderate",
       subjectCategory: "Lesson Core",
+      lesson_topic: q.lesson_topic || q.topic || q.lessonTopic || "General Concept",
     });
     index++;
   });

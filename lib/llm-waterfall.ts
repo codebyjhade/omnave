@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import Groq from "groq-sdk";
+import OpenAI from "openai";
 
 export interface WaterfallFlashcard {
   front: string;
@@ -11,6 +12,27 @@ export interface WaterfallQuizQuestion {
   options: string[];
   correctAnswer: string;
   explanation: string;
+}
+
+/**
+ * Timeout wrapper utility that cleanly rejects if execution takes longer than specified ms.
+ */
+export function withTimeout<T>(promise: Promise<T>, ms: number = 45000): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Execution timed out after ${ms}ms`));
+    }, ms);
+
+    promise
+      .then((res) => {
+        clearTimeout(timer);
+        resolve(res);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
 }
 
 // Helper to parse and standardize JSON response from various models
@@ -134,6 +156,69 @@ interface TierConfig {
 }
 
 const TIERS: TierConfig[] = [
+  {
+    name: "OpenAI GPT-4o",
+    key: "OPENAI_API_KEY",
+    execute: async (prompt, systemInstruction, isJson) => {
+      const key = (process.env.OPENAI_API_KEY || "").trim();
+      if (!key) throw new Error("OPENAI_API_KEY not configured.");
+
+      const openai = new OpenAI({ apiKey: key });
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemInstruction },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.2,
+        response_format: isJson ? { type: "json_object" } : undefined,
+      });
+
+      const responseText = response.choices[0]?.message?.content;
+      if (!responseText) throw new Error("OpenAI returned empty response.");
+      return responseText;
+    }
+  },
+  {
+    name: "Anthropic Claude 3.5 Sonnet",
+    key: "CLAUDEAI_API_KEY",
+    execute: async (prompt, systemInstruction, isJson) => {
+      const key = (
+        process.env.CLAUDEAI_API_KEY ||
+        process.env.CLAUDE_API_KEY ||
+        process.env.ANTHROPIC_API_KEY ||
+        ""
+      ).trim();
+      if (!key) throw new Error("Anthropic API key not configured.");
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": key,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "claude-3-5-sonnet-20240620",
+          max_tokens: 4096,
+          system: systemInstruction,
+          messages: [
+            { role: "user", content: prompt }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Anthropic API failed status ${response.status}: ${errText}`);
+      }
+
+      const data = (await response.json()) as { content?: Array<{ text?: string }> };
+      const responseText = data.content?.[0]?.text;
+      if (!responseText) throw new Error("Anthropic returned empty response.");
+      return responseText;
+    }
+  },
   {
     name: "Google Gemini",
     key: "GEMINI_API_KEY",
@@ -335,7 +420,12 @@ export async function generateWithWaterfall(
 
     try {
       console.log(`[Waterfall] Attempting Tier ${i + 1} (${tier.name})...`);
-      const rawOutput = await tier.execute(prompt, instruction, isJson);
+      
+      // Wrap execution in strict 45-second timeout
+      const rawOutput = await withTimeout(
+        tier.execute(prompt, instruction, isJson),
+        45000
+      );
       
       if (isJson) {
         const isFlashcard = instruction.toLowerCase().includes("flashcard");
@@ -350,5 +440,55 @@ export async function generateWithWaterfall(
     }
   }
 
-  throw new Error(`All 6 Waterfall Tiers failed. Last error: ${lastError ? lastError.message : "unknown"}`);
+  throw new Error(`All ${TIERS.length} Waterfall Tiers failed. Last error: ${lastError ? lastError.message : "unknown"}`);
+}
+
+/**
+ * Fast-scan utility using Groq (Tier 3) directly for ultra-low latency multi-lesson / topic detection.
+ */
+export async function detectLessons(text: string): Promise<string[]> {
+  const key = (process.env.GROQ_API_KEY || "").trim();
+  if (!key) {
+    return ["General Study Material"];
+  }
+
+  try {
+    const groq = new Groq({ apiKey: key });
+    const prompt = `Scan this text and return a JSON array of the distinct lesson or topic titles found. If it is all one topic, return an array with one title.\n\nText:\n${text.slice(0, 8000)}`;
+    const systemInstruction = "You are an expert curriculum structure detector. Return ONLY a JSON object containing a 'lessons' array of string topic titles, e.g. {\"lessons\": [\"Topic 1\", \"Topic 2\"]}.";
+
+    const response = await withTimeout(
+      groq.chat.completions.create({
+        messages: [
+          { role: "system", content: systemInstruction },
+          { role: "user", content: prompt }
+        ],
+        model: "llama3-8b-8192",
+        temperature: 0.1,
+        response_format: { type: "json_object" }
+      }),
+      10000
+    );
+
+    const responseText = response.choices[0]?.message?.content;
+    if (!responseText) return ["General Study Material"];
+
+    const parsed = JSON.parse(responseText);
+    let lessons: string[] = [];
+    if (Array.isArray(parsed)) {
+      lessons = parsed.map(String);
+    } else if (parsed && typeof parsed === "object") {
+      const obj = parsed as Record<string, unknown>;
+      if (Array.isArray(obj.lessons)) {
+        lessons = obj.lessons.map(String);
+      } else if (Array.isArray(obj.topics)) {
+        lessons = obj.topics.map(String);
+      }
+    }
+
+    return lessons.length > 0 ? lessons : ["General Study Material"];
+  } catch (err) {
+    console.warn("[detectLessons] Groq detection fallback:", err);
+    return ["General Study Material"];
+  }
 }

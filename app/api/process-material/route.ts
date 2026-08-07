@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { inngest } from "@/lib/inngest/client";
 import { supabaseServer } from "@/utils/supabase/server-backend";
-import { parsePdfFromUrl } from "@/services/pdf.service";
+import { parseDocumentFromUrl } from "@/services/document.service";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
@@ -89,6 +89,54 @@ export async function POST(req: Request) {
     const planType = profile.plan_type || "free";
     const generationCount = profile.generation_count || 0;
 
+    // Fetch user usage from public.user_usage
+    const { data: userUsage, error: usageErr } = await supabaseServer
+      .from("user_usage")
+      .select("user_id, weekly_pages_used, page_pool_reset_at")
+      .eq("user_id", user.id)
+      .single();
+
+    let weeklyPagesUsed = 0;
+    let resetAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    if (usageErr || !userUsage) {
+      // Upsert default usage record for user if missing
+      const { data: newUsage } = await supabaseServer
+        .from("user_usage")
+        .upsert(
+          {
+            user_id: user.id,
+            weekly_pages_used: 0,
+            page_pool_reset_at: resetAt.toISOString(),
+          },
+          { onConflict: "user_id" }
+        )
+        .select()
+        .single();
+
+      if (newUsage) {
+        weeklyPagesUsed = newUsage.weekly_pages_used ?? 0;
+        resetAt = new Date(newUsage.page_pool_reset_at);
+      }
+    } else {
+      weeklyPagesUsed = userUsage.weekly_pages_used ?? 0;
+      resetAt = new Date(userUsage.page_pool_reset_at);
+    }
+
+    // Time-Check Logic: Reset weekly pool if reset timestamp has passed
+    const now = new Date();
+    if (now > resetAt) {
+      const newResetAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      weeklyPagesUsed = 0;
+      await supabaseServer
+        .from("user_usage")
+        .update({
+          weekly_pages_used: 0,
+          page_pool_reset_at: newResetAt.toISOString(),
+        })
+        .eq("user_id", user.id);
+    }
+
     // Helper: cleanup on failed checks
     const cleanUpFailedUpload = async () => {
       // Delete from Supabase Storage
@@ -119,40 +167,44 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Parse PDF and extract page count
+    // 2. Parse document and extract page count
     let extractedText = text;
     let pageCount = 0;
 
     if (fileUrl) {
       try {
-        const parsed = await parsePdfFromUrl(fileUrl);
+        const parsed = await parseDocumentFromUrl(fileUrl);
         extractedText = parsed.text;
         pageCount = parsed.pages;
       } catch (parseError: unknown) {
-        console.error("PDF parsing failure in route.ts:", parseError);
+        console.error("Document parsing failure in route.ts:", parseError);
         const errMsg = parseError instanceof Error ? parseError.message : String(parseError);
         return NextResponse.json(
-          { error: `Failed to parse PDF: ${errMsg}` },
+          { error: `Failed to parse document: ${errMsg}` },
           { status: 422 }
         );
       }
     }
 
-    // Check 2 (Pages)
-    if (planType === "free" && pageCount > 30) {
-      await cleanUpFailedUpload();
-      return NextResponse.json(
-        { error: "Free tier page limit exceeded (max 30 pages)." },
-        { status: 403 }
-      );
-    }
+    // Pre-flight page limits gating logic for Free tier users
+    if (planType === "free") {
+      // CHECK 1: File > 50 pages
+      if (pageCount > 50) {
+        await cleanUpFailedUpload();
+        return NextResponse.json(
+          { error: "Free tier allows up to 50 pages per document. Please upgrade to Pro." },
+          { status: 403 }
+        );
+      }
 
-    if (planType === "pro" && pageCount > 200) {
-      await cleanUpFailedUpload();
-      return NextResponse.json(
-        { error: "Pro tier page limit exceeded (max 200 pages)." },
-        { status: 403 }
-      );
+      // CHECK 2: weekly_pages_used + document page count > 100
+      if (weeklyPagesUsed + pageCount > 100) {
+        await cleanUpFailedUpload();
+        return NextResponse.json(
+          { error: "Weekly page pool limit reached (100 pages/week). Resets soon." },
+          { status: 403 }
+        );
+      }
     }
 
     // 3. Quality-Gated Deduplication check
@@ -218,7 +270,9 @@ export async function POST(req: Request) {
           data: {
             materialId: existingMaterial.id,
             text: extractedText,
-            planType: planType
+            planType: planType,
+            pageCount: pageCount,
+            userId: user.id
           },
         });
 
@@ -257,7 +311,9 @@ export async function POST(req: Request) {
       data: {
         materialId,
         text: extractedText,
-        planType: planType
+        planType: planType,
+        pageCount: pageCount,
+        userId: user.id
       },
     });
 

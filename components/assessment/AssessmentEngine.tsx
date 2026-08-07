@@ -94,6 +94,11 @@ const prepareScrambledAssessment = (generated: GeneratedQuestion[]) => {
  
 const transformQuestion = (q: GeneratedQuestion, targetFormat: string): GeneratedQuestion => {
   const copy: GeneratedQuestion = JSON.parse(JSON.stringify(q));
+  
+  // Strictly preserve topic meta-data and explanation
+  copy.lesson_topic = q.lesson_topic || (q as any).topic || "General Concept";
+  copy.explanation = q.explanation || copy.explanation || "";
+
   const normFormat = targetFormat.toLowerCase().replace(/[^a-z0-9]/g, '');
   
   if (normFormat === 'identification') {
@@ -140,6 +145,11 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
   // Engine States
   const [gameState, setGameState] = useState<AssessmentState>("setup");
   const [mode, setMode] = useState<AssessmentMode>("quiz");
+  const [lastExamConfig, setLastExamConfig] = useState<{ count: number; timeLimit: number; difficulty: string }>({
+    count: 50,
+    timeLimit: 120,
+    difficulty: "hard"
+  });
  
   // Configuration States
   const [selectedFormats, setSelectedFormats] = useState<string[]>(['multiple-choice']);
@@ -355,6 +365,7 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
  
   const handleStartExam = useCallback((config: { count: number; timeLimit: number; difficulty: string }) => {
     setMode("mock");
+    setLastExamConfig(config);
     const generated = generateAssessment(
       lesson.quizzes, lesson.summary || "", "mock", config.count, config.difficulty as any, ["multiple-choice", "true-false", "identification"], "recommended", {}
     );
@@ -364,14 +375,24 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
   }, [lesson.quizzes, lesson.summary, resetPlayState]);
  
   const handleRestart = useCallback(() => {
-    setQuestions(prepareScrambledAssessment(questions));
     if (mode === "mock") {
-      const mockTime = duration;
+      const generated = generateAssessment(
+        lesson.quizzes,
+        lesson.summary || "",
+        "mock",
+        lastExamConfig.count,
+        lastExamConfig.difficulty as any,
+        ["multiple-choice", "true-false", "identification"],
+        "recommended",
+        {}
+      );
+      setQuestions(prepareScrambledAssessment(generated));
+      const mockTime = lastExamConfig.timeLimit * 60;
       resetPlayState(mockTime, mockTime);
     } else {
-      resetPlayState(0, 0);
+      generateQuizSession();
     }
-  }, [questions, mode, duration, resetPlayState]);
+  }, [mode, lesson.quizzes, lesson.summary, lastExamConfig, generateQuizSession, resetPlayState]);
  
   const submitGrading = useCallback(async () => {
     let correctCount = 0;
@@ -537,12 +558,17 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
  
                 <div className="flex justify-between items-start gap-4">
                   <div className="space-y-2">
-                    <span className="px-2 py-0.5 bg-purple-50 border border-purple-100 rounded text-[9px] font-bold text-[#6949a8] uppercase tracking-widest select-none">
-                      {(() => {
-                        const hasOptions = questions[currentIdx].options && questions[currentIdx].options.length > 0;
-                        return (questions[currentIdx].type || (hasOptions ? "Multiple Choice" : "Identification"))?.replace("-", " ");
-                      })()}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="px-2 py-0.5 bg-purple-50 border border-purple-100 rounded text-[9px] font-bold text-[#6949a8] uppercase tracking-widest select-none">
+                        {(() => {
+                          const hasOptions = questions[currentIdx].options && questions[currentIdx].options.length > 0;
+                          return (questions[currentIdx].type || (hasOptions ? "Multiple Choice" : "Identification"))?.replace("-", " ");
+                        })()}
+                      </span>
+                      <span className="px-2.5 py-0.5 bg-slate-50/80 backdrop-blur-sm border border-slate-200/60 rounded text-[9px] font-semibold text-slate-600 uppercase tracking-wider select-none truncate max-w-[220px]">
+                        {questions[currentIdx].lesson_topic || (questions[currentIdx] as any).topic || "General Concept"}
+                      </span>
+                    </div>
                     <h3 className="text-lg sm:text-xl font-bold text-gray-900 leading-snug pt-2 select-text text-left">
                       {questions[currentIdx].question}
                     </h3>
@@ -679,13 +705,18 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
             <div className="w-full max-w-2xl mx-auto mt-2 p-6 sm:p-8 space-y-6 relative bg-transparent">
               <div className="flex justify-between items-start gap-4">
                 <div className="space-y-2">
-                  <span className="px-2 py-0.5 bg-purple-50 border border-purple-100 rounded text-[9px] font-bold text-[#6949a8] uppercase tracking-widest select-none">
-                    {(() => {
-                      const hasOptions = questions[currentIdx].options && questions[currentIdx].options.length > 0;
-                      return (questions[currentIdx].type || (hasOptions ? "Multiple Choice" : "Identification"))?.replace("-", " ");
-                    })()}
-                  </span>
-                  <h3 className="text-lg sm:text-xl font-bold text-gray-900 leading-snug mt-4 select-text text-left">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-2 py-0.5 bg-purple-50 border border-purple-100 rounded text-[9px] font-bold text-[#6949a8] uppercase tracking-widest select-none">
+                      {(() => {
+                        const hasOptions = questions[currentIdx].options && questions[currentIdx].options.length > 0;
+                        return (questions[currentIdx].type || (hasOptions ? "Multiple Choice" : "Identification"))?.replace("-", " ");
+                      })()}
+                    </span>
+                    <span className="px-2.5 py-0.5 bg-slate-50/80 backdrop-blur-sm border border-slate-200/60 rounded text-[9px] font-semibold text-slate-600 uppercase tracking-wider select-none truncate max-w-[220px]">
+                      {questions[currentIdx].lesson_topic || (questions[currentIdx] as any).topic || "General Concept"}
+                    </span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-900 leading-snug mt-2 select-text text-left">
                     {questions[currentIdx].question}
                   </h3>
                 </div>

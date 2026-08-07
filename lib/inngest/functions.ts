@@ -1,6 +1,7 @@
 import { inngest } from "./client";
 import { supabaseServer } from "@/utils/supabase/server-backend";
 import { generateWithWaterfall } from "../llm-waterfall";
+import { chunkText } from "@/utils/text-chunker";
 
 export const processMaterial = inngest.createFunction(
   { 
@@ -15,7 +16,7 @@ export const processMaterial = inngest.createFunction(
     retries: 0
   },
   async ({ event, step }) => {
-    const { materialId, text, planType = "free" } = event.data;
+    const { materialId, text, planType = "free", pageCount = 0, userId } = event.data;
 
     try {
       // Granular Status 1: PARSING_DOCUMENT (10% progress)
@@ -48,19 +49,43 @@ export const processMaterial = inngest.createFunction(
         if (error) throw new Error(`Assessments status update failed: ${error.message}`);
 
         const isPro = planType === "pro" || planType === "paid";
-        
-        const flashcardsSystemInstruction = isPro
-          ? "You are an expert university professor. Act as a strict professor, analyze the core topics, and incorporate related external knowledge/research to make highly challenging, comprehensive flashcards covering concepts, vocabulary, and facts. Generate exactly 80 flashcards."
-          : "You are an expert tutor. Create highly effective flashcards covering the core concepts, vocabulary, and facts from the provided text. Generate exactly 25 flashcards.";
+        const chunks = chunkText(text, 3000);
+        const numChunks = Math.max(1, chunks.length);
 
-        const quizSystemInstruction = isPro
-          ? "You are an expert university professor. Act as a strict professor, analyze the core topics, and incorporate related external knowledge/research to make the questions highly challenging and unique. Generate exactly 80 questions (suitable for a mix of practice quizzes and comprehensive exams)."
-          : "You are an expert tutor. Generate a standard multiple-choice quiz based strictly on the provided text. The quiz must contain exactly 25 questions.";
+        const targetCardsTotal = isPro ? 80 : 25;
+        const targetQuizTotal = isPro ? 80 : 25;
+        const cardsPerChunk = Math.max(5, Math.ceil(targetCardsTotal / numChunks));
+        const quizPerChunk = Math.max(5, Math.ceil(targetQuizTotal / numChunks));
 
-        const [flashcards, quizzes] = await Promise.all([
-          generateWithWaterfall(text, flashcardsSystemInstruction, true),
-          generateWithWaterfall(text, quizSystemInstruction, true)
-        ]);
+        // MAP PHASE: Generate flashcards and quizzes concurrently for EACH chunk
+        const chunkResults = await Promise.all(
+          chunks.map(async (chunkContent, idx) => {
+            const chunkLabel = numChunks > 1 ? ` (Part ${idx + 1} of ${numChunks})` : "";
+
+            const flashcardsSystemInstruction = isPro
+              ? `You are an expert university professor. Act as a strict professor, analyze the core topics in this text section${chunkLabel}, and incorporate related external knowledge/research to make highly challenging, comprehensive flashcards covering concepts, vocabulary, and facts. Generate exactly ${cardsPerChunk} flashcards.`
+              : `You are an expert tutor. Create highly effective flashcards covering the core concepts, vocabulary, and facts from this text section${chunkLabel}. Generate exactly ${cardsPerChunk} flashcards.`;
+
+            const quizSystemInstruction = isPro
+              ? `You are an expert university professor. Act as a strict professor, analyze the core topics in this text section${chunkLabel}, and incorporate related external knowledge/research to make the questions highly challenging and unique. Generate exactly ${quizPerChunk} questions.`
+              : `You are an expert tutor. Generate a standard multiple-choice quiz based strictly on this text section${chunkLabel}. The quiz must contain exactly ${quizPerChunk} questions.`;
+
+            const [cards, quizzes] = await Promise.all([
+              generateWithWaterfall(chunkContent, flashcardsSystemInstruction, true),
+              generateWithWaterfall(chunkContent, quizSystemInstruction, true)
+            ]);
+
+            return {
+              flashcards: Array.isArray(cards) ? (cards as any[]) : [],
+              quizzes: Array.isArray(quizzes) ? (quizzes as any[]) : []
+            };
+          })
+        );
+
+        // REDUCE PHASE: Flatten JSON arrays returned from all chunks
+        const flashcards = chunkResults.flatMap(r => r.flashcards);
+        const quizzes = chunkResults.flatMap(r => r.quizzes);
+
         return { flashcards, quizzes };
       });
 
@@ -85,6 +110,42 @@ export const processMaterial = inngest.createFunction(
 
         if (error) {
           throw new Error(`Database final update failed: ${error.message}`);
+        }
+      });
+
+      // Usage Increment: Update user's weekly_pages_used upon successful processing
+      await step.run("increment-user-usage", async () => {
+        if (!pageCount || pageCount <= 0) return;
+
+        const targetUserId = userId || (
+          await supabaseServer
+            .from("materials")
+            .select("user_id")
+            .eq("id", materialId)
+            .single()
+        ).data?.user_id;
+
+        if (targetUserId) {
+          const { data: usage } = await supabaseServer
+            .from("user_usage")
+            .select("weekly_pages_used")
+            .eq("user_id", targetUserId)
+            .single();
+
+          const currentUsed = usage?.weekly_pages_used ?? 0;
+          const { error: usageUpdateErr } = await supabaseServer
+            .from("user_usage")
+            .upsert(
+              {
+                user_id: targetUserId,
+                weekly_pages_used: currentUsed + pageCount,
+              },
+              { onConflict: "user_id" }
+            );
+
+          if (usageUpdateErr) {
+            console.error("Failed to increment user_usage weekly_pages_used:", usageUpdateErr);
+          }
         }
       });
 
