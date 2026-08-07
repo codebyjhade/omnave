@@ -18,10 +18,12 @@ import { ToastProvider } from "@/components/ToastProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { NavigationProvider } from "@/context/NavigationContext";
 import WorkspaceShell from "@/components/layout/WorkspaceShell";
+import SplashScreen from "@/components/SplashScreen";
 
 export const metadata: Metadata = {
   title: "Omnave",
   description: "AI-Powered Study Platform",
+  manifest: "/manifest.json",
   icons: {
     icon: '/icon.png',
     apple: '/icon.png',
@@ -30,14 +32,19 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'Omnave',
+    startupImage: [
+      {
+        url: '/omnave.png',
+      },
+    ],
   },
   formatDetection: {
     telephone: false,
   },
-}
+};
 
 export const viewport = {
-  themeColor: '#6949a8',
+  themeColor: '#0F0A21',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -55,6 +62,7 @@ export default function RootLayout({
     // the DOM as-is for this element (per Next.js preventing-flash docs).
     <html lang="en" suppressHydrationWarning className={`${poppins.variable} bg-white`}>
       <body className={`${poppins.className} bg-white text-omnave-primary-text antialiased min-h-screen relative overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}>
+        <SplashScreen />
         <ThemeProvider>
           <PWAProvider>
             <ToastProvider>

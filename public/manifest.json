@@ -1,0 +1,22 @@
+{
+  "name": "Omnave",
+  "short_name": "Omnave",
+  "description": "AI-Powered Study Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F0A21",
+  "theme_color": "#0F0A21",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/omnave.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
