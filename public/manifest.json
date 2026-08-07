@@ -4,8 +4,8 @@
   "description": "AI-Powered Study Platform",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0F0A21",
-  "theme_color": "#0F0A21",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "icons": [
     {
       "src": "/icon.png",

@@ -8,6 +8,12 @@ export default function SplashScreen() {
   const [isFadingOut, setIsFadingOut] = useState(false);
 
   useEffect(() => {
+    // Instantly remove SSR inline splash placeholder once React hydrates
+    const ssrElement = document.getElementById("ssr-splash-screen");
+    if (ssrElement) {
+      ssrElement.remove();
+    }
+
     // Hold static logo for 1500ms
     const timer = setTimeout(() => {
       setIsFadingOut(true);
@@ -25,23 +31,23 @@ export default function SplashScreen() {
 
   return (
     <div
-      className={`fixed inset-0 z-[99999] flex items-center justify-center bg-[#0F0A21] select-none transition-opacity duration-500 pointer-events-none ${
+      className={`fixed inset-0 z-[999999] flex items-center justify-center bg-white select-none transition-opacity duration-500 pointer-events-none ${
         isFadingOut ? "opacity-0" : "opacity-100"
       }`}
       aria-hidden="true"
     >
-      <div className="flex flex-col items-center justify-center gap-4">
-        <div className="relative w-28 h-28 sm:w-32 sm:h-32">
+      <div className="flex flex-col items-center justify-center gap-3">
+        <div className="relative w-24 h-24 sm:w-28 sm:h-28">
           <Image
             src="/omnave.png"
             alt="Omnave Logo"
             fill
             priority
-            sizes="(max-width: 640px) 112px, 128px"
-            className="object-contain"
+            sizes="(max-width: 640px) 96px, 112px"
+            className="object-contain drop-shadow-sm"
           />
         </div>
-        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight font-poppins">
+        <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight font-poppins">
           Omnave
         </h1>
       </div>

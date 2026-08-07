@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    statusBarStyle: 'default',
     title: 'Omnave',
     startupImage: [
       {
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: '#0F0A21',
+  themeColor: '#ffffff',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -61,7 +61,36 @@ export default function RootLayout({
     // React hydrates, which would cause a mismatch. This tells React to accept
     // the DOM as-is for this element (per Next.js preventing-flash docs).
     <html lang="en" suppressHydrationWarning className={`${poppins.variable} bg-white`}>
+      <head>
+        {/* Preload logo image on frame 0 to eliminate initial render delay */}
+        <link rel="preload" href="/omnave.png" as="image" />
+      </head>
       <body className={`${poppins.className} bg-white text-omnave-primary-text antialiased min-h-screen relative overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}>
+        {/* Zero-latency SSR inline splash placeholder to prevent hydration flash/glitch */}
+        <div
+          id="ssr-splash-screen"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 999999,
+            backgroundColor: '#ffffff',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px',
+          }}
+        >
+          <img
+            src="/omnave.png"
+            alt="Omnave"
+            style={{ width: '96px', height: '96px', objectFit: 'contain' }}
+          />
+          <span style={{ fontSize: '24px', fontWeight: 900, color: '#111827', fontFamily: 'sans-serif' }}>
+            Omnave
+          </span>
+        </div>
+
         <SplashScreen />
         <ThemeProvider>
           <PWAProvider>
