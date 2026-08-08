@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Header from '../Header';
 import BottomNav from '../BottomNav';
+import OfflineBanner from '../OfflineBanner';
 import { useAssessmentGuard } from '@/context/AssessmentContext';
 
 export default function WorkspaceShell({ children }: { children: React.ReactNode }) {
@@ -29,6 +30,7 @@ export default function WorkspaceShell({ children }: { children: React.ReactNode
   if (isOuterRoute) {
     return (
       <div className="relative z-10 w-full min-h-screen flex flex-col bg-white">
+        <OfflineBanner />
         <div className="flex-1 w-full flex flex-col">
           {children}
         </div>
@@ -43,6 +45,7 @@ export default function WorkspaceShell({ children }: { children: React.ReactNode
     <div className={`relative z-10 w-full min-h-screen flex flex-col pb-[env(safe-area-inset-bottom)] pwa-safe-root transition-colors duration-200 ${
       isFlatWhiteRoute ? 'bg-white' : 'bg-[#6949a8]'
     }`}>
+      <OfflineBanner />
       {/* 1. FIXED HEADER AREA - Hidden during active quiz takeover */}
       {!isQuizActive && (
         <React.Suspense fallback={<div className="w-full bg-[#6949a8]/80 backdrop-blur-xl relative z-10 flex-none pb-[88px] animate-pulse" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 48px)' }} />}>

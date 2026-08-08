@@ -19,11 +19,13 @@ import StaggerContainer from "@/components/ui/animation/StaggerContainer";
 import StaggerItem from "@/components/ui/animation/StaggerItem";
 
 import { Skeleton } from "@/components/Skeleton";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 
 export default function LibraryPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const isOnline = useNetworkStatus();
   
   const { 
     lessons: notes, 
@@ -205,9 +207,10 @@ export default function LibraryPage() {
             </div>
             <button 
               onClick={() => router.push("/upload")}
-              className="mt-2 bg-[#6949a8] text-white px-5 py-2.5 rounded-full text-xs font-semibold shadow-sm hover:bg-[#563b8c] active:scale-95 transition-all border-none cursor-pointer font-poppins"
+              disabled={!isOnline}
+              className="mt-2 bg-[#6949a8] text-white px-5 py-2.5 rounded-full text-xs font-semibold shadow-sm hover:bg-[#563b8c] active:scale-95 transition-all border-none cursor-pointer font-poppins disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
             >
-              Upload PDF
+              {isOnline ? "Upload PDF" : "Upload Unavailable Offline"}
             </button>
           </StaggerItem>
         ) : (

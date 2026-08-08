@@ -6,6 +6,7 @@ import { Sparkles, MessageSquare, ChevronRight, Copy, RotateCcw, ThumbsUp, Thumb
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { TypewriterText } from "./TypewriterText";
 import { useUserContext } from "@/context/UserContext";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
  
 export interface ChatMessage {
   role: "user" | "ai";
@@ -57,6 +58,7 @@ export const ChatPanel = memo(function ChatPanel({
   onMessageAnimationComplete,
 }: ChatPanelProps) {
   const { user } = useUserContext();
+  const isOnline = useNetworkStatus();
   const planType = user?.plan_type || 'free';
  
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -78,7 +80,7 @@ export const ChatPanel = memo(function ChatPanel({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      onSend();
+      if (isOnline) onSend();
     }
   };
  
@@ -87,6 +89,7 @@ export const ChatPanel = memo(function ChatPanel({
   };
  
   const handleRetry = () => {
+    if (!isOnline) return;
     const lastUserMsg = [...chatHistory].reverse().find((msg) => msg.role === "user");
     if (lastUserMsg) {
       onSend(lastUserMsg.text);
@@ -103,7 +106,9 @@ export const ChatPanel = memo(function ChatPanel({
           </div>
           <div className="flex flex-col text-left">
             <h3 className="text-sm font-bold text-gray-900 leading-none">OmnaveAI</h3>
-            <span className="text-[10px] font-bold text-[#6949a8] uppercase tracking-wider mt-1">Online</span>
+            <span className={`text-[10px] font-bold uppercase tracking-wider mt-1 ${isOnline ? "text-[#6949a8]" : "text-amber-600"}`}>
+              {isOnline ? "Online" : "Offline"}
+            </span>
           </div>
         </div>
         
@@ -305,14 +310,16 @@ export const ChatPanel = memo(function ChatPanel({
           {suggestionChips.map((chip, i) => (
             <button
               key={i}
+              disabled={!isOnline}
               onClick={() => {
+                if (!isOnline) return;
                 if (isLimitReached) {
                   console.log("Trigger Paywall: Chat Limit");
                   return;
                 }
                 onSend(chip.text);
               }}
-              className="flex items-center space-x-1.5 h-11 px-4 bg-gray-50 border border-gray-200 rounded-full text-[11px] font-bold text-gray-600 hover:bg-[#6949a8]/10 hover:text-[#6949a8] hover:border-[#6949a8] transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer"
+              className="flex items-center space-x-1.5 h-11 px-4 bg-gray-50 border border-gray-200 rounded-full text-[11px] font-bold text-gray-600 hover:bg-[#6949a8]/10 hover:text-[#6949a8] hover:border-[#6949a8] transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
             >
               {chip.icon} <span>{chip.text}</span>
             </button>
@@ -345,22 +352,25 @@ export const ChatPanel = memo(function ChatPanel({
           </button>
         ) : (
           <div className="flex space-x-2 items-end">
-            <div className="bg-gray-50 border border-gray-200 p-1.5 pl-5 rounded-3xl flex items-end gap-2 flex-1">
+            <div className={`p-1.5 pl-5 rounded-3xl flex items-end gap-2 flex-1 border transition-all ${
+              isOnline ? "bg-gray-50 border-gray-200" : "bg-gray-100 border-gray-200 opacity-50 cursor-not-allowed"
+            }`}>
               <textarea
                 ref={textareaRef}
                 value={chatInput}
+                disabled={!isOnline}
                 onChange={(e) => onInputChange(e.target.value)}
                 onKeyDown={handleKeyDown}
                 maxLength={1000}
-                placeholder="Ask a question..."
-                className="bg-transparent border-none flex-1 outline-none resize-none min-h-[24px] max-h-[120px] py-0.5 overflow-y-auto scrollbar-hide text-sm text-gray-900"
+                placeholder={isOnline ? "Ask a question..." : "Chat unavailable offline"}
+                className="bg-transparent border-none flex-1 outline-none resize-none min-h-[24px] max-h-[120px] py-0.5 overflow-y-auto scrollbar-hide text-sm text-gray-900 disabled:cursor-not-allowed placeholder:text-gray-400"
                 aria-label="Ask the AI tutor a question"
               />
             </div>
             <button
               onClick={() => onSend()}
-              disabled={isChatLoading || !chatInput.trim()}
-              className="w-10 h-10 shrink-0 rounded-full bg-[#6949a8] flex items-center justify-center text-white border-none hover:bg-[#6949a8]/90 transition-all disabled:opacity-50 active:scale-95 cursor-pointer"
+              disabled={!isOnline || isChatLoading || !chatInput.trim()}
+              className="w-10 h-10 shrink-0 rounded-full bg-[#6949a8] flex items-center justify-center text-white border-none hover:bg-[#6949a8]/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none active:scale-95 cursor-pointer"
               aria-label="Send message"
             >
               <Send size={16} />

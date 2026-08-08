@@ -32,27 +32,45 @@ function toLesson(row: MaterialRow): Lesson {
   };
 }
 
+import { saveLibraryToOffline, getLibraryFromOffline } from '@/lib/offlineStorage';
+
 /**
  * LessonService — backed by the public.materials Supabase table.
  * All interfaces are preserved so UserContext and components need zero changes.
  */
 export class LessonService {
   static async getLessons(userId: string): Promise<Lesson[]> {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('materials')
-      .select('id, user_id, title, material_type, content_url, is_processed, flashcards, quizzes, created_at')
-      .eq('user_id', userId)
-      .neq('status', 'failed')
-      .order('created_at', { ascending: false })
-      .returns<MaterialRow[]>();
+    try {
+      if (typeof window !== 'undefined' && !navigator.onLine) {
+        const cached = await getLibraryFromOffline<Lesson[]>();
+        if (cached && Array.isArray(cached) && cached.length > 0) {
+          return cached;
+        }
+      }
 
-    if (error) {
-      console.error('[LessonService] getLessons error:', error.message);
-      return [];
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('materials')
+        .select('id, user_id, title, material_type, content_url, is_processed, summary, flashcards, quizzes, created_at')
+        .eq('user_id', userId)
+        .neq('status', 'failed')
+        .order('created_at', { ascending: false })
+        .returns<MaterialRow[]>();
+
+      if (error) {
+        console.error('[LessonService] getLessons error:', error.message);
+        const cached = await getLibraryFromOffline<Lesson[]>();
+        return cached ?? [];
+      }
+
+      const lessons = (data ?? []).map(toLesson);
+      await saveLibraryToOffline(lessons);
+      return lessons;
+    } catch (err) {
+      console.error('[LessonService] getLessons offline error:', err);
+      const cached = await getLibraryFromOffline<Lesson[]>();
+      return cached ?? [];
     }
-
-    return (data ?? []).map(toLesson);
   }
 
   static async addLesson(userId: string, lesson: Lesson): Promise<void> {

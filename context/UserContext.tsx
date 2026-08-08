@@ -126,9 +126,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (!activeUser) return;
     try {
       const [userStats, userLessons, scores] = await Promise.all([
-        ProgressService.getUserStats(activeUser.id),
-        LessonService.getLessons(activeUser.id),
-        ProgressService.getQuizScores(activeUser.id),
+        ProgressService.getUserStats(activeUser.id).catch(() => null),
+        LessonService.getLessons(activeUser.id).catch(() => []),
+        ProgressService.getQuizScores(activeUser.id).catch(() => []),
       ]);
 
       if (userStats) {
@@ -181,41 +181,76 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
    * Called after quiz completions, lesson uploads, etc.
    */
   const refreshUser = useCallback(async () => {
-    const supabase = createClient();
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser) {
-      setUser(null);
+    try {
+      const supabase = createClient();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        if (typeof window !== 'undefined') {
+          const cachedSession = localStorage.getItem('omnave_cached_user');
+          if (cachedSession) {
+            const cachedUser = JSON.parse(cachedSession);
+            setUser(cachedUser);
+            await loadUserData(cachedUser);
+            return;
+          }
+        }
+        setUser(null);
+        return;
+      }
+      const baseUser: User = {
+        ...authUser,
+        plan_type: 'free',
+        generation_count: 0,
+        agent_message_count: 0,
+        last_message_date: null,
+      };
+      setUser(baseUser);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('omnave_cached_user', JSON.stringify(baseUser));
+      }
+      await loadUserData(baseUser);
+    } catch (err) {
+      console.error('[UserContext] refreshUser error:', err);
+      if (typeof window !== 'undefined') {
+        const cachedSession = localStorage.getItem('omnave_cached_user');
+        if (cachedSession) {
+          const cachedUser = JSON.parse(cachedSession);
+          setUser(cachedUser);
+          await loadUserData(cachedUser);
+        }
+      }
+    } finally {
       setLoading(false);
-      return;
     }
-    const baseUser: User = {
-      ...authUser,
-      plan_type: 'free',
-      generation_count: 0,
-      agent_message_count: 0,
-      last_message_date: null,
-    };
-    setUser(baseUser);
-    await loadUserData(baseUser);
-    setLoading(false);
   }, [loadUserData]);
 
-  // ── Reactive auth subscription ───────────────────────────────────────────────
-  // onAuthStateChange fires immediately with the current session state on mount,
-  // then again whenever the user signs in, signs out, or the token refreshes.
-  // This removes the need for any manual session reads and makes the UI update
-  // correctly after OAuth redirects and cross-tab sign-outs.
+  // ── Reactive auth subscription & initialization ──────────────────────────────
 
   useEffect(() => {
+    let isMounted = true;
     const supabase = createClient();
 
-    // Kick off initial load
-    setLoading(true);
+    const initializeAuth = async () => {
+      try {
+        setLoading(true);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+        // Immediate offline check: resolve user state from local storage cache when offline
+        if (typeof window !== 'undefined' && !navigator.onLine) {
+          const cachedSession = localStorage.getItem('omnave_cached_user');
+          if (cachedSession) {
+            const cachedUser = JSON.parse(cachedSession);
+            if (isMounted) {
+              setUser(cachedUser);
+              await loadUserData(cachedUser);
+            }
+          }
+          if (isMounted) setLoading(false);
+          return;
+        }
+
+        const { data: { session } } = await supabase.auth.getSession();
         const authUser = session?.user ?? null;
-        if (authUser) {
+        if (authUser && isMounted) {
           const baseUser: User = {
             ...authUser,
             plan_type: 'free',
@@ -224,26 +259,83 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             last_message_date: null,
           };
           setUser(baseUser);
+          localStorage.setItem('omnave_cached_user', JSON.stringify(baseUser));
           await loadUserData(baseUser);
-        } else {
-          setUser(null);
-          // Signed out — reset all state
-          setXp(0);
-          setStreak(0);
-          setHighestStreak(0);
-          setLastStudyDate(null);
-          setLessons([]);
-          setDocCount(0);
-          setQuizScores([]);
-          setQuizzesCount(0);
-          setAvgScore(0);
-          setBestScore(0);
+        } else if (isMounted) {
+          const cachedSession = localStorage.getItem('omnave_cached_user');
+          if (cachedSession) {
+            const cachedUser = JSON.parse(cachedSession);
+            setUser(cachedUser);
+            await loadUserData(cachedUser);
+          }
         }
-        setLoading(false);
+      } catch (err) {
+        console.error('[UserContext] initializeAuth error:', err);
+        try {
+          if (typeof window !== 'undefined') {
+            const cachedSession = localStorage.getItem('omnave_cached_user');
+            if (cachedSession && isMounted) {
+              const cachedUser = JSON.parse(cachedSession);
+              setUser(cachedUser);
+              await loadUserData(cachedUser);
+            }
+          }
+        } catch (cacheErr) {
+          console.error('[UserContext] Failed to load cached user:', cacheErr);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (!isMounted) return;
+        try {
+          const authUser = session?.user ?? null;
+          if (authUser) {
+            const baseUser: User = {
+              ...authUser,
+              plan_type: 'free',
+              generation_count: 0,
+              agent_message_count: 0,
+              last_message_date: null,
+            };
+            setUser(baseUser);
+            localStorage.setItem('omnave_cached_user', JSON.stringify(baseUser));
+            await loadUserData(baseUser);
+          } else {
+            setUser(null);
+            localStorage.removeItem('omnave_cached_user');
+            setXp(0);
+            setStreak(0);
+            setHighestStreak(0);
+            setLastStudyDate(null);
+            setLessons([]);
+            setDocCount(0);
+            setQuizScores([]);
+            setQuizzesCount(0);
+            setAvgScore(0);
+            setBestScore(0);
+          }
+        } catch (err) {
+          console.error('[UserContext] onAuthStateChange handler error:', err);
+        } finally {
+          if (isMounted) {
+            setLoading(false);
+          }
+        }
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [loadUserData]);
 
   // Log User State on Boot / Update for verification

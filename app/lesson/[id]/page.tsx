@@ -35,6 +35,8 @@ const SummaryTab = dynamic(
  
 import { Skeleton } from "@/components/Skeleton";
 
+import { saveLessonToOffline, getLessonFromOffline } from "@/lib/offlineStorage";
+
 export default function LessonView() {
   const router = useRouter();
   const { id } = useParams();
@@ -77,6 +79,17 @@ export default function LessonView() {
     const fetchMaterial = async () => {
       try {
         setLoading(true);
+
+        // Offline check: If offline, retrieve from IndexedDB localforage immediately
+        if (typeof window !== "undefined" && !navigator.onLine && id) {
+          const cached = await getLessonFromOffline(id as string);
+          if (cached) {
+            setData(cached);
+            setLoading(false);
+            return;
+          }
+        }
+
         const supabase = createBrowserClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -89,8 +102,20 @@ export default function LessonView() {
  
         if (error) throw error;
         setData(material);
+
+        if (id && material) {
+          await saveLessonToOffline(id as string, material);
+        }
       } catch (err) {
-        console.error("Error fetching material:", err);
+        console.error("Error fetching material, attempting offline cache fallback:", err);
+        if (id) {
+          const cached = await getLessonFromOffline(id as string);
+          if (cached) {
+            setData(cached);
+            toast("Loaded study kit from offline cache.", "info");
+            return;
+          }
+        }
         toast("Failed to load study kit.", "error");
       } finally {
         setLoading(false);

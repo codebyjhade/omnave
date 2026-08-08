@@ -11,12 +11,13 @@ import StaggerContainer from "@/components/ui/animation/StaggerContainer";
 import StaggerItem from "@/components/ui/animation/StaggerItem";
 
 import { Skeleton } from "@/components/Skeleton";
-
 import { cleanDocumentTitle } from "@/utils/formatTitle";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 
 export default function UploadPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const isOnline = useNetworkStatus();
   const { uploadStatus, processBackgroundUpload, cancelUpload, jobs = [], removeJob, cancelJob } = useUploadContext();
   const { user, loading } = useUserContext();
 
@@ -56,6 +57,7 @@ export default function UploadPage() {
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!isOnline) return;
     if (e.type === "dragenter" || e.type === "dragover") {
       setIsDragActive(true);
     } else if (e.type === "dragleave") {
@@ -67,6 +69,7 @@ export default function UploadPage() {
     e.preventDefault();
     e.stopPropagation();
     setIsDragActive(false);
+    if (!isOnline) return;
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const droppedFile = e.dataTransfer.files[0];
@@ -75,6 +78,7 @@ export default function UploadPage() {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isOnline) return;
     if (e.target.files && e.target.files[0]) {
       validateAndSetFile(e.target.files[0]);
     }
@@ -97,7 +101,7 @@ export default function UploadPage() {
   };
 
   const handleUploadSubmit = async () => {
-    if (!file) return;
+    if (!file || !isOnline) return;
     try {
       toast(`Uploading ${file.name}...`, "info");
       await processBackgroundUpload(file);
@@ -125,8 +129,10 @@ export default function UploadPage() {
         <StaggerContainer staggerChildren={0.08} className="w-full flex flex-col items-center gap-6">
           
           {/* AI Pill Badge */}
-          <StaggerItem className="inline-flex items-center justify-center bg-purple-50 text-[#6949a8] text-[10px] font-bold tracking-widest uppercase px-4 py-1.5 rounded-full border border-purple-100 mb-6 select-none">
-            ✨ AI ENGINE READY
+          <StaggerItem className={`inline-flex items-center justify-center text-[10px] font-bold tracking-widest uppercase px-4 py-1.5 rounded-full border mb-6 select-none ${
+            isOnline ? "bg-purple-50 text-[#6949a8] border-purple-100" : "bg-amber-50 text-amber-700 border-amber-200"
+          }`}>
+            {isOnline ? "✨ AI ENGINE READY" : "⚡ AI ENGINE OFFLINE"}
           </StaggerItem>
 
           {/* Error Message */}
@@ -146,27 +152,32 @@ export default function UploadPage() {
                   onDragOver={handleDrag}
                   onDragLeave={handleDrag}
                   onDrop={handleDrop}
-                  className={`bg-[#6949a8]/5 border-2 border-dashed rounded-[15px] flex flex-col items-center py-10 px-6 relative cursor-pointer transition-all duration-300 ${
-                    isDragActive
-                      ? "border-[#6949a8] bg-[#6949a8]/10"
-                      : "border-[#6949a8]/20 hover:border-[#6949a8]/40 hover:bg-[#6949a8]/8"
+                  className={`bg-[#6949a8]/5 border-2 border-dashed rounded-[15px] flex flex-col items-center py-10 px-6 relative transition-all duration-300 ${
+                    !isOnline 
+                      ? "opacity-50 cursor-not-allowed pointer-events-none border-gray-300 bg-gray-50"
+                      : isDragActive
+                        ? "border-[#6949a8] bg-[#6949a8]/10 cursor-pointer"
+                        : "border-[#6949a8]/20 hover:border-[#6949a8]/40 hover:bg-[#6949a8]/8 cursor-pointer"
                   }`}
                 >
                   <input
                     type="file"
                     accept=".pdf"
+                    disabled={!isOnline}
                     onChange={handleFileChange}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-50"
                   />
                   
-                  <UploadCloud className="w-14 h-14 text-[#6949a8] mb-4 transition-transform duration-300" />
+                  <UploadCloud className={`w-14 h-14 mb-4 transition-transform duration-300 ${isOnline ? "text-[#6949a8]" : "text-gray-400"}`} />
                   
-                  <div className="bg-[#6949a8] hover:bg-[#563b8c] text-white font-semibold py-3 px-8 rounded-full shadow-[0_4px_15px_rgba(105,73,168,0.4)] active:scale-95 transition-transform text-sm select-none z-20 font-poppins pointer-events-none">
-                    Select PDF Document
+                  <div className="bg-[#6949a8] text-white font-semibold py-3 px-8 rounded-full shadow-[0_4px_15px_rgba(105,73,168,0.4)] text-sm select-none z-20 font-poppins pointer-events-none disabled:opacity-50">
+                    {isOnline ? "Select PDF Document" : "Upload Unavailable Offline"}
                   </div>
 
                   <p className="text-[11px] text-gray-400 mt-4 font-poppins">
-                    Max file size {user?.plan_type === 'pro' ? '50MB' : '15MB'}
+                    {isOnline 
+                      ? `Max file size ${user?.plan_type === 'pro' ? '50MB' : '15MB'}`
+                      : "Connect to the internet to generate new study materials."}
                   </p>
                 </div>
               </div>
@@ -194,10 +205,10 @@ export default function UploadPage() {
                 <div className="flex items-center gap-3">
                   <button
                     onClick={handleUploadSubmit}
-                    disabled={uploadStatus === "uploading"}
-                    className="flex-1 bg-[#6949a8] hover:bg-[#563b8c] disabled:bg-gray-200 text-white font-semibold py-3.5 px-6 rounded-full text-xs transition-colors select-none shadow-[0_4px_15px_rgba(105,73,168,0.4)] disabled:shadow-none cursor-pointer border-none font-poppins"
+                    disabled={!isOnline || uploadStatus === "uploading"}
+                    className="flex-1 bg-[#6949a8] hover:bg-[#563b8c] disabled:bg-gray-200 text-white font-semibold py-3.5 px-6 rounded-full text-xs transition-colors select-none shadow-[0_4px_15px_rgba(105,73,168,0.4)] disabled:shadow-none cursor-pointer border-none font-poppins disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
                   >
-                    Generate Lesson Material
+                    {isOnline ? "Generate Lesson Material" : "Generation Unavailable Offline"}
                   </button>
                 </div>
               </div>
