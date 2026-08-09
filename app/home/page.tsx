@@ -398,31 +398,32 @@ export default function HomePage() {
               <ChevronRight size={20} strokeWidth={2} className="text-white shrink-0" />
             </motion.div>
           ) : (
-            <motion.div
-              onClick={() => router.push(`/lesson/${currentLesson.id}`)}
-              whileTap={{ scale: 0.95 }}
-              transition={springTransition}
-              className="w-full h-[90px] bg-[#6949a8] rounded-[15px] p-[20px] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] flex flex-row items-center justify-between gap-4 cursor-pointer select-none"
-            >
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shrink-0">
-                  <BookOpen size={18} strokeWidth={2} className="text-[#6949a8]" />
+            <Link className="block w-full outline-none" href={`/lesson/${currentLesson.id}`} prefetch={true}>
+              <motion.div
+                whileTap={{ scale: 0.95 }}
+                transition={springTransition}
+                className="w-full h-[90px] bg-[#6949a8] rounded-[15px] p-[20px] shadow-[0px_10px_20px_rgba(0,0,0,0.09)] flex flex-row items-center justify-between gap-4 cursor-pointer select-none"
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shrink-0">
+                    <BookOpen size={18} strokeWidth={2} className="text-[#6949a8]" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    {/* Figma: font-semibold text-[18px] leading-[27px] */}
+                    <span className="text-[#FFFFFF] font-poppins font-semibold text-[18px] leading-[27px] truncate">
+                      {displayTitle}
+                    </span>
+                    {/* Figma: font-normal text-[13px] leading-[20px] */}
+                    <span className="text-white/80 font-poppins font-normal text-[13px] leading-[20px]">
+                      {flashcardCount > 0
+                        ? `~${Math.ceil(flashcardCount * 0.5)} min left in today's lesson`
+                        : "Continue your lesson"}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-col min-w-0">
-                  {/* Figma: font-semibold text-[18px] leading-[27px] */}
-                  <span className="text-[#FFFFFF] font-poppins font-semibold text-[18px] leading-[27px] truncate">
-                    {displayTitle}
-                  </span>
-                  {/* Figma: font-normal text-[13px] leading-[20px] */}
-                  <span className="text-white/80 font-poppins font-normal text-[13px] leading-[20px]">
-                    {flashcardCount > 0
-                      ? `~${Math.ceil(flashcardCount * 0.5)} min left in today's lesson`
-                      : "Continue your lesson"}
-                  </span>
-                </div>
-              </div>
-              <ChevronRight size={20} strokeWidth={2} className="text-white shrink-0" />
-            </motion.div>
+                <ChevronRight size={20} strokeWidth={2} className="text-white shrink-0" />
+              </motion.div>
+            </Link>
           )}
         </StaggerItem>
 
@@ -729,39 +730,39 @@ export default function HomePage() {
               ) : (
                 <div className="flex sm:grid sm:grid-cols-2 overflow-x-auto sm:overflow-x-visible gap-4 pb-2 sm:pb-0 snap-x hide-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   {displayMaterials.map((item) => (
-                    <motion.div
-                      key={item.id}
-                      onClick={() => router.push(`/lesson/${item.id}`)}
-                      whileTap={{ scale: 0.95 }}
-                      transition={springTransition}
-                      className="min-w-[240px] sm:min-w-0 snap-start shrink-0 sm:shrink flex flex-col justify-between gap-4 p-4 bg-black/[0.01] border border-omnave-border rounded-[15px] group cursor-pointer select-none"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-black/[0.03] border border-omnave-border flex items-center justify-center shrink-0 text-omnave-secondary-text">
-                          <FileText size={16} strokeWidth={1.5} />
+                    <Link key={item.id} className="block outline-none min-w-[240px] sm:min-w-0 snap-start shrink-0 sm:shrink" href={`/lesson/${item.id}`} prefetch={true}>
+                      <motion.div
+                        whileTap={{ scale: 0.95 }}
+                        transition={springTransition}
+                        className="w-full h-full flex flex-col justify-between gap-4 p-4 bg-black/[0.01] border border-omnave-border rounded-[15px] group cursor-pointer select-none"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-black/[0.03] border border-omnave-border flex items-center justify-center shrink-0 text-omnave-secondary-text">
+                            <FileText size={16} strokeWidth={1.5} />
+                          </div>
+                          <div className="flex flex-col gap-0.5 min-w-0 text-left">
+                            <h3 className="text-xs font-bold tracking-tight text-omnave-primary-text truncate group-hover:text-[#6949a8] font-poppins">
+                              {item.title}
+                            </h3>
+                            <p className="text-[10px] text-omnave-secondary-text font-normal font-poppins">
+                              {item.cardCount} cards
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex flex-col gap-0.5 min-w-0 text-left">
-                          <h3 className="text-xs font-bold tracking-tight text-omnave-primary-text truncate group-hover:text-[#6949a8] font-poppins">
-                            {item.title}
-                          </h3>
-                          <p className="text-[10px] text-omnave-secondary-text font-normal font-poppins">
-                            {item.cardCount} cards
-                          </p>
-                        </div>
-                      </div>
 
-                      <div className="w-full flex flex-col gap-1.5">
-                        <div className="w-full h-[2px] bg-omnave-border rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-[#6949a8] to-[#86d1ff] rounded-full transition-all duration-300"
-                            style={{ width: `${Math.max(item.progress, 5)}%` }}
-                          />
+                        <div className="w-full flex flex-col gap-1.5">
+                          <div className="w-full h-[2px] bg-omnave-border rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-[#6949a8] to-[#86d1ff] rounded-full transition-all duration-300"
+                              style={{ width: `${Math.max(item.progress, 5)}%` }}
+                            />
+                          </div>
+                          <span className="text-[9px] text-omnave-secondary-text text-left font-medium font-poppins">
+                            {item.progress}% completed
+                          </span>
                         </div>
-                        <span className="text-[9px] text-omnave-secondary-text text-left font-medium font-poppins">
-                          {item.progress}% completed
-                        </span>
-                      </div>
-                    </motion.div>
+                      </motion.div>
+                    </Link>
                   ))}
                 </div>
               )}
