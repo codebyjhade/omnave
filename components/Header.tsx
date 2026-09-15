@@ -32,6 +32,7 @@ export default function Header() {
   const [firstName, setFirstName] = useState("Jhade");
   const [formattedDate, setFormattedDate] = useState("");
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isPulsing, setIsPulsing] = useState(false);
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -366,7 +367,7 @@ export default function Header() {
                 style={{ borderRadius: '50%' }}
                 aria-label="View notifications"
               >
-                <Bell size={20}/>
+                <Bell size={20} className={isPulsing ? "animate-pulse text-[#6949a8]" : ""} />
                 {!loading && hasUnread && (
                   <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#00d047] rounded-full border border-white" />
                 )}

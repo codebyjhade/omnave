@@ -35,10 +35,12 @@ import { Skeleton } from "@/components/Skeleton";
 import { saveLessonToOffline, getLessonFromOffline } from "@/lib/offlineStorage";
 
 interface LessonMaterial {
-  id?: string;
+  id: string;
   title?: string;
   file_path?: string;
+  content_url?: string;
   summary?: string;
+  quizzes?: unknown;
   flashcards?: Array<{
     id?: string;
     front?: string;
@@ -208,8 +210,14 @@ export default function LessonView() {
     setActiveMode("summary");
   };
  
-  const memoizedFlashcards = useMemo(() => {
-    return data ? data.flashcards || [] : [];
+  const memoizedFlashcards = useMemo<{ front: string; back: string }[]>(() => {
+    if (!data?.flashcards || !Array.isArray(data.flashcards)) return [];
+    return data.flashcards
+      .filter((card) => Boolean(card && (card.front || card.back)))
+      .map((card) => ({
+        front: card.front || "",
+        back: card.back || "",
+      }));
   }, [data]);
  
   if (loading) {
