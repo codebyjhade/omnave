@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'Omnave',
     short_name: 'Omnave',
     description: 'AI-Powered Study Platform',
-    start_url: '/home',
+    start_url: '/boot.html',
     display: 'standalone',
     background_color: '#ffffff',
     theme_color: '#ffffff',
