@@ -32,7 +32,6 @@ export default function Header() {
   const [firstName, setFirstName] = useState("Jhade");
   const [formattedDate, setFormattedDate] = useState("");
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [isPulsing, setIsPulsing] = useState(false);
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -53,6 +52,7 @@ export default function Header() {
   const [localSearch, setLocalSearch] = useState(qParam);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalSearch(qParam);
   }, [qParam]);
 
@@ -82,6 +82,7 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
 
     const localHour = new Date().getHours();
@@ -314,16 +315,16 @@ export default function Header() {
 
   return (
     <header
-      className={`w-full relative z-10 flex-none transition-all duration-300 ${
+      className={`w-full relative z-50 flex-none transition-all duration-300 ${
         isFlatWhiteRoute
           ? 'bg-white/75 backdrop-blur-xl pb-4 border-b border-gray-100 shadow-sm'
-          : 'bg-[#6949a8]/80 backdrop-blur-xl pb-[88px]'
+          : 'bg-[#6949a8]/80 backdrop-blur-xl pb-6'
       }`}
       style={{
         paddingTop: 'calc(env(safe-area-inset-top) + 28px)',
       }}
     >
-      <div className="max-w-5xl mx-auto px-[25px] flex justify-between items-start gap-4 select-none relative z-30">
+      <div className="max-w-5xl md:max-w-7xl mx-auto px-[25px] md:px-10 flex justify-between items-start gap-4 select-none relative z-30">
         
         {/* Left Column: Title, search or navigation with dynamic cross-fade */}
         <div className="flex-1 min-w-0">

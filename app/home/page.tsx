@@ -1,6 +1,4 @@
 "use client";
-
-import Header from "@/components/Header";
 import { useUserContext } from "@/context/UserContext";
 import { 
   Sparkles, 
@@ -562,7 +560,7 @@ export default function HomePage() {
                   whileTap={{ scale: 0.95 }}
                   transition={springTransition}
                   onClick={!currentLesson ? () => router.push("/upload") : recommendation.onClick}
-                  className="mt-1 bg-white text-[#6949a8] font-poppins font-semibold px-5 py-2.5 rounded-full transition-all hover:bg-white/90 flex items-center gap-2 w-max shadow-sm select-none cursor-pointer border-none"
+                  className="mt-1 bg-white text-[#6949a8] font-poppins font-semibold px-5 py-2.5 rounded-full transition-all flex items-center gap-2 w-max shadow-sm select-none cursor-pointer border-none"
                 >
                   <span className="text-[13px] leading-[20px]">
                     {!currentLesson ? "Get Started" : recommendation.actionLabel}
@@ -675,20 +673,19 @@ export default function HomePage() {
           )}
         </StaggerItem>
 
-        {/* 6. RECENT MATERIALS CARD */}
+        {/* 6. RECENT MATERIALS CARD — Responsive CSS Grid on Desktop */}
         <StaggerItem variants={homeStaggerVariants}>
           {loading ? (
             // Skeleton: p-[20px] card. Header: eyebrow + "View All" nub.
-            // 2 × material cards in flex row: min-w-[240px] each, p-4, with:
-            //   32×32 icon square, title line, card-count line, and 2px progress bar.
+            // Responsive grid on desktop: md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6
             <div className="w-full bg-omnave-surface border-none rounded-[15px] p-[20px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] flex flex-col gap-5" aria-hidden="true">
               <div className="flex items-center justify-between">
                 <div className="shimmer-bg rounded-md h-[11px] w-32" />
                 <div className="shimmer-bg rounded-md h-[11px] w-14" />
               </div>
-              <div className="flex gap-4 overflow-hidden">
-                {[1, 2].map((i) => (
-                  <div key={i} className="min-w-[240px] shrink-0 flex flex-col justify-between gap-4 p-4 border border-omnave-border rounded-[15px]">
+              <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6 gap-4 overflow-hidden md:overflow-visible">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="min-w-[240px] md:min-w-0 md:w-full shrink-0 flex flex-col justify-between gap-4 p-4 border border-omnave-border rounded-[15px]">
                     <div className="flex items-start gap-3">
                       <div className="shimmer-bg rounded-lg w-8 h-8 shrink-0" />
                       <div className="flex flex-col gap-1.5 min-w-0 flex-1">
@@ -728,9 +725,9 @@ export default function HomePage() {
                   No study materials found. Upload your first document to populate your library.
                 </motion.div>
               ) : (
-                <div className="flex sm:grid sm:grid-cols-2 overflow-x-auto sm:overflow-x-visible gap-4 pb-2 sm:pb-0 snap-x hide-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <div className="flex sm:grid sm:grid-cols-2 overflow-x-auto sm:overflow-x-visible gap-4 pb-2 sm:pb-0 snap-x hide-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6 md:overflow-visible">
                   {displayMaterials.map((item) => (
-                    <Link key={item.id} className="block outline-none min-w-[240px] sm:min-w-0 snap-start shrink-0 sm:shrink" href={`/lesson/${item.id}`} prefetch={true}>
+                    <Link key={item.id} className="block outline-none min-w-[240px] sm:min-w-0 snap-start shrink-0 sm:shrink md:min-w-0 md:w-full" href={`/lesson/${item.id}`} prefetch={true}>
                       <motion.div
                         whileTap={{ scale: 0.95 }}
                         transition={springTransition}

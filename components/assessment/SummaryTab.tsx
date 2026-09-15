@@ -10,8 +10,8 @@ interface SummaryTabProps {
 
 export const SummaryTab = React.memo(function SummaryTab({ summary }: SummaryTabProps) {
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-6 pb-8 animate-in fade-in duration-300">
-      <div className="select-text prose prose-slate max-w-none text-gray-900" id="summary-text">
+    <div className="w-full max-w-3xl md:max-w-4xl mx-auto space-y-6 pb-28 md:pb-32 animate-in fade-in duration-300">
+      <div className="select-text prose prose-slate max-w-none text-gray-900 leading-relaxed font-poppins" id="summary-text">
         <MarkdownRenderer text={summary || "No summary content available."} variant="summary" theme="light" />
       </div>
     </div>

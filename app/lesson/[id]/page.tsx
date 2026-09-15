@@ -6,9 +6,6 @@ import { createBrowserClient } from "@supabase/ssr";
 import { FileText, Zap, Target, MessageCircle } from "lucide-react";
 import { useToast } from "@/components/ToastProvider";
 import { useUserContext } from "@/context/UserContext";
-import { useProgress } from "@/hooks/useProgress";
-import { calculateKitProgress } from "@/hooks/useProgressStats";
-import { MarkdownRenderer } from "@/components/lesson";
 import { useAssessmentGuard } from "@/context/AssessmentContext";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
@@ -37,19 +34,39 @@ import { Skeleton } from "@/components/Skeleton";
 
 import { saveLessonToOffline, getLessonFromOffline } from "@/lib/offlineStorage";
 
+interface LessonMaterial {
+  id?: string;
+  title?: string;
+  file_path?: string;
+  summary?: string;
+  flashcards?: Array<{
+    id?: string;
+    front?: string;
+    back?: string;
+    [key: string]: unknown;
+  }>;
+  questions?: Array<{
+    id?: string;
+    question?: string;
+    options?: string[];
+    answer?: string;
+    [key: string]: unknown;
+  }>;
+  [key: string]: unknown;
+}
+
 export default function LessonView() {
   const router = useRouter();
   const { id } = useParams();
   const { toast } = useToast();
   const { user } = useUserContext();
   const planType = user?.plan_type || 'free';
-  const { quizScores } = useProgress();
   const { isAssessmentActive, setIsAssessmentActive } = useAssessmentGuard();
  
   const [activeMode, setActiveMode] = useState<'summary' | 'flashcards' | 'quiz' | 'chat'>('summary');
   const [assessmentType, setAssessmentType] = useState<'quiz' | 'exam'>('quiz');
   
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<LessonMaterial | null>(null);
   const [loading, setLoading] = useState(true);
   const [chatInput, setChatInput] = useState("");
   const [chatHistory, setChatHistory] = useState<Array<{ role: "user" | "ai"; text: string }>>([]);
@@ -61,11 +78,13 @@ export default function LessonView() {
   // Restore Active Tab parameter if coming back from redirect
   useEffect(() => {
     const hash = window.location.hash;
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (hash === "#quiz") {
       setActiveMode("quiz");
     } else if (hash === "#flashcards") {
       setActiveMode("flashcards");
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
  
   // Safe Guard: Reset active assessment state to false if user switches tabs to prevent header/nav disappearance
@@ -166,7 +185,7 @@ export default function LessonView() {
         resData.answer ||
         JSON.stringify(resData);
       setChatHistory(prev => [...prev, { role: "ai", text: finalAiText }]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       setChatError("Failed to get response from AI Tutor. Try again.");
     } finally {
@@ -193,19 +212,9 @@ export default function LessonView() {
     return data ? data.flashcards || [] : [];
   }, [data]);
  
-  const getCleanTitle = (path?: string | null) => {
-    if (!path) return "Study Material";
-    const base = path.split("/").pop() || "";
-    const name = base.replace(/^\d+_/, "");
-    return name.replace(".pdf", "") || "Study Material";
-  };
- 
-  const displayTitle = data?.title || getCleanTitle(data?.file_path);
-  const progress = data ? calculateKitProgress(data, quizScores) : 0;
- 
   if (loading) {
     return (
-      <div className="w-full flex-1 flex flex-col max-w-3xl mx-auto pt-4 px-3 text-left" aria-hidden="true">
+      <div className="w-full flex-1 flex flex-col max-w-3xl md:max-w-4xl mx-auto pt-4 px-3 md:px-6 text-left" aria-hidden="true">
         {activeMode === 'summary' && (
           <div className="flex-1 w-full bg-white border border-gray-100 rounded-[24px] shadow-[0_8px_40px_rgba(0,0,0,0.08)] flex flex-col p-6 min-h-[450px] mb-6">
             <div className="flex flex-col gap-6 text-left">
@@ -330,8 +339,8 @@ export default function LessonView() {
     <div className={`w-full flex-1 flex flex-col relative transition-all duration-200 ${
       isAssessmentActive ? 'pb-8' : 'pb-32'
     }`}>
-      {/* Main Stage (Conditional Mode Render) - Expanded to max-w-3xl for spaciousness */}
-      <div className="w-full flex-1 flex flex-col max-w-3xl mx-auto pt-4 px-3 text-left">
+      {/* Main Stage (Conditional Mode Render) - Expanded to md:max-w-4xl for spaciousness */}
+      <div className="w-full flex-1 flex flex-col max-w-3xl md:max-w-4xl mx-auto pt-4 px-3 md:px-6 text-left">
         <div className="flex-1 w-full bg-white border border-gray-100 rounded-[24px] shadow-[0_8px_40px_rgba(0,0,0,0.08)] flex flex-col overflow-hidden mb-6">
           
           <AnimatePresence mode="wait">
@@ -342,7 +351,7 @@ export default function LessonView() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                className="flex-1 w-full overflow-y-auto p-5 font-poppins"
+                className="flex-1 w-full overflow-y-auto p-5 md:p-8 pb-32 md:pb-36 font-poppins"
               >
                 <SummaryTab summary={data?.summary || ""} lessonId={id as string} />
               </motion.div>
@@ -355,7 +364,7 @@ export default function LessonView() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                className="w-full flex-1 min-h-[450px] p-5"
+                className="w-full flex-1 min-h-[450px] p-5 md:p-8 pb-32 md:pb-36"
               >
                 <FlashcardEngine 
                   lessonId={id as string} 
@@ -373,7 +382,7 @@ export default function LessonView() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                className="w-full flex-1 flex flex-col overflow-y-auto p-5"
+                className="w-full flex-1 flex flex-col overflow-y-auto p-5 md:p-8 pb-32 md:pb-36"
               >
                 {/* Sticky Sub-Header Toggle */}
                 <div className="flex justify-center mb-6">
