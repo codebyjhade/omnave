@@ -9,7 +9,7 @@ import { useAssessmentGuard } from '@/context/AssessmentContext';
 import { useUserContext } from '@/context/UserContext';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Home, BookOpen, Upload, TrendingUp, User, Flame } from 'lucide-react';
+import { Home, BookOpen, Upload, TrendingUp, User, Flame, Sparkles } from 'lucide-react';
 
 function DesktopSidebar({ pathname, streak }: { pathname: string; streak: number }) {
   const navItems = [
@@ -58,6 +58,10 @@ function DesktopSidebar({ pathname, streak }: { pathname: string; streak: number
 
       {/* Footer Streak Badge */}
       <div className="p-4 border-t border-gray-100 flex flex-col gap-3">
+        <Link href="/profile?upgrade=1" className="flex items-center justify-between p-3 rounded-xl bg-[#6949a8] text-white shadow-[0_6px_16px_rgba(105,73,168,0.24)]">
+          <span className="flex items-center gap-2.5"><Sparkles size={17} /><span className="text-xs font-bold font-poppins">View Omnave Pro</span></span>
+          <span className="text-[10px] font-semibold text-white/75">₱149/mo</span>
+        </Link>
         <div className="flex items-center justify-between p-3 rounded-xl bg-purple-50/60 border border-purple-100/80">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-lg bg-[#6949a8]/10 text-[#6949a8]">
@@ -94,7 +98,7 @@ export default function WorkspaceShell({ children }: { children: React.ReactNode
   const isQuizActive = pathname.startsWith('/lesson/') && (isAssessmentActive || isQuizActiveUrl);
 
   // Exclude landing page and onboarding welcome page from standard shell layout
-  const isOuterRoute = pathname === '/' || pathname === '/welcome';
+  const isOuterRoute = pathname === '/' || pathname === '/welcome' || ['/privacy', '/terms', '/support'].includes(pathname);
 
   if (isOuterRoute) {
     return (

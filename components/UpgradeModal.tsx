@@ -22,7 +22,7 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
   }, []);
 
   const handleUpgrade = () => {
-    toast('Upgrade flow initialized! Redirecting to checkout...', 'info');
+    toast('Pro checkout is not enabled yet. Your current free plan remains active.', 'info');
   };
 
   if (!mounted) return null;
@@ -68,16 +68,16 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
             {/* Title / Header */}
             <div className="relative mb-8 text-center">
               <span className="px-3 py-1 bg-omnave-primary/20 text-omnave-primary text-[10px] font-bold tracking-wider uppercase rounded-full border border-omnave-primary/30">
-                Limit Reached
+                Plans &amp; limits
               </span>
               <h2
                 id="upgrade-title"
                 className="mt-3 text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight"
               >
-                You&apos;ve hit your free limit!<br />Ready to go limitless?
+                Choose the study capacity<br />that fits your workload
               </h2>
               <p className="mt-2 text-sm text-white/60">
-                You&apos;re doing great, but you could be unstoppable.
+                These limits match the usage shown in your Omnave account.
               </p>
             </div>
 
@@ -90,7 +90,7 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                     Free Forever
                   </h3>
                   <div className="flex items-baseline mt-1 text-white/80">
-                    <span className="text-3xl font-black">$0</span>
+                    <span className="text-3xl font-black">₱0</span>
                     <span className="ml-1 text-xs text-white/40">/ month</span>
                   </div>
                 </div>
@@ -103,23 +103,15 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                   </li>
                   <li className="flex items-center gap-2.5">
                     <Check size={16} className="text-white/40 shrink-0" />
-                    <span>25 Flashcards / lesson</span>
+                    <span>3 AI study kits / month</span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <Check size={16} className="text-white/40 shrink-0" />
                     <span>15 AI Messages / day</span>
                   </li>
-                  <li className="flex items-center gap-2.5 text-white/30 line-through">
-                    <span className="shrink-0 text-red-500/50 text-[16px] leading-none font-bold">✗</span>
-                    <span>Master Exams (Locked)</span>
-                  </li>
-                  <li className="flex items-center gap-2.5 text-white/30 line-through">
-                    <span className="shrink-0 text-red-500/50 text-[16px] leading-none font-bold">✗</span>
-                    <span>Priority AI Speed (Locked)</span>
-                  </li>
-                  <li className="flex items-center gap-2.5 text-white/30 line-through">
-                    <span className="shrink-0 text-red-500/50 text-[16px] leading-none font-bold">✗</span>
-                    <span>Offline Study Mode (Locked)</span>
+                  <li className="flex items-center gap-2.5">
+                    <Check size={16} className="text-white/40 shrink-0" />
+                    <span>15MB files, up to 50 pages each</span>
                   </li>
                 </ul>
               </div>
@@ -148,27 +140,27 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                 <ul className="space-y-3.5 mb-6 text-sm text-white">
                   <li className="flex items-center gap-2.5">
                     <Check size={16} className="text-omnave-primary shrink-0 filter drop-shadow-[0_0_5px_rgba(127,34,254,0.5)]" />
-                    <span><strong className="text-purple-300">Unlimited</strong> PDF Uploads</span>
+                    <span><strong className="text-purple-300">100</strong> AI study kits / month</span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <Check size={16} className="text-omnave-primary shrink-0 filter drop-shadow-[0_0_5px_rgba(127,34,254,0.5)]" />
-                    <span><strong className="text-purple-300">Unlimited</strong> Flashcards & Quizzes</span>
+                    <span><strong className="text-purple-300">2,000</strong> processed pages / week</span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <Check size={16} className="text-omnave-primary shrink-0 filter drop-shadow-[0_0_5px_rgba(127,34,254,0.5)]" />
-                    <span><strong className="text-purple-300">Unlimited</strong> AI Assistant</span>
+                    <span><strong className="text-purple-300">200</strong> tutor messages / day</span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <Check size={16} className="text-omnave-primary shrink-0 filter drop-shadow-[0_0_5px_rgba(127,34,254,0.5)]" />
-                    <span><strong className="text-purple-300">Unlock</strong> 80-Item Master Exams</span>
+                    <span><strong className="text-purple-300">50MB</strong> maximum PDF size</span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <Check size={16} className="text-omnave-primary shrink-0 filter drop-shadow-[0_0_5px_rgba(127,34,254,0.5)]" />
-                    <span><strong className="text-purple-300">Offline</strong> Study Mode</span>
+                    <span><strong className="text-purple-300">250</strong> pages per document</span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <Check size={16} className="text-omnave-primary shrink-0 filter drop-shadow-[0_0_5px_rgba(127,34,254,0.5)]" />
-                    <span><strong className="text-purple-300">Priority</strong> AI Processing Speed</span>
+                    <span><strong className="text-purple-300">Offline</strong> study mode included</span>
                   </li>
                 </ul>
 
@@ -190,14 +182,14 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                   onClick={handleUpgrade}
                   className="w-full mt-auto py-3.5 rounded-xl bg-omnave-primary hover:bg-omnave-primary/95 text-white font-extrabold text-sm transition-colors duration-200 cursor-pointer shadow-[0_0_20px_rgba(127,34,254,0.4)] text-center"
                 >
-                  Upgrade to Pro Now
+                  Pro checkout coming soon
                 </motion.button>
               </div>
             </div>
 
             {/* Pennies a Day Closer */}
             <p className="text-xs text-white/50 italic mb-6">
-              &quot;Master your exams for less than the price of a campus iced coffee.&quot;
+              Pricing is shown in Philippine pesos. No charge will be made from this preview.
             </p>
 
             {/* Dismissal Link */}
@@ -205,7 +197,7 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
               onClick={onClose}
               className="text-xs font-semibold text-white/40 hover:text-white/60 transition-colors cursor-pointer"
             >
-              No thanks, I&apos;ll stick to the limits.
+              Continue with my current plan
             </button>
           </motion.div>
         </div>

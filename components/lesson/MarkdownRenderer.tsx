@@ -13,7 +13,7 @@ function parseInlineMarkdown(text: string, theme: "light" | "dark" = "dark"): Re
   if (!text) return [text];
   
   const parts: React.ReactNode[] = [];
-  let remaining = text;
+  const remaining = text;
   let key = 0;
 
   const boldSplit = remaining.split(/(\*\*[^*]+\*\*)/g);

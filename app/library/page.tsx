@@ -21,6 +21,7 @@ import StaggerItem from "@/components/ui/animation/StaggerItem";
 
 import { Skeleton } from "@/components/Skeleton";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { getCachedLessonIds } from "@/lib/offlineStorage";
 
 export default function LibraryPage() {
   const router = useRouter();
@@ -38,6 +39,15 @@ export default function LibraryPage() {
   const [activeFilterState, setActiveFilter] = useState<"all" | "recent" | "ready">("all");
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [cachedLessonIds, setCachedLessonIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    let active = true;
+    getCachedLessonIds().then((ids) => {
+      if (active) setCachedLessonIds(ids);
+    });
+    return () => { active = false; };
+  }, [notes]);
 
   // Sync Search state with URL query parameter
   const searchTerm = searchParams.get('q') || '';
@@ -139,6 +149,13 @@ export default function LibraryPage() {
       .filter((note) => note.is_processed !== false)
       .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0];
   }, [notes]);
+
+  const browseNotes = useMemo(() => {
+    if (activeFilterState === 'all' && !searchTerm && continueLearningNote) {
+      return visibleNotes.filter((note) => note.id !== continueLearningNote.id);
+    }
+    return visibleNotes;
+  }, [activeFilterState, searchTerm, continueLearningNote, visibleNotes]);
 
   if (loading) {
     return (
@@ -283,13 +300,14 @@ export default function LibraryPage() {
 
             {/* All Study Kits Section */}
             <div className="flex flex-col gap-3">
-              {visibleNotes.length > 0 && (
+              {browseNotes.length > 0 && (
                 <h2 className="text-[16px] font-bold text-gray-800 font-poppins m-0 text-left">
-                  All Study Kits
+                  {continueLearningNote && activeFilterState === 'all' && !searchTerm ? 'More Study Kits' : 'All Study Kits'}
                 </h2>
               )}
               
-              {visibleNotes.length === 0 ? (
+              {browseNotes.length === 0 ? (
+                continueLearningNote && activeFilterState === 'all' && !searchTerm ? null : (
                 <div className="text-center py-16 border border-dashed border-gray-200 rounded-[32px] bg-gray-50/50">
                   <p className="text-sm font-semibold text-gray-500 font-poppins">No study materials found.</p>
                   {(searchTerm || activeFilterState !== "all") && (
@@ -301,21 +319,22 @@ export default function LibraryPage() {
                     </button>
                   )}
                 </div>
+                )
               ) : (
                 <div className="flex flex-col gap-3 w-full">
-                  {visibleNotes.map((note) => {
+                  {browseNotes.map((note) => {
                     const cleanTitle = note.is_processed && note.title ? note.title : getCleanTitle(note.file_path);
                     const progress = getNoteProgress(note);
                     const flashcardsCount = Array.isArray(note.flashcards) ? note.flashcards.length : 0;
                     return (
                       <Link key={note.id} className="block w-full outline-none" href={`/lesson/${note.id}`} prefetch={true}>
                         <StaggerItem 
-                          className="bg-white rounded-[15px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] border-none flex flex-row items-center p-4 cursor-pointer hover:bg-gray-50/50 transition-colors relative"
+                          className="bg-white rounded-[20px] shadow-[0px_10px_20px_rgba(0,0,0,0.05)] border border-gray-100 flex flex-row items-center p-4 cursor-pointer hover:bg-gray-50/50 hover:border-gray-200 transition-colors relative"
                         >
                           {/* Left: Document/PDF Icon with dynamic color highlight */}
-                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                          <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 transition-colors shadow-inner border border-white ${
                             progress > 0 
-                              ? "bg-[#6949a8]/10 text-[#6949a8]" 
+                              ? "bg-gradient-to-br from-[#6949a8]/10 to-[#86d1ff]/20 text-[#6949a8]" 
                               : "bg-gray-50 text-gray-500"
                           }`}>
                             <FileText size={20} strokeWidth={1.5} />
@@ -323,21 +342,48 @@ export default function LibraryPage() {
 
                           {/* Middle: Text Container (Flex-1) */}
                           <div className="flex-1 flex flex-col min-w-0 ml-4 mr-2 text-left">
-                            <h3 className="text-sm font-bold text-gray-800 truncate font-poppins leading-tight max-w-[200px]">
+                            <h3 className="text-[15px] font-bold text-gray-900 truncate font-poppins leading-tight pr-2">
                               {cleanTitle}
                             </h3>
-                            <span className="text-[10px] text-gray-400 font-medium font-poppins mt-0.5">
-                              {note.is_processed !== false
-                                ? (flashcardsCount > 0 ? `${flashcardsCount} flashcards` : "Study Kit Ready")
-                                : "Generating..."}
-                            </span>
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                              {note.is_processed !== false ? (
+                                <>
+                                  <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md font-poppins">
+                                    Ready
+                                  </span>
+                                  {flashcardsCount > 0 && (
+                                    <span className="text-[10px] text-gray-500 font-medium font-poppins px-1.5 py-0.5 bg-gray-100 rounded-md">
+                                      {flashcardsCount} Cards
+                                    </span>
+                                  )}
+                                  {Array.isArray(note.quizzes) && note.quizzes.length > 0 && (
+                                    <span className="text-[10px] text-gray-500 font-medium font-poppins px-1.5 py-0.5 bg-gray-100 rounded-md">
+                                      {note.quizzes.length} Quizzes
+                                    </span>
+                                  )}
+                                  {cachedLessonIds.has(note.id) ? <span className="text-[10px] text-[#6949a8] font-bold font-poppins px-1.5 py-0.5 bg-[#6949a8]/5 rounded-md flex items-center gap-1">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                    Offline
+                                  </span> : <span className="text-[10px] text-amber-700 font-semibold font-poppins px-1.5 py-0.5 bg-amber-50 rounded-md">Online only</span>}
+                                </>
+                              ) : (
+                                <span className="text-[11px] font-semibold text-[#6949a8] bg-purple-50 px-2 py-0.5 rounded-md font-poppins animate-pulse">
+                                  Processing...
+                                </span>
+                              )}
+                            </div>
 
                             {/* Reintegrated Sleek Progress Indicator */}
-                            <div className="w-full h-1 bg-gray-100 rounded-full mt-2 overflow-hidden shrink-0">
-                              <div 
-                                className="h-full bg-[#6949a8] rounded-full transition-all duration-350"
-                                style={{ width: `${Math.max(5, progress)}%` }}
-                              />
+                            <div className="w-full flex items-center gap-2 mt-2.5">
+                              <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden shrink-0 shadow-inner">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-[#6949a8] to-[#86d1ff] rounded-full transition-all duration-350"
+                                  style={{ width: `${Math.max(5, progress)}%` }}
+                                />
+                              </div>
+                              <span className="text-[10px] font-bold text-gray-400 font-poppins w-6 text-right">
+                                {progress}%
+                              </span>
                             </div>
                           </div>
 
@@ -348,7 +394,7 @@ export default function LibraryPage() {
                               e.stopPropagation();
                               setDeleteTargetId(note.id);
                             }}
-                            className="p-2 text-gray-400 hover:text-gray-655 rounded-full hover:bg-gray-100 transition-all border-none bg-transparent cursor-pointer z-20 shrink-0"
+                            className="p-2 text-gray-400 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-all border border-transparent hover:border-gray-200 bg-transparent cursor-pointer z-20 shrink-0"
                             title="Delete study kit"
                           >
                             <MoreVertical size={18} />

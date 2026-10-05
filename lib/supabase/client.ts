@@ -1,6 +1,7 @@
 'use client';
 
 import { createBrowserClient } from '@supabase/ssr';
+import type { Database } from '@/types/database';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -11,4 +12,4 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
  * each call creates a fresh client that shares the same underlying session.
  */
 export const createClient = () =>
-  createBrowserClient(supabaseUrl, supabaseAnonKey);
+  createBrowserClient<Database>(supabaseUrl, supabaseAnonKey);

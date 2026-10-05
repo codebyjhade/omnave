@@ -1,5 +1,5 @@
 export class AILogger {
-  static log(stage: string, reqId: string, message: string, meta?: any) {
+  static log(stage: string, reqId: string, message: string, meta?: unknown) {
     const timestamp = new Date().toISOString();
     const sanitizedMeta = this.sanitize(meta);
     console.log(
@@ -13,7 +13,7 @@ export class AILogger {
     );
   }
 
-  private static sanitize(obj: any): any {
+  private static sanitize(obj: unknown): unknown {
     if (!obj) return obj;
     try {
       const json = JSON.stringify(obj);

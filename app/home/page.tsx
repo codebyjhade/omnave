@@ -293,6 +293,89 @@ export default function HomePage() {
 
   const springTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
 
+  // Early return for First Use Journey
+  if (!loading && lessonsList.length === 0) {
+    return (
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className="w-full flex-1 flex flex-col"
+      >
+        {/* Pull-To-Refresh Spinner */}
+        <div 
+          className="fixed left-0 right-0 z-[9999] flex justify-center pointer-events-none transition-all duration-150 ease-out"
+          style={{ 
+            transform: `translateY(${pullDistance - 50}px)`, 
+            top: 'calc(env(safe-area-inset-top) + 20px)',
+            opacity: pullDistance > 10 ? 1 : 0
+          }}
+        >
+          <div className="bg-white rounded-full p-2.5 shadow-[0px_4px_10px_rgba(0,0,0,0.15)] flex items-center justify-center w-10 h-10 border border-[#EBEBEB]">
+            <svg 
+              width="20" 
+              height="20" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="#6949a8" 
+              strokeWidth="3" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+              className={isRefreshing ? 'animate-spin' : ''}
+              style={{ 
+                transform: isRefreshing ? 'none' : `rotate(${pullDistance * 4}deg)`,
+                transition: isRefreshing ? 'none' : 'transform 0.1s ease-out'
+              }}
+            >
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+            </svg>
+          </div>
+        </div>
+        
+        <StaggerContainer staggerChildren={0.08} className="w-full flex flex-col gap-6 pt-4">
+          <StaggerItem variants={homeStaggerVariants} className="w-full flex flex-col items-center justify-center gap-6">
+             <div className="relative w-full overflow-hidden bg-gradient-to-br from-[#6949a8] to-[#86d1ff] rounded-[24px] p-8 shadow-[0px_20px_40px_rgba(105,73,168,0.2)]">
+                <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
+                <div className="relative z-10 flex flex-col items-center text-center gap-4">
+                   <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md mb-2 shadow-inner border border-white/30">
+                      <Sparkles size={32} className="text-white" />
+                   </div>
+                   <h2 className="text-[28px] leading-[34px] font-poppins font-bold text-white tracking-tight">
+                     Welcome to Omnave
+                   </h2>
+                   <p className="text-white/90 font-poppins text-[14px] leading-[22px] max-w-[260px] mx-auto">
+                     Upload your first PDF, and we'll instantly generate flashcards, quizzes, and an AI Tutor.
+                   </p>
+                   <motion.button
+                     whileTap={{ scale: 0.95 }}
+                     onClick={() => router.push("/upload")}
+                     className="mt-6 w-full max-w-[240px] bg-white text-[#6949a8] font-poppins font-bold text-[16px] py-4 rounded-full shadow-lg flex items-center justify-center gap-2 transition-transform border-none cursor-pointer"
+                   >
+                     Upload Material
+                     <ArrowRight size={18} className="text-[#6949a8]" />
+                   </motion.button>
+                </div>
+             </div>
+             
+             <div className="w-full grid grid-cols-3 gap-3">
+               {[
+                 { icon: FileText, label: "Flashcards" },
+                 { icon: Check, label: "Quizzes" },
+                 { icon: Flame, label: "AI Tutor" }
+               ].map((feature, i) => (
+                 <div key={i} className="bg-omnave-surface p-4 rounded-[16px] border border-omnave-border flex flex-col items-center gap-3 shadow-sm">
+                   <div className="w-10 h-10 rounded-full bg-[#6949a8]/10 flex items-center justify-center">
+                     <feature.icon size={20} className="text-[#6949a8]" />
+                   </div>
+                   <span className="text-[11px] font-poppins font-bold text-omnave-primary-text">{feature.label}</span>
+                 </div>
+               ))}
+             </div>
+          </StaggerItem>
+        </StaggerContainer>
+      </div>
+    );
+  }
   return (
     <div
       onTouchStart={handleTouchStart}

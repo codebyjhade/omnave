@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createBrowserClient } from "@supabase/ssr";
@@ -205,7 +206,7 @@ export default function LandingPage() {
           {/* Glass pill badge */}
           <div className="w-fit flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gray-55 border border-gray-200 backdrop-blur-md">
             <span className="text-omnave-primary text-xs">✨</span>
-            <span className="text-[10px] font-extrabold tracking-wider text-gray-700 uppercase font-poppins">Omnave v1.0 is live</span>
+            <span className="text-[10px] font-extrabold tracking-wider text-gray-700 uppercase font-poppins">Built for focused study</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 tracking-tighter leading-[1.08] max-w-xl font-poppins">
@@ -216,7 +217,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-sm sm:text-base text-gray-500 leading-relaxed max-w-lg font-poppins">
-            Omnave is the AI study companion designed to convert raw files, study slides, and lecture URLs into custom flashcard decks, gamified recall quizzes, and interactive audio chat modules in under 10 seconds.
+            Upload a PDF and turn it into a structured summary, flashcards, practice quizzes, and a document-aware AI tutor. Continue studying from your cached library when your connection drops.
           </p>
 
           {/* Action CTAs */}
@@ -339,7 +340,7 @@ export default function LandingPage() {
             </div>
             <h3 className="text-base sm:text-lg font-black text-gray-900 font-poppins">Feed the AI</h3>
             <p className="text-xs sm:text-sm text-gray-500 leading-relaxed font-medium font-poppins">
-              Upload dense PDFs, textbooks, audio files, or lecture slideshows directly to your workspace.
+              Upload PDF notes, reviewers, handouts, and textbook chapters directly to your private workspace.
             </p>
           </motion.div>
 
@@ -404,7 +405,7 @@ export default function LandingPage() {
               <div className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600">
                 <Zap size={18} />
               </div>
-              <h4 className="text-sm font-extrabold text-gray-900 font-poppins">Zero Online Limits</h4>
+              <h4 className="text-sm font-extrabold text-gray-900 font-poppins">Verified Offline Library</h4>
               <p className="text-[11px] sm:text-xs text-gray-500 leading-relaxed font-medium font-poppins">
                 Access your cached flashcard decks, study sheets, and offline recall assets even when on flights or during transit.
               </p>
@@ -414,9 +415,9 @@ export default function LandingPage() {
               <div className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600">
                 <Bell size={18} />
               </div>
-              <h4 className="text-sm font-extrabold text-gray-900 font-poppins">Streak Reminders</h4>
+              <h4 className="text-sm font-extrabold text-gray-900 font-poppins">Progress That Syncs</h4>
               <p className="text-[11px] sm:text-xs text-gray-500 leading-relaxed font-medium font-poppins">
-                Configure smart study alarms and notification signals so you never break your consistency chain or forget card intervals.
+                Complete quizzes offline, keep the result on your device, and synchronize it safely when your connection returns.
               </p>
             </div>
           </div>
@@ -526,12 +527,12 @@ export default function LandingPage() {
               <span className="text-[10px] text-gray-500 font-poppins">Pure Study Focus</span>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col justify-center items-center text-center gap-2 shadow-md hover:border-purple-300 hover:shadow-[0_8px_30px_rgba(105,73,168,0.12)] transition-all duration-300">
-              <span className="text-xs font-black text-gray-900 font-poppins">100% Free</span>
-              <span className="text-[10px] text-gray-500 font-poppins">App Features</span>
+              <span className="text-xs font-black text-gray-900 font-poppins">Free Plan</span>
+              <span className="text-[10px] text-gray-500 font-poppins">Start Without Payment</span>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col justify-center items-center text-center gap-2 shadow-md hover:border-purple-300 hover:shadow-[0_8px_30px_rgba(105,73,168,0.12)] transition-all duration-300">
-              <span className="text-xs font-black text-gray-900 font-poppins">PDF Export</span>
-              <span className="text-[10px] text-gray-500 font-poppins">Offline Sync</span>
+              <span className="text-xs font-black text-gray-900 font-poppins">PDF Study Kits</span>
+              <span className="text-[10px] text-gray-500 font-poppins">Offline Review</span>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col justify-center items-center text-center gap-2 shadow-md hover:border-purple-300 hover:shadow-[0_8px_30px_rgba(105,73,168,0.12)] transition-all duration-300">
               <span className="text-xs font-black text-gray-900 font-poppins">High Speed</span>
@@ -559,7 +560,7 @@ export default function LandingPage() {
               </div>
 
               <div className="flex items-baseline gap-1 py-2 font-poppins">
-                <span className="text-3xl sm:text-4xl font-black text-gray-900">$0</span>
+                <span className="text-3xl sm:text-4xl font-black text-gray-900">₱0</span>
                 <span className="text-xs text-gray-500">/ forever</span>
               </div>
 
@@ -568,15 +569,15 @@ export default function LandingPage() {
               <ul className="flex flex-col gap-3.5 text-xs text-gray-700 font-medium font-poppins">
                 <li className="flex items-center gap-2.5">
                   <Check size={14} className="text-[#6949a8]" />
-                  <span>3 AI document uploads monthly</span>
+                  <span>3 AI study kits monthly</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   <Check size={14} className="text-[#6949a8]" />
-                  <span>Basic flashcard and quiz generators</span>
+                  <span>100 processed pages weekly</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   <Check size={14} className="text-[#6949a8]" />
-                  <span>PWA offline support & cloud sync</span>
+                  <span>15 AI tutor messages daily</span>
                 </li>
               </ul>
             </div>
@@ -605,7 +606,7 @@ export default function LandingPage() {
               </div>
 
               <div className="flex items-baseline gap-1 py-2 font-poppins">
-                <span className="text-3xl sm:text-4xl font-black text-gray-900">$12</span>
+                <span className="text-3xl sm:text-4xl font-black text-gray-900">₱149</span>
                 <span className="text-xs text-gray-500">/ month</span>
               </div>
 
@@ -622,19 +623,23 @@ export default function LandingPage() {
 
                 <li className="flex items-center gap-2.5">
                   <Check size={14} className="text-purple-600" />
-                  <span className="font-extrabold text-gray-900">Unlimited document uploads</span>
+                  <span className="font-extrabold text-gray-900">100 AI study kits monthly</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   <Check size={14} className="text-purple-600" />
-                  <span>Priority AI processing engine</span>
+                  <span>2,000 processed pages weekly</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   <Check size={14} className="text-purple-600" />
-                  <span>Customizable retention analytics</span>
+                  <span>200 AI tutor messages daily</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   <Check size={14} className="text-purple-600" />
                   <span>Advanced quiz configurations</span>
+                </li>
+                <li className="flex items-center gap-2.5">
+                  <Check size={14} className="text-purple-600" />
+                  <span>50MB PDFs, up to 250 pages each</span>
                 </li>
               </ul>
             </div>
@@ -643,7 +648,7 @@ export default function LandingPage() {
               onClick={() => openAuth('signup')}
               className="w-full py-3.5 mt-6 rounded-xl bg-[#6949a8] hover:bg-[#5a3d94] text-white text-xs font-black active:scale-[0.98] transition-all cursor-pointer font-poppins shadow-[0_8px_20px_rgba(105,73,168,0.25)] hover:shadow-[0_12px_25px_rgba(105,73,168,0.35)]"
             >
-              Go Pro Now
+              Preview Pro — Coming Soon
             </button>
           </div>
         </div>
@@ -657,7 +662,7 @@ export default function LandingPage() {
         <div className="relative z-10 flex flex-col items-center gap-6 max-w-xl mx-auto">
           <h2 className="text-3xl sm:text-5xl font-black text-gray-900 tracking-tighter font-poppins">Your next exam is waiting.</h2>
           <p className="text-xs sm:text-sm text-gray-500 max-w-md font-poppins">
-            Join thousands of active students using Omnave's automated recall pipeline to master concepts in half the time.
+            Build summaries, flashcards, quizzes, and tutor conversations from the material you already need to learn.
           </p>
 
           <button 
@@ -670,9 +675,9 @@ export default function LandingPage() {
           <div className="text-[10px] text-gray-400 font-medium tracking-wide mt-12 flex flex-col sm:flex-row items-center gap-1.5 sm:gap-6 justify-center font-poppins">
             <span>© 2026 Omnave Inc. All rights reserved.</span>
             <span className="hidden sm:inline">•</span>
-            <span className="hover:text-gray-900 transition-colors cursor-pointer">Terms of Service</span>
+            <Link href="/terms" className="hover:text-gray-900 transition-colors">Terms of Service</Link>
             <span className="hidden sm:inline">•</span>
-            <span className="hover:text-gray-900 transition-colors cursor-pointer">Privacy Policy</span>
+            <Link href="/privacy" className="hover:text-gray-900 transition-colors">Privacy Policy</Link>
           </div>
         </div>
       </footer>

@@ -1,23 +1,17 @@
 export interface NormalizedError {
   success: false;
   code: string;
-  stage: "auth" | "validation" | "supabase" | "gemini" | "internal";
+  stage: "auth" | "validation" | "supabase" | "ai" | "internal";
   message: string;
   requestId: string;
-  debug?: {
-    apiKeyExists: boolean;
-    apiKeyLength: number;
-    apiKeyMasked: string;
-    stage: string;
-  };
 }
 
 export function handleAIError(
-  error: any,
+  error: unknown,
   reqId: string,
   stage: NormalizedError["stage"]
 ): NormalizedError {
-  const message = error?.message || "An unexpected error occurred.";
+  const message = error instanceof Error ? error.message : "An unexpected error occurred.";
   let code = "INTERNAL_SERVER_ERROR";
   let userFriendlyMsg = message || "An unexpected server error occurred.";
 
@@ -30,7 +24,7 @@ export function handleAIError(
   } else if (stage === "supabase") {
     code = "DATABASE_ERROR";
     userFriendlyMsg = message || "Database operation failed.";
-  } else if (stage === "gemini") {
+  } else if (stage === "ai") {
     code = "AI_GENERATION_FAILED";
     const lowerMessage = message.toLowerCase();
     if (
@@ -57,18 +51,11 @@ export function handleAIError(
       lowerMessage.includes("404")
     ) {
       code = "AI_MODEL_NOT_FOUND";
-      userFriendlyMsg = "The configured Gemini model was not found.";
+      userFriendlyMsg = "The configured AI model was not found.";
     } else {
       userFriendlyMsg = message || "AI generation failed. Please try again.";
     }
   }
-
-  // Construct masked API key info for diagnostics
-  const rawKey = process.env.GEMINI_API_KEY || "";
-  const keyLength = rawKey.length;
-  const maskedKey = keyLength > 10 
-    ? `${rawKey.slice(0, 5)}...${rawKey.slice(-5)}`
-    : "invalid-length";
 
   return {
     success: false,
@@ -76,11 +63,5 @@ export function handleAIError(
     stage,
     message: userFriendlyMsg,
     requestId: reqId,
-    debug: {
-      apiKeyExists: !!rawKey,
-      apiKeyLength: keyLength,
-      apiKeyMasked: maskedKey,
-      stage,
-    }
   };
 }

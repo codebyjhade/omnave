@@ -1,80 +1,89 @@
-import { generateSummary } from "./summary.service";
-import { generateFlashcards } from "./flashcards.service";
-import { generateQuiz } from "./quiz.service";
-import { generateTitle } from "./title.service";
-import { AIServiceProvider, GenerateChatParams, GenerateNotesParams, StudyKitResponse } from "./types";
+import Groq from "groq-sdk";
+import { supabaseServer } from "@/utils/supabase/server-backend";
 import { GeminiServiceProvider } from "./gemini.service";
 import { AILogger } from "./logger";
-import Groq from "groq-sdk";
 import { PromptService } from "./prompt.service";
- 
-export async function generateStudyKit(text: string, provider: "groq" | "gemini", planType: "free" | "paid" = "paid") {
-  // Execute all four AI generation tasks at the exact same time
-  const [summary, flashcards, quizzes, smartTitle] = await Promise.all([
-    generateSummary(text, provider),
-    generateFlashcards(text, provider),
-    generateQuiz(text, provider, planType),
-    generateTitle(text, provider)
-  ]);
- 
-  return { summary, flashcards, quizzes, smartTitle };
-}
- 
+import { RetryService } from "./retry.service";
+import { AI_CONFIG } from "./config";
+import type { AIServiceProvider, GenerateChatParams } from "./types";
+
+const GROQ_CHAT_MODEL = "openai/gpt-oss-20b";
+
 export class OrchestratorServiceProvider implements AIServiceProvider {
   private geminiProvider = new GeminiServiceProvider();
-  private groqClient = new Groq({ apiKey: process.env.GROQ_API_KEY });
- 
+
   async askQuestion(params: GenerateChatParams, reqId: string): Promise<string> {
     try {
-      AILogger.log("ORCHESTRATOR", reqId, "Attempting Gemini chat");
       return await this.geminiProvider.askQuestion(params, reqId);
-    } catch (error: any) {
-      AILogger.log("ORCHESTRATOR_ERROR", reqId, `Gemini chat failed, falling back to Groq Llama. Error: ${error?.message || error}`);
-      try {
-        const prompt = PromptService.getChatPrompt(params.message, params.summary, params.history);
-        const response = await this.groqClient.chat.completions.create({
-          messages: [
-            { role: "system", content: "You are OmnaveAI, a helpful context-locked study assistant." },
-            { role: "user", content: prompt }
-          ],
-          model: "llama-3.1-8b-instant",
-          temperature: 0.2,
-        });
-        const text = response.choices[0]?.message?.content;
-        if (!text) throw new Error("Empty response from Groq Llama");
-        return text;
-      } catch (groqError: any) {
-        AILogger.log("ORCHESTRATOR_ERROR", reqId, `Groq chat fallback also failed: ${groqError?.message || groqError}`);
-        throw groqError;
-      }
+    } catch (geminiError) {
+      AILogger.log("ORCHESTRATOR", reqId, "Using bounded Groq chat fallback", {
+        error: geminiError instanceof Error ? geminiError.message : String(geminiError),
+      });
     }
-  }
- 
-  async generateStudyKit(params: GenerateNotesParams, reqId: string): Promise<StudyKitResponse> {
+
+    if (process.env.AI_ENGINE_ENABLED === "false" || process.env.AI_DISABLE_GROQ === "true") {
+      throw new Error("AI chat providers are disabled");
+    }
+    const apiKey = process.env.GROQ_API_KEY?.trim();
+    if (!apiKey) throw new Error("No free chat fallback is configured");
+    const prompt = PromptService.getChatPrompt(params.message, params.summary, params.history);
+    const startedAt = performance.now();
     try {
-      AILogger.log("ORCHESTRATOR", reqId, "Attempting Gemini study kit generation");
-      return await this.geminiProvider.generateStudyKit(params, reqId);
-    } catch (error: any) {
-      AILogger.log("ORCHESTRATOR_ERROR", reqId, `Gemini study kit generation failed, falling back to Groq Orchestrator. Error: ${error?.message || error}`);
-      try {
-        const pdfBuffer = Buffer.from(params.pdfBase64, "base64");
-        const pdfParse = require("pdf-parse");
-        const parsedData = await pdfParse(pdfBuffer);
-        const textContent = parsedData.text || "";
-        
-        AILogger.log("ORCHESTRATOR", reqId, `Successfully extracted ${textContent.length} characters from PDF for Groq`);
-        
-        const kit = await generateStudyKit(textContent, "groq", "paid");
-        return {
-          ai_title: kit.smartTitle,
-          summary: kit.summary,
-          flashcards: kit.flashcards,
-          quizzes: kit.quizzes
-        };
-      } catch (fallbackError: any) {
-        AILogger.log("ORCHESTRATOR_ERROR", reqId, `Groq study kit fallback failed: ${fallbackError?.message || fallbackError}`);
-        throw fallbackError;
+      const response = await RetryService.withTimeout(
+        new Groq({ apiKey }).chat.completions.create({
+          model: GROQ_CHAT_MODEL,
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.2,
+          max_tokens: AI_CONFIG.chat.maxOutputTokens,
+        }),
+        AI_CONFIG.chat.requestTimeoutMs,
+      );
+      const reply = response.choices[0]?.message?.content?.trim();
+      if (!reply) throw new Error("EMPTY_PROVIDER_RESPONSE");
+
+      if (params.userId) {
+        const inputTokens = response.usage?.prompt_tokens ?? null;
+        const outputTokens = response.usage?.completion_tokens ?? null;
+        await supabaseServer.from("ai_generation_runs").insert({
+          correlation_id: reqId,
+          user_id: params.userId,
+          stage: "chat",
+          prompt_version: "tutor-chat-v2",
+          schema_version: "chat-text-v1",
+          provider: "groq",
+          model: GROQ_CHAT_MODEL,
+          provider_attempt: 2,
+          status: "SUCCEEDED",
+          input_characters: prompt.length,
+          input_tokens: inputTokens,
+          output_tokens: outputTokens,
+          duration_ms: Math.round(performance.now() - startedAt),
+          estimated_cost_usd: inputTokens === null || outputTokens === null
+            ? null
+            : (inputTokens * 0.075 + outputTokens * 0.30) / 1_000_000,
+          quality: { nonEmpty: true },
+        });
       }
+      return reply;
+    } catch (error) {
+      if (params.userId) {
+        await supabaseServer.from("ai_generation_runs").insert({
+          correlation_id: reqId,
+          user_id: params.userId,
+          stage: "chat",
+          prompt_version: "tutor-chat-v2",
+          schema_version: "chat-text-v1",
+          provider: "groq",
+          model: GROQ_CHAT_MODEL,
+          provider_attempt: 2,
+          status: "FAILED",
+          input_characters: prompt.length,
+          duration_ms: Math.round(performance.now() - startedAt),
+          error_code: "PROVIDER_REQUEST_FAILED",
+          error_message: (error instanceof Error ? error.message : String(error)).slice(0, 1000),
+        });
+      }
+      throw error;
     }
   }
 }

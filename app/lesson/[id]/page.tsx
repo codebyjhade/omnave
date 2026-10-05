@@ -3,10 +3,11 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
-import { FileText, Zap, Target, MessageCircle } from "lucide-react";
+import { FileText, Zap, Target, MessageCircle, CloudOff } from "lucide-react";
 import { useToast } from "@/components/ToastProvider";
 import { useUserContext } from "@/context/UserContext";
 import { useAssessmentGuard } from "@/context/AssessmentContext";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
  
@@ -62,6 +63,7 @@ export default function LessonView() {
   const { id } = useParams();
   const { toast } = useToast();
   const { user } = useUserContext();
+  const isOnline = useNetworkStatus();
   const planType = user?.plan_type || 'free';
   const { isAssessmentActive, setIsAssessmentActive } = useAssessmentGuard();
  
@@ -168,16 +170,20 @@ export default function LessonView() {
           message: prompt,
           summary: data?.summary || "",
           materialId: id,
-          messages: [...chatHistory, newUserMsg].map(m => ({
-            role: m.role === 'ai' ? 'model' : 'user',
+          history: chatHistory.map(m => ({
+            role: m.role === 'ai' ? 'assistant' : 'user',
             content: m.text
           }))
         })
       });
 
-      if (!response.ok) throw new Error("Tutor chat failed to respond");
-
-      const resData = await response.json();
+      const resData = await response.json().catch(() => null);
+      if (!response.ok) {
+        const responseMessage = resData?.message
+          || resData?.error?.message
+          || (typeof resData?.error === 'string' ? resData.error : null);
+        throw new Error(responseMessage || "Tutor chat failed to respond");
+      }
       console.log("API Response:", resData);
       const finalAiText =
         resData.reply ||
@@ -189,9 +195,10 @@ export default function LessonView() {
       setChatHistory(prev => [...prev, { role: "ai", text: finalAiText }]);
     } catch (err: unknown) {
       console.error(err);
-      setChatError("Failed to get response from AI Tutor. Try again.");
+      setChatError(err instanceof Error ? err.message : "Failed to get response from AI Tutor. Try again.");
     } finally {
       setIsChatLoading(false);
+      window.dispatchEvent(new Event('omnave:usage-changed'));
     }
   };
  
@@ -457,51 +464,70 @@ export default function LessonView() {
  
       {/* Floating Context Switcher (Bottom Nav Pill) - Hidden during active quiz takeover */}
       {!isAssessmentActive && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90vw] max-w-[320px] bg-white rounded-full shadow-[0px_10px_30px_rgba(0,0,0,0.15)] border border-gray-100 flex items-center justify-between p-1.5 font-poppins select-none">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[94vw] max-w-[420px] bg-white rounded-[20px] shadow-[0px_10px_30px_rgba(0,0,0,0.15)] border border-gray-100 grid grid-cols-4 p-1.5 font-poppins select-none" aria-label="Study modes">
           <button 
             onClick={() => setActiveMode('summary')}
-            className={`flex-1 py-2.5 flex items-center justify-center transition-all duration-200 border-none cursor-pointer ${
+            className={`min-h-11 py-2 px-1 flex flex-col gap-0.5 items-center justify-center text-[10px] font-semibold transition-all duration-200 border-none cursor-pointer ${
               activeMode === 'summary' 
                 ? 'bg-[#6949a8] text-white rounded-full shadow-md' 
                 : 'text-gray-400 bg-transparent hover:text-gray-600'
             }`}
             title="Summary"
+            aria-label="Open summary"
           >
             <FileText size={18} />
+            <span>Summary</span>
           </button>
           <button 
             onClick={() => setActiveMode('flashcards')}
-            className={`flex-1 py-2.5 flex items-center justify-center transition-all duration-200 border-none cursor-pointer ${
+            className={`min-h-11 py-2 px-1 flex flex-col gap-0.5 items-center justify-center text-[10px] font-semibold transition-all duration-200 border-none cursor-pointer ${
               activeMode === 'flashcards' 
                 ? 'bg-[#6949a8] text-white rounded-full shadow-md' 
                 : 'text-gray-400 bg-transparent hover:text-gray-600'
             }`}
             title="Flashcards"
+            aria-label="Open flashcards"
           >
             <Zap size={18} />
+            <span>Cards</span>
           </button>
           <button 
             onClick={() => setActiveMode('quiz')}
-            className={`flex-1 py-2.5 flex items-center justify-center transition-all duration-200 border-none cursor-pointer ${
+            className={`min-h-11 py-2 px-1 flex flex-col gap-0.5 items-center justify-center text-[10px] font-semibold transition-all duration-200 border-none cursor-pointer ${
               activeMode === 'quiz' 
                 ? 'bg-[#6949a8] text-white rounded-full shadow-md' 
                 : 'text-gray-400 bg-transparent hover:text-gray-600'
             }`}
             title="Quiz"
+            aria-label="Open quiz"
           >
             <Target size={18} />
+            <span>Quiz</span>
           </button>
           <button 
             onClick={() => setActiveMode('chat')}
-            className={`flex-1 py-2.5 flex items-center justify-center transition-all duration-200 border-none cursor-pointer ${
-              activeMode === 'chat' 
-                ? 'bg-[#6949a8] text-white rounded-full shadow-md' 
-                : 'text-gray-400 bg-transparent hover:text-gray-600'
+            disabled={!isOnline}
+            className={`min-h-11 py-2 px-1 flex flex-col gap-0.5 items-center justify-center text-[10px] font-semibold transition-all duration-200 border-none ${
+              !isOnline
+                ? 'text-red-300 bg-transparent cursor-not-allowed opacity-50'
+                : activeMode === 'chat'
+                  ? 'bg-[#6949a8] text-white rounded-full shadow-md cursor-pointer'
+                  : 'text-gray-400 bg-transparent hover:text-gray-600 cursor-pointer'
             }`}
-            title="Tutor Chat"
+            title={!isOnline ? "Tutor Chat (Requires Connection)" : "Tutor Chat"}
+            aria-label={!isOnline ? "Tutor chat unavailable offline" : "Open tutor chat"}
           >
             <MessageCircle size={18} />
+            <span>Tutor</span>
           </button>
+        </div>
+      )}
+
+      {/* Global Offline Sync Banner */}
+      {!isOnline && (
+        <div className="fixed top-0 left-0 right-0 bg-gray-900 text-white text-[11px] font-poppins font-medium text-center py-1.5 z-[100] shadow-md flex items-center justify-center gap-2">
+          <CloudOff size={14} className="text-gray-300" />
+          <span>Offline Mode: Progress will sync when online.</span>
         </div>
       )}
     </div>

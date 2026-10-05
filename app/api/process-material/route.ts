@@ -1,337 +1,215 @@
 import { NextResponse } from "next/server";
 import { inngest } from "@/lib/inngest/client";
 import { supabaseServer } from "@/utils/supabase/server-backend";
-import { parseDocumentFromUrl } from "@/services/document.service";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { parsePdfBuffer } from "@/services/document.service";
+import { AuthenticationError, requireAuthenticatedUser } from "@/utils/supabase/server";
+import { apiError } from "@/lib/api-response";
+import { correlationHeaders, getCorrelationId, recordOperationalEvent } from '@/lib/observability';
+
+type StartRequest = {
+  idempotencyKey?: string;
+  storagePath?: string;
+  title?: string;
+  fileName?: string;
+  fileSize?: number;
+  mimeType?: string;
+};
+
+function databaseMessage(error: unknown): string {
+  if (error && typeof error === "object" && "message" in error) return String(error.message);
+  return "Unknown database error";
+}
+
+async function failAttempt(attemptId: string, code: string, message: string, retryable = false) {
+  await supabaseServer.rpc("set_processing_attempt_state", {
+    p_attempt_id: attemptId,
+    p_status: "FAILED",
+    p_failure_code: code,
+    p_failure_message: message,
+    p_retryable: retryable,
+  });
+}
 
 export async function POST(req: Request) {
-  let activeMaterialId: string | null = null;
+  let attemptId: string | null = null;
+  let userId: string | undefined;
+  let materialId: string | undefined;
+  const requestId = getCorrelationId(req);
+  const startedAt = performance.now();
+  const fail = (status: number, code: string, message: string) => apiError(status, code, message, requestId);
+
   try {
-    const body = await req.json();
-    const { materialId, text, fileUrl } = body;
-    activeMaterialId = materialId;
+    const body = (await req.json().catch(() => ({}))) as StartRequest;
+    const idempotencyKey = body.idempotencyKey?.trim();
+    const storagePath = body.storagePath?.trim();
+    const title = body.title?.trim();
+    const fileName = body.fileName?.trim();
+    const fileSize = Number(body.fileSize);
+    const mimeType = body.mimeType?.trim().toLowerCase();
 
-    // Require materialId, and EITHER pre-extracted text OR a fileUrl
-    if (!materialId || (!text && !fileUrl)) {
-      return NextResponse.json(
-        { error: "Missing materialId, and either text or fileUrl payload" },
-        { status: 400 }
-      );
+    if (!idempotencyKey || idempotencyKey.length < 8) {
+      return fail(400, "INVALID_IDEMPOTENCY_KEY", "A valid upload request key is required");
+    }
+    if (!storagePath || !title || !fileName || !Number.isSafeInteger(fileSize) || fileSize <= 0) {
+      return fail(400, "INVALID_UPLOAD_METADATA", "Complete file metadata is required");
+    }
+    if (mimeType !== "application/pdf" || !fileName.toLowerCase().endsWith(".pdf")) {
+      return fail(415, "UNSUPPORTED_FILE_TYPE", "Only PDF files are supported");
     }
 
-    // 1. Fetch current material to get title, user_id, and content_url
-    const { data: currentMaterial, error: fetchErr } = await supabaseServer
-      .from("materials")
-      .select("title, user_id, content_url")
-      .eq("id", materialId)
-      .single();
-
-    if (fetchErr || !currentMaterial) {
-      console.error("Failed to fetch current material:", fetchErr);
-      return NextResponse.json(
-        { error: "Failed to locate registered material" },
-        { status: 404 }
-      );
+    const { user } = await requireAuthenticatedUser();
+    userId = user.id;
+    if (!storagePath.startsWith(`${user.id}/`) || storagePath.includes("..")) {
+      return fail(403, "INVALID_STORAGE_PATH", "The uploaded file does not belong to this user");
     }
 
-    // Authenticate the user session
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {
-              // Ignore if cookie store is read-only
-            }
-          },
-        },
-      }
-    );
-
-    const { data: { user }, error: authErr } = await supabase.auth.getUser();
-    if (authErr || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Ensure user owns this material
-    if (user.id !== currentMaterial.user_id) {
-      return NextResponse.json(
-        { error: "Unauthorized: Material owner mismatch" },
-        { status: 403 }
-      );
-    }
-
-    // Fetch user profile to check plan and quota limits
-    const { data: profile, error: profileErr } = await supabaseServer
+    const { data: profile, error: profileError } = await supabaseServer
       .from("profiles")
-      .select("plan_type, generation_count")
+      .select("plan_type")
       .eq("id", user.id)
       .single();
 
-    if (profileErr || !profile) {
-      console.error("Failed to fetch user profile in route.ts:", profileErr);
-      return NextResponse.json(
-        { error: "Unable to retrieve user subscription tier details." },
-        { status: 500 }
-      );
+    if (profileError || !profile) return fail(500, "PROFILE_UNAVAILABLE", "Unable to load plan limits");
+    const { data: usageSummaryData, error: entitlementError } = await supabaseServer
+      .rpc('get_usage_summary', { p_user_id: user.id });
+    const usageSummary = usageSummaryData as {
+      maxFileBytes: number;
+      maxPagesPerDocument: number;
+      pages: { limit: number };
+    } | null;
+    if (entitlementError || !usageSummary) return fail(500, 'ENTITLEMENT_UNAVAILABLE', 'Unable to load plan limits');
+    const maxBytes = Number(usageSummary.maxFileBytes);
+    if (fileSize > maxBytes) {
+      return fail(413, "FILE_SIZE_LIMIT", `Your plan allows files up to ${maxBytes / 1024 / 1024} MB`);
     }
 
-    const planType = profile.plan_type || "free";
-    const generationCount = profile.generation_count || 0;
-
-    // Fetch user usage from public.user_usage
-    const { data: userUsage, error: usageErr } = await supabaseServer
-      .from("user_usage")
-      .select("user_id, weekly_pages_used, page_pool_reset_at")
-      .eq("user_id", user.id)
-      .single();
-
-    let weeklyPagesUsed = 0;
-    let resetAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-    if (usageErr || !userUsage) {
-      // Upsert default usage record for user if missing
-      const { data: newUsage } = await supabaseServer
-        .from("user_usage")
-        .upsert(
-          {
-            user_id: user.id,
-            weekly_pages_used: 0,
-            page_pool_reset_at: resetAt.toISOString(),
-          },
-          { onConflict: "user_id" }
-        )
-        .select()
-        .single();
-
-      if (newUsage) {
-        weeklyPagesUsed = newUsage.weekly_pages_used ?? 0;
-        resetAt = new Date(newUsage.page_pool_reset_at);
-      }
-    } else {
-      weeklyPagesUsed = userUsage.weekly_pages_used ?? 0;
-      resetAt = new Date(userUsage.page_pool_reset_at);
-    }
-
-    // Time-Check Logic: Reset weekly pool if reset timestamp has passed
-    const now = new Date();
-    if (now > resetAt) {
-      const newResetAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      weeklyPagesUsed = 0;
-      await supabaseServer
-        .from("user_usage")
-        .update({
-          weekly_pages_used: 0,
-          page_pool_reset_at: newResetAt.toISOString(),
-        })
-        .eq("user_id", user.id);
-    }
-
-    // Helper: cleanup on failed checks
-    const cleanUpFailedUpload = async () => {
-      // Delete from Supabase Storage
-      if (currentMaterial.content_url) {
-        const { error: storageDelErr } = await supabaseServer.storage
-          .from("study_materials")
-          .remove([currentMaterial.content_url]);
-        if (storageDelErr) {
-          console.error("Failed to delete orphaned storage file:", storageDelErr);
-        }
-      }
-      // Delete database draft row
-      const { error: dbDelErr } = await supabaseServer
-        .from("materials")
-        .delete()
-        .eq("id", materialId);
-      if (dbDelErr) {
-        console.error("Failed to delete orphaned database row:", dbDelErr);
-      }
-    };
-
-
-    // 2. Parse document and extract page count
-    let extractedText = text;
-    let pageCount = 0;
-
-    if (fileUrl) {
-      try {
-        const parsed = await parseDocumentFromUrl(fileUrl);
-        extractedText = parsed.text;
-        pageCount = parsed.pages;
-      } catch (parseError: unknown) {
-        console.error("Document parsing failure in route.ts:", parseError);
-        const errMsg = parseError instanceof Error ? parseError.message : String(parseError);
-        return NextResponse.json(
-          { error: `Failed to parse document: ${errMsg}` },
-          { status: 422 }
-        );
-      }
-    }
-
-    // Pre-flight page limits gating logic for Free tier users
-    if (planType === "free") {
-      // CHECK 1: File > 50 pages
-      if (pageCount > 50) {
-        await cleanUpFailedUpload();
-        return NextResponse.json(
-          { error: "Free tier allows up to 50 pages per document. Please upgrade to Pro." },
-          { status: 403 }
-        );
-      }
-
-      // CHECK 2: weekly_pages_used + document page count > 100
-      if (weeklyPagesUsed + pageCount > 100) {
-        await cleanUpFailedUpload();
-        return NextResponse.json(
-          { error: "Weekly page pool limit reached (100 pages/week). Resets soon." },
-          { status: 403 }
-        );
-      }
-    }
-
-    // 3. Quality-Gated Deduplication check
-    const getFilenameFromUrl = (url: string | null | undefined): string | null => {
-      if (!url) return null;
-      const parts = url.split("/");
-      const lastPart = parts[parts.length - 1];
-      const underscoreIdx = lastPart.indexOf("_");
-      if (underscoreIdx !== -1) {
-        return lastPart.slice(underscoreIdx + 1);
-      }
-      return lastPart;
-    };
-
-    const currentFilename = getFilenameFromUrl(currentMaterial.content_url);
-
-    // Fetch all processed materials for this user to check for duplicates
-    const { data: processedMaterials } = await supabaseServer
-      .from("materials")
-      .select("id, title, content_url, quizzes, flashcards")
-      .eq("user_id", currentMaterial.user_id)
-      .eq("is_processed", true)
-      .neq("id", materialId);
-
-    const existingMaterial = (processedMaterials || []).find(m => {
-      const mFilename = getFilenameFromUrl(m.content_url);
-      const isFilenameMatch = currentFilename && mFilename && currentFilename.toLowerCase() === mFilename.toLowerCase();
-      const isTitleMatch = currentMaterial.title && m.title && currentMaterial.title.toLowerCase() === m.title.toLowerCase();
-      return isFilenameMatch || isTitleMatch;
-    });
-
-    if (existingMaterial) {
-      const quizCount = Array.isArray(existingMaterial.quizzes) ? existingMaterial.quizzes.length : 0;
-      const cardCount = Array.isArray(existingMaterial.flashcards) ? existingMaterial.flashcards.length : 0;
-
-      if (quizCount >= 50 && cardCount >= 15) {
-        // Cache Hit! Delete duplicate draft row and return existing ID
-        await supabaseServer.from("materials").delete().eq("id", materialId);
-        
-        return NextResponse.json({
-          success: true,
-          materialId: existingMaterial.id,
-          status: "COMPLETED",
-          message: "Cache hit: reusing existing high-quality study material"
-        });
-      } else {
-        // Cache Miss / Upgrade! Overwrite existing DB entry and trigger queue
-        await supabaseServer.from("materials").delete().eq("id", materialId);
-        
-        await supabaseServer
-          .from("materials")
-          .update({ is_processed: false, status: "PROCESSING" })
-          .eq("id", existingMaterial.id);
-
-        // Increment quota
-        await supabaseServer
-          .from("profiles")
-          .update({ generation_count: generationCount + 1 })
-          .eq("id", user.id);
-
-        await inngest.send({
-          name: "ai/process.material",
-          data: {
-            materialId: existingMaterial.id,
-            text: extractedText,
-            planType: planType,
-            pageCount: pageCount,
-            userId: user.id
-          },
-        });
-
-        return NextResponse.json({
-          success: true,
-          materialId: existingMaterial.id,
-          status: "PROCESSING",
-          message: "Cache miss: upgrading existing material to high-quality paid tier"
-        });
-      }
-    }
-
-    // Increment quota for new uploads
-    await supabaseServer
-      .from("profiles")
-      .update({ generation_count: generationCount + 1 })
-      .eq("id", user.id);
-
-    // 4. Update Supabase to mark the material as 'PROCESSING' for new uploads
-    const { error: dbError } = await supabaseServer
-      .from("materials")
-      .update({ is_processed: false, status: "PROCESSING" })
-      .eq("id", materialId);
-
-    if (dbError) {
-      console.error("Supabase update error:", dbError);
-      return NextResponse.json(
-        { error: `Database Error: ${dbError.message} (Code: ${dbError.code})` },
-        { status: 500 }
-      );
-    }
-
-    // 5. Dispatch the event to the Inngest background queue
-    await inngest.send({
-      name: "ai/process.material",
-      data: {
-        materialId,
-        text: extractedText,
-        planType: planType,
-        pageCount: pageCount,
-        userId: user.id
+    const { data: registrationRows, error: registrationError } = await supabaseServer.rpc(
+      "register_material_attempt",
+      {
+        p_user_id: user.id,
+        p_idempotency_key: idempotencyKey,
+        p_title: title,
+        p_storage_path: storagePath,
+        p_file_name: fileName,
+        p_file_size_bytes: fileSize,
+        p_mime_type: mimeType,
       },
-    });
+    );
 
+    if (registrationError || !registrationRows?.[0]) {
+      console.error("Material registration failed:", registrationError);
+      return fail(500, "REGISTRATION_FAILED", "Unable to register this upload");
+    }
+
+    const registration = registrationRows[0];
+    attemptId = registration.attempt_id;
+    materialId = registration.material_id;
+    await recordOperationalEvent({ correlationId: requestId, source: 'api', eventName: 'material.ingestion', status: 'started', userId, materialId, attemptId, metadata: { plan: profile.plan_type === 'pro' ? 'pro' : 'free', fileSize } });
+
+    if (["QUEUED", "RUNNING", "COMPLETED"].includes(registration.attempt_status)) {
+      return NextResponse.json({
+        success: true,
+        materialId: registration.material_id,
+        attemptId,
+        status: registration.attempt_status,
+        duplicate: true,
+      }, { headers: correlationHeaders(requestId) });
+    }
+    if (["FAILED", "CANCELLED", "DEAD_LETTER"].includes(registration.attempt_status)) {
+      return fail(409, "IDEMPOTENCY_KEY_CLOSED", "This upload request has already finished unsuccessfully");
+    }
+
+    const { data: fileData, error: downloadError } = await supabaseServer.storage
+      .from("study_materials")
+      .download(storagePath);
+
+    if (downloadError || !fileData) {
+      await failAttempt(attemptId, "STORAGE_DOWNLOAD_FAILED", "The uploaded PDF could not be read", true);
+      return fail(422, "STORAGE_DOWNLOAD_FAILED", "The uploaded PDF could not be read");
+    }
+    if (fileData.size !== fileSize || fileData.size > maxBytes) {
+      await failAttempt(attemptId, "FILE_METADATA_MISMATCH", "The uploaded file size did not match the request");
+      return fail(422, "FILE_METADATA_MISMATCH", "Uploaded file validation failed");
+    }
+
+    let parsed: { text: string; pages: number };
+    try {
+      parsed = await parsePdfBuffer(Buffer.from(await fileData.arrayBuffer()));
+      if (!parsed.text.trim() || parsed.pages < 1) throw new Error("No readable PDF text was found");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "PDF parsing failed";
+      await failAttempt(attemptId, "DOCUMENT_PARSE_FAILED", message);
+      return fail(422, "DOCUMENT_PARSE_FAILED", "This PDF could not be parsed");
+    }
+
+    const { data: queueRows, error: queueError } = await supabaseServer.rpc(
+      "reserve_and_queue_material",
+      { p_user_id: user.id, p_attempt_id: attemptId, p_page_count: parsed.pages },
+    );
+
+    if (queueError || !queueRows?.[0]) {
+      const message = databaseMessage(queueError);
+      const code = message.includes("DOCUMENT_PAGE_LIMIT")
+        ? "DOCUMENT_PAGE_LIMIT"
+        : message.includes('USAGE_LIMIT_EXCEEDED:pages')
+          ? "WEEKLY_PAGE_LIMIT"
+          : message.includes('USAGE_LIMIT_EXCEEDED:generation')
+            ? 'GENERATION_LIMIT'
+          : "QUOTA_RESERVATION_FAILED";
+      await failAttempt(attemptId, code, message, code === "QUOTA_RESERVATION_FAILED");
+      const status = code === "QUOTA_RESERVATION_FAILED" ? 500 : 429;
+      return fail(status, code, code === "DOCUMENT_PAGE_LIMIT"
+        ? `Your plan supports up to ${usageSummary.maxPagesPerDocument} pages per document`
+        : code === "WEEKLY_PAGE_LIMIT"
+          ? `Your weekly ${usageSummary.pages.limit}-page allowance has been reached`
+          : code === 'GENERATION_LIMIT'
+            ? 'Your monthly study-kit allowance has been reached'
+          : "Unable to reserve usage for this upload");
+    }
+
+    try {
+      const event = await inngest.send({
+        name: "ai/process.material",
+        data: {
+          materialId: registration.material_id,
+          attemptId,
+          text: parsed.text,
+          planType: queueRows[0].plan_type,
+          pageCount: parsed.pages,
+          userId: user.id,
+          correlationId: requestId,
+        },
+      });
+
+      await supabaseServer
+        .from("processing_attempts")
+        .update({ event_id: event.ids[0] ?? null, heartbeat_at: new Date().toISOString() })
+        .eq("id", attemptId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Queue dispatch failed";
+      await failAttempt(attemptId, "QUEUE_DISPATCH_FAILED", message, true);
+      await recordOperationalEvent({ correlationId: requestId, source: 'api', eventName: 'material.ingestion', severity: 'error', status: 'refunded', userId, materialId, attemptId: attemptId || undefined, durationMs: Math.round(performance.now() - startedAt), errorCode: 'QUEUE_DISPATCH_FAILED' });
+      return fail(503, "QUEUE_DISPATCH_FAILED", "The job could not be queued. Your quota was refunded");
+    }
+
+    await recordOperationalEvent({ correlationId: requestId, source: 'api', eventName: 'material.ingestion', status: 'succeeded', userId, materialId, attemptId: attemptId || undefined, durationMs: Math.round(performance.now() - startedAt), metadata: { pageCount: parsed.pages } });
     return NextResponse.json({
       success: true,
-      materialId,
-      message: "Material queued for background processing",
-      status: "PROCESSING"
-    });
-
+      materialId: registration.material_id,
+      attemptId,
+      status: "QUEUED",
+    }, { headers: correlationHeaders(requestId) });
   } catch (error: unknown) {
-    console.error("Failed to trigger AI processing:", error);
-    if (activeMaterialId) {
-      try {
-        await supabaseServer
-          .from("materials")
-          .update({ status: "failed", is_processed: true })
-          .eq("id", activeMaterialId);
-      } catch (dbError) {
-        console.error("Failed to update database failure state in catch block:", dbError);
-      }
+    if (error instanceof AuthenticationError) return fail(401, "UNAUTHENTICATED", error.message);
+    if (attemptId) {
+      await failAttempt(
+        attemptId,
+        "INGESTION_FAILED",
+        error instanceof Error ? error.message : "Unexpected ingestion failure",
+        true,
+      );
     }
-    const errMsg = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json(
-      { error: errMsg },
-      { status: 500 }
-    );
+    await recordOperationalEvent({ correlationId: requestId, source: 'api', eventName: 'material.ingestion', severity: 'error', status: 'failed', userId, materialId, attemptId: attemptId || undefined, durationMs: Math.round(performance.now() - startedAt), errorCode: 'INGESTION_FAILED' });
+    return fail(500, "INGESTION_FAILED", "Unable to start document processing");
   }
 }

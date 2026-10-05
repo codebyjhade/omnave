@@ -15,6 +15,8 @@ import { useUserContext } from '@/context/UserContext';
 import { useToast } from '@/components/ToastProvider';
 import UpgradeModal from '@/components/UpgradeModal';
 import { cleanDocumentTitle } from '@/utils/formatTitle';
+import { normalizeMaterialStatus } from '@/lib/material-status';
+import type { UsageSummary } from '@/types/usage';
 
 export interface ProcessingJob {
   id: string;
@@ -26,6 +28,7 @@ export interface ProcessingJob {
   elapsedTime: number;
   estimatedTime?: string;
   materialId?: string;
+  retryable?: boolean;
 }
 
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
@@ -34,6 +37,7 @@ interface UploadContextValue {
   processBackgroundUpload: (file: File) => Promise<void>;
   cancelUpload: () => void;
   cancelJob: (jobId: string) => Promise<void>;
+  retryJob: (jobId: string) => Promise<void>;
   uploadStatus: UploadStatus;
   uploadMessage: string | null;
   uploadProgress: number;
@@ -46,6 +50,18 @@ interface UploadContextValue {
 }
 
 const UploadContext = createContext<UploadContextValue | undefined>(undefined);
+
+function friendlyProcessingFailure(code?: string | null, message?: string | null): string {
+  const knownMessages: Record<string, string> = {
+    DOCUMENT_PAGE_LIMIT: 'This PDF has more pages than your plan allows.',
+    WEEKLY_PAGE_LIMIT: 'You have reached your weekly PDF page allowance.',
+    GENERATION_LIMIT: 'You have reached your monthly study-kit allowance.',
+    PROVIDER_TIMEOUT: 'The AI service took too long to respond. Please retry.',
+    PROVIDER_RATE_LIMIT: 'The AI service is busy right now. Please retry shortly.',
+    OUTPUT_VALIDATION_FAILED: 'The AI response did not meet Omnave quality checks. Please retry.',
+  };
+  return (code && knownMessages[code]) || message || 'AI generation failed. Please try again.';
+}
 
 export function UploadProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -166,11 +182,12 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const { data: checkData, error: checkError } = await supabase
-          .from('materials')
-          .select('is_processed, status')
-          .eq('id', materialId)
-          .single();
+        const statusResponse = await fetch(`/api/process-material/${materialId}`, { cache: 'no-store' });
+        const statusPayload = await statusResponse.json() as {
+          material?: { is_processed?: boolean; status?: string; failure_code?: string | null; failure_message?: string | null };
+          attempt?: { status?: string; failure_code?: string | null; failure_message?: string | null; retryable?: boolean } | null;
+        };
+        const checkData = statusPayload.material;
 
         // Guard Clause 2: Check if job was cancelled while fetch was in-flight
         if (!intervalsRef.current[materialId]) {
@@ -182,15 +199,15 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        if (checkError) {
-          console.error('[UploadContext] polling check error:', checkError.message);
+        if (!statusResponse.ok || !checkData) {
+          console.error('[UploadContext] job status request failed');
           return;
         }
 
         if (checkData) {
-          const status = checkData.status || 'PROCESSING';
+          const status = normalizeMaterialStatus(checkData.status);
 
-          if (status === 'cancelled' || status === 'CANCELLED') {
+          if (status === 'CANCELLED') {
             clearInterval(pollInterval);
             clearInterval(elapsedInterval);
             delete intervalsRef.current[materialId];
@@ -200,7 +217,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
             return;
           }
           
-          if (status === 'failed' || status === 'FAILED') {
+          if (status === 'FAILED') {
             clearInterval(pollInterval);
             clearInterval(elapsedInterval);
             delete intervalsRef.current[materialId];
@@ -218,8 +235,12 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
                       status: 'failed',
                       progress: 0,
                       targetProgress: 0,
-                      message: 'AI generation failed. Please try again.',
-                      estimatedTime: 'Failed'
+                      message: friendlyProcessingFailure(
+                        statusPayload.attempt?.failure_code || checkData.failure_code,
+                        statusPayload.attempt?.failure_message || checkData.failure_message,
+                      ),
+                      estimatedTime: 'Quota was refunded',
+                      retryable: Boolean(statusPayload.attempt?.retryable)
                     }
                   : j
               )
@@ -302,23 +323,16 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
 
     intervalsRef.current[materialId] = pollInterval;
 
-    // Timeout safety at 180s
+    // A slow browser timer must not declare a durable server job failed.
     setTimeout(() => {
       if (intervalsRef.current[materialId]) {
-        clearInterval(intervalsRef.current[materialId]);
-        clearInterval(elapsedIntervalsRef.current[materialId]);
-        delete intervalsRef.current[materialId];
-        delete elapsedIntervalsRef.current[materialId];
-        setActiveQueue((prev) => prev.filter((id) => id !== materialId));
-        
         setJobs((prev) =>
           prev.map((j) =>
             j.id === materialId && j.status !== 'completed' && j.status !== 'failed'
               ? {
                   ...j,
-                  status: 'failed',
-                  message: 'Processing timed out. Please retry.',
-                  estimatedTime: 'Timeout'
+                  message: 'Still processing safely in the background...',
+                  estimatedTime: 'Taking longer than usual'
                 }
               : j
           )
@@ -341,7 +355,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           .select('*')
           .eq('user_id', user.id)
           .eq('is_processed', false)
-          .neq('status', 'failed');
+          .not('status', 'in', '(FAILED,CANCELLED)');
 
         if (error) {
           console.error('[UploadContext] Error fetching active materials on mount:', error);
@@ -351,7 +365,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
         if (data && data.length > 0) {
           data.forEach((material) => {
             setJobs((prev) => {
-              if (prev.some(j => j.id === material.id)) return prev;
+              if (prev.some(j => j.id === material.id || j.materialId === material.id)) return prev;
               
               // Set initial target progress based on DB status
               let initProgress = 30;
@@ -398,26 +412,12 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       delete abortControllersRef.current[id];
     }
 
-    // FIX 3: Reset state variables completely
+    // Dismiss only the local activity card. Deleting a study kit belongs to the
+    // explicit Library delete flow and must never be coupled to this close icon.
     setJobs((prev) => prev.filter((j) => j.id !== id));
     setActiveQueue((prev) => prev.filter((item) => item !== id));
-    removeLessonFromState(id);
     removeNotification(`processing-${id}`);
-
-    if (!id.startsWith('temp-')) {
-      try {
-        await fetch("/api/process-material/delete", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ materialId: id }),
-        });
-      } catch (err) {
-        console.error('[UploadContext] Failed to delete material from database via API:', err);
-      }
-    }
-  }, [removeLessonFromState, removeNotification]);
+  }, [removeNotification]);
 
   const cancelJob = useCallback(async (jobId: string) => {
     // Move local state mutations to the very top (optimistic UI)
@@ -446,21 +446,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     // If registered, call backend cancellation API and stamp DB tombstone
     if (!jobId.startsWith('temp-')) {
       try {
-        // Primary: stamp the DB row immediately so the Python worker sees it cancelled
-        // and stops processing even if the cancel API fetch below is slow or fails.
-        const supabase = createBrowserClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
-        await supabase
-          .from('materials')
-          .update({ status: 'cancelled', is_processed: true })
-          .eq('id', jobId);
-      } catch (dbErr) {
-        console.error('[UploadContext] cancelJob DB tombstone error:', dbErr);
-      }
-      try {
-        // Secondary redundancy: also hit the cancel API endpoint.
+        // The server owns lifecycle transitions and verifies material ownership.
         await fetch("/api/process-material/cancel", {
           method: "POST",
           headers: {
@@ -476,6 +462,52 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
  
     toast('Processing cancelled.', 'info');
   }, [removeLessonFromState, removeNotification, toast, refreshUser]);
+
+  const retryJob = useCallback(async (jobId: string) => {
+    const job = jobs.find((item) => item.id === jobId);
+    if (!job || jobId.startsWith('temp-') || !job.retryable) return;
+
+    setJobs((prev) => prev.map((item) => item.id === jobId ? {
+      ...item,
+      status: 'queued',
+      progress: 5,
+      targetProgress: 20,
+      message: 'Requesting a safe retry...',
+      estimatedTime: 'Queued',
+      retryable: false,
+    } : item));
+
+    try {
+      const response = await fetch('/api/process-material/retry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ materialId: jobId, idempotencyKey: crypto.randomUUID() }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error?.message || payload?.message || payload?.error || 'Retry could not start');
+
+      setActiveQueue((prev) => prev.includes(jobId) ? prev : [...prev, jobId]);
+      setJobs((prev) => prev.map((item) => item.id === jobId ? {
+        ...item,
+        status: 'queued',
+        message: 'Retry queued. Your allowance is reserved only while processing.',
+      } : item));
+      startPollingForMaterial(jobId, job.title);
+      toast(`Retry started for "${job.title}".`, 'info');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Retry could not start';
+      setJobs((prev) => prev.map((item) => item.id === jobId ? {
+        ...item,
+        status: 'failed',
+        progress: 0,
+        targetProgress: 0,
+        message,
+        estimatedTime: 'Retry available',
+        retryable: true,
+      } : item));
+      toast(message, 'error');
+    }
+  }, [jobs, startPollingForMaterial, toast]);
 
   // Backward compatible cancelUpload trigger (cancels latest active job)
   const cancelUpload = useCallback(async () => {
@@ -524,62 +556,49 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       const signal = abortController.signal;
 
       const planType = user?.plan_type || 'free';
-      const fileSizeMB = file.size / (1024 * 1024);
+      // Friendly preflight only; the database reservation remains authoritative.
+      let usage: UsageSummary | null = null;
+      try {
+        const response = await fetch('/api/usage/summary', { cache: 'no-store' });
+        if (response.ok) usage = await response.json() as UsageSummary;
+      } catch (error) {
+        console.warn('[UploadContext] Usage preflight unavailable:', error);
+      }
 
-      // Pre-flight check: V8 Weekly Page Quota Check
-      if (user && planType === 'free') {
-        const { data: usageData } = await supabase
-          .from('user_usage')
-          .select('weekly_pages_used')
-          .eq('user_id', user.id)
-          .single();
-
-        const weeklyPagesUsed = usageData?.weekly_pages_used || 0;
-        if (weeklyPagesUsed >= 100) {
+      if (usage && usage.pages.remaining <= 0) {
           clearInterval(tempElapsedInterval);
           setShowUpgradeModal(true);
           setJobs((prev) =>
             prev.map((j) =>
               j.id === tempJobId
-                ? { ...j, status: 'failed', progress: 0, targetProgress: 0, message: 'Weekly page limit reached (100 pages/week).', estimatedTime: 'Limit' }
+                ? { ...j, status: 'failed', progress: 0, targetProgress: 0, message: `Weekly page limit reached (${usage.pages.limit} pages/week).`, estimatedTime: 'Limit' }
                 : j
             )
           );
-          toast('Weekly page limit reached (100 pages/week).', 'error');
+          toast(`Weekly page limit reached (${usage.pages.limit} pages/week).`, 'error');
           return;
-        }
       }
 
-      if (planType === 'free' && fileSizeMB > 15) {
+      const maxFileBytes = usage?.maxFileBytes ?? (planType === 'pro' ? 50 : 15) * 1024 * 1024;
+      const maxFileMB = Math.round(maxFileBytes / (1024 * 1024));
+      if (file.size > maxFileBytes) {
         clearInterval(tempElapsedInterval);
-        setShowUpgradeModal(true);
+        if (planType === 'free') setShowUpgradeModal(true);
         setJobs((prev) =>
           prev.map((j) =>
             j.id === tempJobId
-              ? { ...j, status: 'failed', progress: 0, targetProgress: 0, message: 'Free tier limit is 15MB. Please upgrade.', estimatedTime: 'Limit' }
+              ? { ...j, status: 'failed', progress: 0, targetProgress: 0, message: `${planType === 'pro' ? 'Pro' : 'Free tier'} limit is ${maxFileMB}MB.`, estimatedTime: 'Limit' }
               : j
           )
         );
+        toast(`${planType === 'pro' ? 'Pro' : 'Free tier'} limit is ${maxFileMB}MB.`, 'error');
         return;
       }
 
-      if (planType === 'pro' && fileSizeMB > 50) {
-        clearInterval(tempElapsedInterval);
-        setJobs((prev) =>
-          prev.map((j) =>
-            j.id === tempJobId
-              ? { ...j, status: 'failed', progress: 0, targetProgress: 0, message: 'Pro limit is 50MB.', estimatedTime: 'Limit' }
-              : j
-          )
-        );
-        toast('Pro tier limit is 50MB.', 'error');
-        return;
-      }
-
-      const fileExt = file.name.split('.').pop();
       const cleanTitle = cleanDocumentTitle(file.name);
       const safeFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-      const filePath = `${user?.id}/${Date.now()}_${safeFileName}`;
+      const idempotencyKey = crypto.randomUUID();
+      const filePath = `${user?.id}/${idempotencyKey}_${safeFileName}`;
 
       try {
         const {
@@ -616,71 +635,16 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Create temporary signed link
-        const { data: signedData, error: signedError } = await supabase.storage
-          .from('study_materials')
-          .createSignedUrl(filePath, 60 * 15);
-
-        if (signedError) throw signedError;
-        const fileUrl = signedData.signedUrl;
-
         if (signal.aborted) {
           clearInterval(tempElapsedInterval);
           return;
         }
 
-        // STEP 2: Database registration
+        // STEP 2: Server-owned registration, validation, and queue reservation
         setJobs((prev) =>
           prev.map((j) =>
             j.id === tempJobId
-              ? { ...j, targetProgress: 35, message: 'Registering study material...' }
-              : j
-          )
-        );
-
-        const { data: newMaterial, error: dbError } = await supabase
-          .from('materials')
-          .insert([
-            {
-              user_id: currentUser.id,
-              title: cleanTitle,
-              material_type: 'pdf',
-              content_url: filePath,
-              is_processed: false,
-            },
-          ])
-          .select()
-          .single();
-
-        if (dbError || !newMaterial) {
-          throw dbError ?? new Error('Unable to register the study material.');
-        }
-
-        // Swap key registers from temp ID to registered material ID
-        clearInterval(tempElapsedInterval);
-        
-        const finalMaterialId = newMaterial.id;
-        registeredMaterialId = finalMaterialId;
-        abortControllersRef.current[finalMaterialId] = abortController;
-        delete abortControllersRef.current[tempJobId];
-
-        setJobs((prev) =>
-          prev.map((j) =>
-            j.id === tempJobId
-              ? { ...j, id: finalMaterialId, materialId: finalMaterialId, status: 'parsing', targetProgress: 45, message: 'Connecting to AI generator...' }
-              : j
-          )
-        );
-        setActiveQueue((prev) => [...prev, finalMaterialId]);
-
-        if (signal.aborted) return;
-        await refreshUser();
-
-        // STEP 3: API Pipeline Initiation
-        setJobs((prev) =>
-          prev.map((j) =>
-            j.id === finalMaterialId
-              ? { ...j, targetProgress: 55, message: 'Initiating AI generation...' }
+              ? { ...j, targetProgress: 40, message: 'Validating and registering study material...' }
               : j
           )
         );
@@ -689,55 +653,62 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            materialId: finalMaterialId,
-            fileUrl: fileUrl,
+            idempotencyKey,
+            storagePath: filePath,
+            title: cleanTitle,
+            fileName: file.name,
+            fileSize: file.size,
+            mimeType: file.type || 'application/pdf',
           }),
           signal,
         });
 
-        let apiStatus = 'PROCESSING';
-        let succJson: any = null;
+        let apiStatus = 'QUEUED';
+        let succJson: { status?: string; materialId?: string } | null = null;
         if (!response.ok) {
           let apiErrMsg = 'AI processing request failed.';
           try {
             const errJson = await response.json();
             if (errJson?.message) apiErrMsg = errJson.message;
-            else if (errJson?.error) apiErrMsg = errJson.error;
+            else if (errJson?.error?.message) apiErrMsg = errJson.error.message;
+            else if (typeof errJson?.error === 'string') apiErrMsg = errJson.error;
           } catch {}
           throw new Error(apiErrMsg);
         } else {
           try {
-            succJson = await response.json();
+            succJson = await response.json() as { status?: string; materialId?: string };
             if (succJson?.status) apiStatus = succJson.status;
           } catch {}
         }
 
         if (signal.aborted) return;
 
-        const actualId = succJson?.materialId || finalMaterialId;
+        const actualId = succJson?.materialId;
+        if (!actualId) throw new Error('The server did not return a material ID.');
+
+        clearInterval(tempElapsedInterval);
         registeredMaterialId = actualId;
-
-        if (actualId !== finalMaterialId) {
-          // Update the jobs state to replace the old ID with the new actualId
-          setJobs((prev) =>
-            prev.map((j) =>
-              j.id === finalMaterialId
-                ? { ...j, id: actualId, materialId: actualId }
-                : j
-            )
+        abortControllersRef.current[actualId] = abortController;
+        delete abortControllersRef.current[tempJobId];
+        setJobs((prev) => {
+          const registeredJob = prev.find((job) => job.id === tempJobId);
+          const withoutDuplicates = prev.filter((job) =>
+            job.id !== tempJobId && job.id !== actualId && job.materialId !== actualId
           );
-
-          // Update activeQueue to remove finalMaterialId and add actualId
-          setActiveQueue((prev) =>
-            prev.map((id) => (id === finalMaterialId ? actualId : id))
-          );
-
-          // Transfer abortControllersRef from old ID to new ID
-          if (abortControllersRef.current[finalMaterialId]) {
-            abortControllersRef.current[actualId] = abortControllersRef.current[finalMaterialId];
-            delete abortControllersRef.current[finalMaterialId];
-          }
-        }
+          return [
+            ...withoutDuplicates,
+            {
+              ...(registeredJob ?? newJob),
+              id: actualId,
+              materialId: actualId,
+              status: 'parsing',
+              targetProgress: 55,
+              message: 'AI generation queued...',
+            },
+          ];
+        });
+        setActiveQueue((prev) => [...prev.filter((id) => id !== tempJobId), actualId]);
+        await refreshUser();
 
         if (apiStatus === 'COMPLETED') {
           // Success (Cache hit)
@@ -780,22 +751,20 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
           console.log('[UploadContext] processing aborted');
-          // Stamp the DB tombstone on hard abort so the Python worker
-          // does not continue processing a row the user already cancelled.
+          // Ask the authenticated server route to cancel the durable job.
           const abortedId = registeredMaterialId || tempJobId;
           if (abortedId && !abortedId.startsWith('temp-')) {
             try {
-              const supabase = createBrowserClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-              );
-              await supabase
-                .from('materials')
-                .update({ status: 'cancelled', is_processed: true })
-                .eq('id', abortedId);
+              await fetch('/api/process-material/cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ materialId: abortedId }),
+              });
             } catch (dbErr) {
-              console.error('[UploadContext] AbortError DB tombstone error:', dbErr);
+              console.error('[UploadContext] AbortError cancellation error:', dbErr);
             }
+          } else {
+            await supabase.storage.from('study_materials').remove([filePath]);
           }
           return;
         }
@@ -805,10 +774,16 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
 
         if (activeId && !activeId.startsWith('temp-')) {
           try {
-            await supabase.from('materials').update({ status: 'failed', is_processed: true }).eq('id', activeId);
+            await fetch('/api/process-material/cancel', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ materialId: activeId }),
+            });
           } catch (dbErr) {
-            console.error('[UploadContext] Silent DB update error in catch block:', dbErr);
+            console.error('[UploadContext] Processing cleanup cancellation error:', dbErr);
           }
+        } else {
+          await supabase.storage.from('study_materials').remove([filePath]);
         }
 
         setJobs((prev) =>
@@ -821,7 +796,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
         toast(errMsg, 'error');
       }
     },
-    [user, refreshUser, addNotification, addLessonToState, startPollingForMaterial, activeQueue, toast, router]
+    [user, refreshUser, addNotification, addLessonToState, startPollingForMaterial, toast, router]
   );
 
   // Compute overall status variables for backwards compatibility
@@ -860,6 +835,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       processBackgroundUpload,
       cancelUpload,
       cancelJob,
+      retryJob,
       uploadStatus,
       uploadMessage,
       uploadProgress,
@@ -875,6 +851,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       processBackgroundUpload,
       cancelUpload,
       cancelJob,
+      retryJob,
       uploadMessage,
       uploadStatus,
       uploadProgress,

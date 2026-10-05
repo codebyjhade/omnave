@@ -7,7 +7,8 @@ import {
   BookOpen,
   Clock,
   Target,
-  Flame
+  Flame,
+  ArrowRight
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
@@ -165,10 +166,30 @@ export default function ProgressPage() {
   }
 
   const avgScore = stats.overallAvg || 0;
+  const recommendedLesson = notes?.find((note) => note.is_processed !== false) ?? null;
+  const recommendation = !recommendedLesson
+    ? { title: 'Create your first study kit', detail: 'Upload a PDF to begin tracking mastery and streaks.', label: 'Upload PDF', href: '/upload' }
+    : avgScore > 0 && avgScore < 70
+      ? { title: 'Strengthen your recall', detail: `Your current quiz average is ${avgScore.toFixed(0)}%. Try another focused review.`, label: 'Review and retry', href: `/lesson/${recommendedLesson.id}?tab=quiz` }
+      : { title: streak === 0 ? 'Start today’s study streak' : 'Keep your momentum', detail: 'Continue the next study kit and complete one focused session.', label: 'Continue studying', href: `/lesson/${recommendedLesson.id}` };
 
   return (
     <div className="w-full flex-1 flex flex-col pt-2">
       <StaggerContainer staggerChildren={0.08} className="w-full flex flex-col gap-6">
+
+        <StaggerItem className="rounded-[20px] bg-[#6949a8] p-5 text-white shadow-[0_12px_24px_rgba(105,73,168,0.18)] flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/70 font-poppins">Recommended next</p>
+            <h2 className="text-[18px] font-bold font-poppins mt-1">{recommendation.title}</h2>
+            <p className="text-[12px] leading-5 text-white/80 font-poppins mt-1">{recommendation.detail}</p>
+          </div>
+          <button
+            onClick={() => router.push(recommendation.href)}
+            className="min-h-11 shrink-0 rounded-full bg-white px-5 text-[12px] font-bold text-[#6949a8] font-poppins flex items-center justify-center gap-2 border-none cursor-pointer"
+          >
+            {recommendation.label}<ArrowRight size={14} />
+          </button>
+        </StaggerItem>
         
         {/* Overview Widgets Grid */}
         <StaggerItem className="grid grid-cols-2 gap-4 mb-6">

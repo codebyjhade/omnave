@@ -18,14 +18,15 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
     if (!mounted || loading) return;
 
     const isOnboardingComplete = !!user?.user_metadata?.onboarding_complete;
+    const isPublicInformationPage = ['/privacy', '/terms', '/support'].includes(pathname);
 
     if (!user) {
-      if (pathname !== '/' && pathname !== '/login' && pathname !== '/signup') {
+      if (pathname !== '/' && pathname !== '/login' && pathname !== '/signup' && !isPublicInformationPage) {
         router.replace('/');
       }
     } else {
       if (!isOnboardingComplete) {
-        if (pathname !== '/welcome') {
+        if (pathname !== '/welcome' && !isPublicInformationPage) {
           router.replace('/welcome');
         }
       } else {

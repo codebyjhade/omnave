@@ -330,7 +330,7 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
       })
     );
     
-    let combinedArray = [...filteredArray];
+    const combinedArray = [...filteredArray];
     
     if (combinedArray.length < sessionLength) {
       const deficit = sessionLength - combinedArray.length;
@@ -408,20 +408,17 @@ export const AssessmentEngine = React.memo(function AssessmentEngine({ lesson, a
     setCompletedTime(timeSpent);
     clearSavedSession();
  
-    const baseXP = mode === "mock" ? 45 : potentialXp;
     const isPerfect = correctCount === questions.length;
-    const totalXP = mode === "mock"
-      ? baseXP + (isPerfect ? 20 : 0)
-      : Math.round((questions.length > 0 ? (correctCount / questions.length) : 0) * potentialXp);
+    const totalXP = (correctCount * 10) + (isPerfect ? 20 : 0);
     setXpAwarded(totalXP);
     setGameState("results");
  
     if (user) {
       const percentage = Math.round((correctCount / questions.length) * 100);
       try {
-        await ProgressService.insertQuizScore(user.id, {
+        await ProgressService.recordQuizProgress({
           lesson_id: lesson.id, score: correctCount, total_questions: questions.length, percentage,
-        } as any);
+        }, totalXP);
         await updateStatsAfterQuiz(percentage, totalXP);
       } catch (err) { console.error("Error committing score metrics:", err); }
     }

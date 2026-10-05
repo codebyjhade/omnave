@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import { getAIProvider } from '@/services/ai';
 import { AILogger } from '@/services/ai/logger';
 import { handleAIError } from '@/services/ai/error';
 import { supabaseServer } from "@/utils/supabase/server-backend";
 import crypto from 'crypto';
+import { AuthenticationError, requireAuthenticatedUser } from '@/utils/supabase/server';
+import { correlationHeaders, recordOperationalEvent } from '@/lib/observability';
 
 export async function POST(req: Request) {
   const reqId = crypto.randomUUID();
   const startTime = performance.now();
+  let reservedUserId: string | null = null;
 
   AILogger.log('API_CHAT', reqId, 'Incoming workspace chat request received');
 
@@ -23,31 +24,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // 1. Auth Validation
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll() },
-          setAll() {}
-        }
-      }
-    );
+    const { user } = await requireAuthenticatedUser();
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json(
-        handleAIError(new Error('Unauthorized chat access attempt'), reqId, 'auth'), 
-        { status: 401 }
-      );
-    }
-
-    // Fetch user profile to check daily message limits
+    // Plan selection is server-owned; quota reservation is atomic in Postgres.
     const { data: profile, error: profileErr } = await supabaseServer
       .from('profiles')
-      .select('plan_type, agent_message_count, last_message_date')
+      .select('plan_type')
       .eq('id', user.id)
       .single();
 
@@ -59,70 +41,71 @@ export async function POST(req: Request) {
       );
     }
 
-    const planType = profile.plan_type || "free";
-    const lastDateStr = profile.last_message_date;
-    const now = new Date();
-    
-    const getUTCDateString = (d: Date) => d.toISOString().split('T')[0];
-    const currentDateStr = getUTCDateString(now);
-
-    let currentMessageCount = profile.agent_message_count || 0;
-    const isNewDay = !lastDateStr || getUTCDateString(new Date(lastDateStr)) !== currentDateStr;
-
-    if (isNewDay) {
-      currentMessageCount = 0;
-    }
-
-    // Limit Check for Free plan
-    if (planType === "free" && currentMessageCount >= 15) {
-      if (isNewDay) {
-        const { error: resetErr } = await supabaseServer
-          .from('profiles')
-          .update({
-            agent_message_count: 0,
-            last_message_date: now.toISOString()
-          })
-          .eq('id', user.id);
-        if (resetErr) {
-          console.error("Failed to reset agent message count for new day:", resetErr);
-        }
-      }
+    const planType = profile.plan_type || 'free';
+    const { error: reserveError } = await supabaseServer.rpc('reserve_usage', {
+      p_user_id: user.id,
+      p_resource: 'chat_message',
+      p_units: 1,
+      p_mutation_key: reqId,
+      p_metadata: { endpoint: '/api/chat' },
+    });
+    if (reserveError) {
+      const limitReached = String(reserveError.message).includes('USAGE_LIMIT_EXCEEDED');
+      await recordOperationalEvent({ correlationId: reqId, source: 'api', eventName: 'chat.request', severity: limitReached ? 'warning' : 'error', status: 'failed', userId: user.id, durationMs: Math.round(performance.now() - startTime), errorCode: limitReached ? 'CHAT_LIMIT_REACHED' : 'CHAT_RESERVATION_FAILED' });
       return NextResponse.json(
-        { error: "Daily AI message limit reached. Upgrade to Pro." },
-        { status: 403 }
+        { error: limitReached ? 'Daily AI message limit reached.' : 'Unable to reserve AI usage.' },
+        { status: limitReached ? 429 : 500, headers: correlationHeaders(reqId) }
       );
     }
+    reservedUserId = user.id;
 
     // 2. Query the active AI service provider
     const provider = getAIProvider();
     
     // Pass the 'history' down to the Gemini service
-    const reply = await provider.askQuestion({ message, summary, history }, reqId);
+    const reply = await provider.askQuestion({
+      message,
+      summary,
+      history,
+      userId: user.id,
+      planType: planType === "pro" ? "pro" : "free",
+    }, reqId);
 
-    // Success Path: Increment count and update last message date
-    const nextMessageCount = isNewDay ? 1 : currentMessageCount + 1;
-    const { error: updateErr } = await supabaseServer
-      .from('profiles')
-      .update({
-        agent_message_count: nextMessageCount,
-        last_message_date: now.toISOString()
-      })
-      .eq('id', user.id);
-
-    if (updateErr) {
-      console.error("Failed to update profile agent message count:", updateErr);
-    }
+    const { error: settleError } = await supabaseServer.rpc('settle_usage', {
+      p_user_id: user.id,
+      p_resource: 'chat_message',
+      p_mutation_key: reqId,
+      p_state: 'CONSUMED',
+    });
+    if (settleError) throw settleError;
+    reservedUserId = null;
 
     const totalDuration = Math.round(performance.now() - startTime);
     AILogger.log('API_CHAT', reqId, 'Chat response generated successfully', { totalDurationMs: totalDuration });
+    await recordOperationalEvent({ correlationId: reqId, source: 'api', eventName: 'chat.request', status: 'succeeded', userId: user.id, durationMs: totalDuration, metadata: { plan: planType === 'pro' ? 'pro' : 'free' } });
 
-    return NextResponse.json({ success: true, reply });
+    return NextResponse.json({ success: true, reply }, { headers: correlationHeaders(reqId) });
 
   } catch (error: unknown) {
+    if (reservedUserId) {
+      const { error: refundError } = await supabaseServer.rpc('settle_usage', {
+        p_user_id: reservedUserId,
+        p_resource: 'chat_message',
+        p_mutation_key: reqId,
+        p_state: 'REFUNDED',
+      });
+      if (refundError) console.error('Failed to refund chat reservation:', refundError);
+    }
+    if (error instanceof AuthenticationError) {
+      return NextResponse.json(
+        handleAIError(error, reqId, 'auth'),
+        { status: 401, headers: correlationHeaders(reqId) },
+      );
+    }
     console.error("CRITICAL CHAT API ERROR:", error);
     
     // Determine the error stage
-    let stage: 'auth' | 'validation' | 'supabase' | 'gemini' | 'internal' = 'internal';
+    let stage: 'auth' | 'validation' | 'supabase' | 'ai' | 'internal' = 'internal';
     const msg = String(error instanceof Error ? error.message : error).toLowerCase();
     if (msg.includes('auth') || msg.includes('sign in')) {
       stage = 'auth';
@@ -132,14 +115,17 @@ export async function POST(req: Request) {
       msg.includes('google') ||
       msg.includes('generative') ||
       msg.includes('gemini') ||
+      msg.includes('groq') ||
+      msg.includes('openai') ||
       msg.includes('model') ||
       msg.includes('api key') ||
       msg.includes('api_key')
     ) {
-      stage = 'gemini';
+      stage = 'ai';
     }
 
     const typedError = error instanceof Error ? error : new Error(String(error));
-    return NextResponse.json(handleAIError(typedError, reqId, stage), { status: 500 });
+    await recordOperationalEvent({ correlationId: reqId, source: 'api', eventName: 'chat.request', severity: 'error', status: 'failed', durationMs: Math.round(performance.now() - startTime), errorCode: 'CHAT_REQUEST_FAILED' });
+    return NextResponse.json(handleAIError(typedError, reqId, stage), { status: 500, headers: correlationHeaders(reqId) });
   }
 }

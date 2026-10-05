@@ -7,6 +7,7 @@ import { MarkdownRenderer } from "./MarkdownRenderer";
 import { TypewriterText } from "./TypewriterText";
 import { useUserContext } from "@/context/UserContext";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import type { UsageSummary } from "@/types/usage";
  
 export interface ChatMessage {
   role: "user" | "ai";
@@ -59,10 +60,22 @@ export const ChatPanel = memo(function ChatPanel({
 }: ChatPanelProps) {
   const { user } = useUserContext();
   const isOnline = useNetworkStatus();
-  const planType = user?.plan_type || 'free';
- 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showClearModal, setShowClearModal] = useState(false);
+  const [chatUsage, setChatUsage] = useState<UsageSummary['chatMessages'] | null>(null);
+
+  useEffect(() => {
+    if (!user || !isOnline) return;
+    const refreshUsage = () => {
+      fetch('/api/usage/summary', { cache: 'no-store' })
+        .then((response) => response.ok ? response.json() : null)
+        .then((usage: UsageSummary | null) => setChatUsage(usage?.chatMessages ?? null))
+        .catch(() => undefined);
+    };
+    refreshUsage();
+    window.addEventListener('omnave:usage-changed', refreshUsage);
+    return () => window.removeEventListener('omnave:usage-changed', refreshUsage);
+  }, [user, isOnline, chatHistory.length]);
  
   useEffect(() => {
     if (textareaRef.current) {
@@ -72,10 +85,8 @@ export const ChatPanel = memo(function ChatPanel({
     }
   }, [chatInput]);
   
-  const isLimitReached = planType === 'free' && (
-    (user?.agent_message_count !== undefined && user.agent_message_count >= 15) ||
-    (chatError !== null && chatError.toLowerCase().includes("limit reached"))
-  );
+  const isLimitReached = (chatUsage?.remaining === 0)
+    || (chatError !== null && chatError.toLowerCase().includes("limit reached"));
  
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -327,9 +338,9 @@ export const ChatPanel = memo(function ChatPanel({
         </div>
  
         {/* Warning subtext */}
-        {planType === 'free' && user?.agent_message_count !== undefined && user.agent_message_count >= 12 && user.agent_message_count < 15 && (
+        {chatUsage && chatUsage.remaining > 0 && chatUsage.remaining <= 3 && (
           <div className="text-[11px] font-bold text-amber-600 mb-2 pl-2">
-            Only {15 - user.agent_message_count} free messages remaining today.
+            Only {chatUsage.remaining} tutor messages remaining today.
           </div>
         )}
  

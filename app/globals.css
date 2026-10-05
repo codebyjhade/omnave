@@ -23,6 +23,15 @@
   --omnave-border: #EBEBEB;
   --omnave-border-hover: #D8D8D8;
 
+  /* Semantic states shared by upload, sync, and processing UI */
+  --omnave-success: #047857;
+  --omnave-success-soft: #ECFDF5;
+  --omnave-warning: #B45309;
+  --omnave-warning-soft: #FFFBEB;
+  --omnave-danger: #B91C1C;
+  --omnave-danger-soft: #FEF2F2;
+  --omnave-focus: #86D1FF;
+
   /* Shadows - Card shadow and Active tab glow */
   --omnave-shadow-glass: 0px 10px 10px rgba(0, 0, 0, 0.09);
   --omnave-shadow-inner: inset 0 1px 0 0 rgba(0, 0, 0, 0.02);
@@ -124,4 +133,24 @@ body::-webkit-scrollbar,
   touch-action: pan-y !important;
   overflow-x: hidden;
   position: relative;
+}
+
+@layer base {
+  :where(button, a, input, textarea, select):focus-visible {
+    outline: 3px solid var(--omnave-focus);
+    outline-offset: 3px;
+  }
+
+  :where(button, a, input, textarea, select):disabled {
+    cursor: not-allowed;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

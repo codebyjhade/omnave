@@ -1,28 +1,22 @@
 import type { NextConfig } from "next";
-import withPWAInit from "@ducanh2912/next-pwa";
-
-const withPWA = withPWAInit({
-  dest: "public",
-  disable: process.env.NODE_ENV === "development",
-  register: true,
-  cacheStartUrl: true,
-  dynamicStartUrl: false,
-  reloadOnOnline: true,
-  fallbacks: {
-    document: "/~offline",
-  },
-  workboxOptions: {
-    skipWaiting: true,
-    clientsClaim: true,
-    cleanupOutdatedCaches: true,
-  },
-});
 
 const nextConfig: NextConfig = {
-  /* config options here */
   serverExternalPackages: ['pdf-parse'],
-  turbopack: {}, // <-- ADD THIS EXACT LINE
+  turbopack: {},
+  poweredByHeader: false,
+  async headers() {
+    return [{
+      source: '/:path*',
+      headers: [
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        { key: 'X-Frame-Options', value: 'DENY' },
+        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+        { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+      ],
+    }];
+  },
 };
 
-export default withPWA(nextConfig);
+export default nextConfig;
 

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/utils/supabase/server-backend";
+import { AuthenticationError, requireAuthenticatedUser } from "@/utils/supabase/server";
+import { apiError } from "@/lib/api-response";
 
 export async function DELETE(
   req: Request,
@@ -9,22 +11,22 @@ export async function DELETE(
     const { id } = await params;
 
     if (!id) {
-      return NextResponse.json({ error: "Missing material ID" }, { status: 400 });
+      return apiError(400, "MISSING_MATERIAL_ID", "Missing material ID");
     }
 
-    // 1. Fetch the material to retrieve its content_url
+    const { user } = await requireAuthenticatedUser();
+
+    // The service-role client bypasses RLS, so ownership is part of the query.
     const { data: material, error: fetchError } = await supabaseServer
       .from("materials")
       .select("content_url, user_id")
       .eq("id", id)
-      .single();
+      .eq("user_id", user.id)
+      .maybeSingle();
 
     if (fetchError || !material) {
       console.error("[DELETE API] Fetch material error:", fetchError);
-      return NextResponse.json(
-        { error: "Material not found or database error" },
-        { status: 404 }
-      );
+      return apiError(404, "MATERIAL_NOT_FOUND", "Material not found");
     }
 
     // 2. Remove the PDF file from the Supabase Storage Bucket
@@ -42,14 +44,12 @@ export async function DELETE(
     const { error: deleteError } = await supabaseServer
       .from("materials")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .eq("user_id", user.id);
 
     if (deleteError) {
       console.error("[DELETE API] Database deletion error:", deleteError);
-      return NextResponse.json(
-        { error: `Database deletion failed: ${deleteError.message}` },
-        { status: 500 }
-      );
+      return apiError(500, "MATERIAL_DELETE_FAILED", "Unable to delete material");
     }
 
     return NextResponse.json({
@@ -57,11 +57,11 @@ export async function DELETE(
       message: "Material and associated storage assets deleted successfully"
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    if (error instanceof AuthenticationError) {
+      return apiError(401, "UNAUTHENTICATED", error.message);
+    }
     console.error("[DELETE API] Catch error:", error);
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
-    );
+    return apiError(500, "INTERNAL_ERROR", "Internal server error");
   }
 }

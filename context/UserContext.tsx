@@ -380,13 +380,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     async (percentage: number, xpGained: number) => {
       if (!user) return;
       try {
-        await ProgressService.awardXP(user.id, xpGained);
-        await ProgressService.insertQuizScore(user.id, {
-          lesson_id: 'lesson-1', // TODO: pass real lesson ID from caller
-          score: Math.round(percentage / 5),
-          total_questions: 20,
-          percentage,
-        });
+        void percentage;
+        void xpGained;
         await loadUserData(user);
       } catch (err) {
         console.error('[UserContext] updateStatsAfterQuiz error:', err);

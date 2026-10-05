@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useUserContext, Notification } from "@/context/UserContext";
 import { useUploadContext } from "@/context/UploadContext";
-import { Bell, Settings, X, FileText, Check, Share2, SlidersHorizontal, Search, ArrowLeft, ChevronLeft } from "lucide-react";
+import { Bell, Settings, X, FileText, Check, Share2, SlidersHorizontal, ArrowLeft, ChevronLeft, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, usePathname, useParams, useSearchParams } from "next/navigation";
 import { calculateKitProgress } from "@/hooks/useProgressStats";
@@ -210,9 +210,9 @@ export default function Header() {
           <motion.button
             layoutId="back-button-layout"
             transition={sharedTransition}
-            onClick={() => router.back()}
+            onClick={() => router.push('/home')}
             className="bg-white/15 text-white p-2 rounded-full h-10 w-10 flex items-center justify-center cursor-pointer hover:bg-white/25 active:scale-95 transition-all border-none focus-visible:outline-none"
-            aria-label="Go back"
+            aria-label="Return to dashboard"
           >
             <ArrowLeft size={20} />
           </motion.button>
@@ -446,25 +446,6 @@ export default function Header() {
                   </div>
                 )}
               </motion.div>
-            )}
-
-            {/* Search circular button (Settings Page only - Exiting right, shared search icon) */}
-            {pathname === '/settings' && (
-              <motion.button 
-                key="search-circular-btn"
-                layout="position"
-                initial={{ x: 20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: 20, opacity: 0 }}
-                transition={motionMasterTiming}
-                className="bg-white text-[#6949a8] p-2 rounded-full w-[40px] h-[40px] min-w-[40px] min-h-[40px] max-w-[40px] max-h-[40px] flex items-center justify-center cursor-pointer shadow-premium-glass border-none focus-visible:outline-none z-40 shrink-0 block overflow-hidden"
-                style={{ borderRadius: '50%' }}
-                aria-label="Search settings"
-              >
-                <motion.div layoutId="search-icon-layout" layout="position" transition={motionMasterTiming}>
-                  <Search size={20} />
-                </motion.div>
-              </motion.button>
             )}
 
             {/* Progress Circle percentage (Lesson Page only - Exiting right) */}

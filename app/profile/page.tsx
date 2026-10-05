@@ -1,429 +1,85 @@
-"use client";
+'use client';
 
-import { useUserContext } from "@/context/UserContext";
-import { useRouter } from "next/navigation";
-import { useState, useEffect, useMemo } from "react";
-import { useToast } from "@/components/ToastProvider";
-import { createBrowserClient } from '@supabase/ssr';
-import { 
-  User, 
-  Mail, 
-  Lock, 
-  ChevronRight,
-  FileText,
-  Zap,
-  Calendar,
-  ShieldCheck,
-  Moon,
-  BellRing,
-  Globe,
-  GitBranch,
-  LogOut
-} from "lucide-react";
-import StaggerContainer from "@/components/ui/animation/StaggerContainer";
-import StaggerItem from "@/components/ui/animation/StaggerItem";
-import { Skeleton } from "@/components/Skeleton";
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { Calendar, ChevronRight, FileText, Gauge, Settings, Sparkles, Target, Zap } from 'lucide-react';
+import { useUserContext } from '@/context/UserContext';
+import { Skeleton } from '@/components/Skeleton';
+import UpgradeModal from '@/components/UpgradeModal';
+import type { UsageSummary } from '@/types/usage';
 
 export default function ProfilePage() {
-  const router = useRouter();
-  const { toast } = useToast();
-  const {
-    user,
-    bestScore,
-    loading: isAuthLoading,
-    gamificationStats,
-    quizScores,
-    lessons: notes
-  } = useUserContext();
-
-  const [mounted, setMounted] = useState(false);
-  const [profileName, setProfileName] = useState("Bryan");
-  const [email, setEmail] = useState("");
-  const [initial, setInitial] = useState("B");
-  const [userTags, setUserTags] = useState<string[]>([]);
-  const [isSigningOut, setIsSigningOut] = useState(false);
-  const [weeklyPagesUsed, setWeeklyPagesUsed] = useState<number>(0);
-
-  // Listen for trigger dispatched by external navigations
-  useEffect(() => {
-    const handleOpen = () => router.push("/settings");
-    window.addEventListener("open-settings-drawer", handleOpen);
-    return () => window.removeEventListener("open-settings-drawer", handleOpen);
-  }, [router]);
+  const searchParams = useSearchParams();
+  const { user, bestScore, loading, lessons, quizScores } = useUserContext();
+  const [usage, setUsage] = useState<UsageSummary | null>(null);
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      const emailVal = user.email || "";
-      setEmail(emailVal);
-      
-      const metaName = user.user_metadata?.full_name || user.user_metadata?.name;
-      if (metaName) {
-        setProfileName(metaName);
-        setInitial(metaName.charAt(0).toUpperCase());
-      } else {
-        const parts = emailVal.split("@");
-        const namePart = parts[0] || "Learner";
-        const capped = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-        setProfileName(capped);
-        setInitial(capped.charAt(0).toUpperCase());
-      }
-
-      const tags: string[] = [];
-      if (user.plan_type) {
-        tags.push(user.plan_type === 'pro' ? "PRO LEARNER" : "FREE TIER");
-      } else {
-        tags.push("FREE TIER");
-      }
-      setUserTags(tags);
-    }
-  }, [user]);
+    if (searchParams.get('upgrade') === '1') setShowUpgrade(true);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!user) return;
-    const fetchUsage = async () => {
-      try {
-        const supabase = createBrowserClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
-        const { data: usageData } = await supabase
-          .from('user_usage')
-          .select('weekly_pages_used')
-          .eq('user_id', user.id)
-          .single();
-
-        if (usageData) {
-          setWeeklyPagesUsed(usageData.weekly_pages_used || 0);
-        }
-      } catch (e) {
-        console.error("Error fetching user_usage in profile page:", e);
-      }
-    };
-    fetchUsage();
+    let active = true;
+    fetch('/api/usage/summary', { cache: 'no-store' })
+      .then(async (response) => response.ok ? response.json() as Promise<UsageSummary> : null)
+      .then((summary) => { if (active && summary) setUsage(summary); })
+      .catch((error) => console.error('Profile usage request failed:', error));
+    return () => { active = false; };
   }, [user]);
 
-  const handleSignOut = async () => {
-    if (isSigningOut) return;
-    try {
-      setIsSigningOut(true);
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      window.location.href = "/";
-    } catch (error) {
-      console.error("Error signing out:", error);
-      setIsSigningOut(false);
-    }
-  };
-
-  // Calculate dynamic stats or fallbacks
-  const pdfsCount = useMemo(() => {
-    if (gamificationStats?.documentsUploaded !== undefined && gamificationStats.documentsUploaded > 0) {
-      return gamificationStats.documentsUploaded;
-    }
-    return notes?.length || 0;
-  }, [gamificationStats, notes]);
-
-  const flashcardsCount = useMemo(() => {
-    if (!notes || notes.length === 0) return 0;
-    const count = notes.reduce(
-      (acc, l) => acc + (Array.isArray(l.flashcards) ? l.flashcards.length : 0),
-      0
-    );
-    return count;
-  }, [notes]);
-
-  const joinedDateString = useMemo(() => {
-    if (user?.created_at) {
-      try {
-        const date = new Date(user.created_at);
-        const formatter = new Intl.DateTimeFormat("en-US", {
-          month: "long",
-          year: "numeric",
-        });
-        return `Member since ${formatter.format(date)}`;
-      } catch {
-        return "Member since July 2026";
-      }
-    }
-    return "Member since July 2026";
+  const name = useMemo(() => {
+    const metaName = user?.user_metadata?.full_name || user?.user_metadata?.name;
+    if (metaName) return String(metaName);
+    const local = user?.email?.split('@')[0] || 'Learner';
+    return local.charAt(0).toUpperCase() + local.slice(1);
   }, [user]);
 
-  const dynamicMb = useMemo(() => {
-    const count = notes?.length || 0;
-    const computed = Math.min(95, Math.max(0, count * 1.5));
-    return parseFloat(computed.toFixed(1));
-  }, [notes]);
+  const flashcardCount = useMemo(() => lessons.reduce((total, lesson) => total + (Array.isArray(lesson.flashcards) ? lesson.flashcards.length : 0), 0), [lessons]);
+  const joined = useMemo(() => user?.created_at ? new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(new Date(user.created_at)) : null, [user?.created_at]);
 
-  const handleRowClick = (label: string) => {
-    toast(`${label} is coming soon!`, "info");
-  };
+  if (loading) return <div className="w-full space-y-5" aria-hidden="true"><Skeleton className="h-32 rounded-[24px]" /><Skeleton className="h-28 rounded-[24px]" /><Skeleton className="h-52 rounded-[24px]" /></div>;
 
-  if (!mounted || isAuthLoading) {
-    return (
-      <div className="w-full flex-1 flex flex-col" aria-hidden="true">
-        {/* Profile Identity Card Skeleton */}
-        <div className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-6 border border-gray-50 flex items-center justify-between gap-4 mb-6 text-left h-[116px]">
-          <div className="flex items-start gap-4 flex-1">
-            <Skeleton className="w-16 h-16 rounded-full shrink-0" />
-            <div className="flex flex-col gap-1.5 mt-0.5 flex-1">
-              <Skeleton className="h-6 w-32 rounded-md animate-pulse" />
-              <Skeleton className="h-4 w-40 rounded-md" />
-              <div className="flex items-center gap-1.5 mt-2">
-                <Skeleton className="w-3.5 h-3.5 rounded-full shrink-0" />
-                <Skeleton className="h-3 w-44 rounded-md" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* App Utility Stats Grid Skeleton */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          {[1, 2].map((i) => (
-            <div
-              key={i}
-              className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-5 border border-gray-50 flex flex-col items-center justify-center text-center h-[110px]"
-            >
-              <Skeleton className="w-5 h-5 rounded-md mb-2" />
-              <Skeleton className="h-8 w-12 rounded-md mb-1.5" />
-              <Skeleton className="h-3 w-24 rounded-md" />
-            </div>
-          ))}
-        </div>
-
-        {/* Workspace Storage Indicator Skeleton */}
-        <div className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-5 border border-gray-50 mb-8 text-left h-[96px]">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-3.5 w-32 rounded-md" />
-            <Skeleton className="h-3.5 w-28 rounded-md" />
-          </div>
-          <Skeleton className="w-full h-2.5 rounded-full mt-2" />
-        </div>
-
-        {/* Account and Security lists Skeletons */}
-        {[1, 2, 3].map((sectionIdx) => (
-          <div key={sectionIdx} className="text-left mb-6">
-            <Skeleton className="h-4 w-36 mb-2 ml-1 rounded-md" />
-            <div className="bg-white rounded-[20px] shadow-[0px_6px_15px_rgba(0,0,0,0.04)] border border-gray-100 p-2">
-              {[1, 2].map((rowIdx) => (
-                <div key={rowIdx} className="w-full flex items-center justify-between py-4 px-2 border-b border-gray-50 last:border-0 h-[56px]">
-                  <div className="flex items-center">
-                    <Skeleton className="w-10 h-10 rounded-xl mr-4 shrink-0" />
-                    <Skeleton className="h-4 w-28 rounded-md" />
-                  </div>
-                  <Skeleton className="w-4 h-4 rounded-md shrink-0" />
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  // Helper row component for settings items inside card
-  const SettingsRow = ({ 
-    icon: Icon, 
-    label, 
-    onClick 
-  }: { 
-    icon: any; 
-    label: string; 
-    onClick: () => void;
-  }) => (
-    <button 
-      onClick={onClick}
-      className="w-full flex items-center justify-between py-4 px-2 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors duration-150 text-left outline-none cursor-pointer rounded-xl border-none bg-transparent"
-    >
-      <div className="flex items-center">
-        <div className="bg-purple-50 text-[#6949a8] p-2.5 rounded-xl mr-4 flex items-center justify-center">
-          <Icon className="w-5 h-5" />
-        </div>
-        <span className="text-sm font-semibold text-gray-700 font-poppins">{label}</span>
-      </div>
-      <ChevronRight className="text-gray-300 w-4 h-4" />
-    </button>
-  );
+  const plan = usage?.planType || (user?.plan_type === 'pro' ? 'pro' : 'free');
+  const usageItems = usage ? [
+    { label: 'Study kits', value: `${usage.generation.remaining}/${usage.generation.limit}`, hint: 'remaining this month' },
+    { label: 'PDF pages', value: `${usage.pages.remaining}/${usage.pages.limit}`, hint: 'remaining this week' },
+    { label: 'Tutor chat', value: `${usage.chatMessages.remaining}/${usage.chatMessages.limit}`, hint: 'remaining today' },
+  ] : [];
 
   return (
-    <div className="w-full flex-1 flex flex-col">
-      <StaggerContainer staggerChildren={0.06} className="w-full flex flex-col gap-6">
-        
-        {/* Hero Identity Card */}
-        <StaggerItem className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-6 border border-gray-50 flex items-center justify-between gap-4 mb-6 select-none text-left">
-          {/* Left Group (Avatar + Fluid Text) */}
-          <div className="flex items-start gap-4 flex-1">
-            {/* Avatar */}
-            <div className="relative shrink-0">
-              <div className="w-16 h-16 rounded-full bg-[#6949a8] flex items-center justify-center text-white text-2xl font-bold font-poppins">
-                {initial}
-              </div>
-              <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
-            </div>
-            
-            {/* Text Container */}
-            <div className="flex flex-col mt-0.5">
-              <h2 className="text-[22px] font-bold text-gray-900 leading-tight font-poppins">
-                {profileName}
-              </h2>
-              <p className="text-[14px] text-gray-500 font-medium leading-snug mt-0.5 font-poppins">
-                {user?.user_metadata?.study_focus
-                  ? `Studying ${user.user_metadata.study_focus}`
-                  : "Omnave Learner"}
-              </p>
-              <div className="flex items-center gap-1.5 text-[12px] text-gray-400 font-medium mt-2 font-poppins">
-                <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                <span>{joinedDateString}</span>
-              </div>
-            </div>
-          </div>
-        </StaggerItem>
+    <div className="w-full flex-1 flex flex-col gap-6">
+      <section className="rounded-[24px] border border-gray-100 bg-white p-6 shadow-sm flex items-center gap-4">
+        <div className="w-16 h-16 rounded-full bg-[#6949a8] text-white text-2xl font-bold flex items-center justify-center shrink-0">{name.charAt(0).toUpperCase()}</div>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2"><h1 className="text-[22px] font-bold text-gray-900 truncate">{name}</h1><span className="rounded-full bg-[#6949a8]/10 px-2.5 py-1 text-[10px] font-bold uppercase text-[#6949a8]">{plan} plan</span></div>
+          <p className="text-sm text-gray-500 truncate">{user?.email}</p>
+          {joined && <p className="mt-2 flex items-center gap-1.5 text-xs text-gray-500"><Calendar size={14} />Member since {joined}</p>}
+        </div>
+      </section>
 
-        {/* App Utility Stats Grid */}
-        <StaggerItem className="grid grid-cols-2 gap-4 mb-6 select-none">
-          <div className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-5 border border-gray-50 flex flex-col items-center justify-center text-center relative overflow-hidden">
-            <FileText className="w-5 h-5 text-[#6949a8] mb-2" />
-            <span className="text-3xl font-black text-[#6949a8] mb-1 font-poppins leading-none">
-              {pdfsCount}
-            </span>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider font-poppins">
-              PDFs Uploaded
-            </span>
-          </div>
+      <section className="grid grid-cols-3 gap-3" aria-label="Learning totals">
+        {[{ icon: FileText, value: lessons.length, label: 'Study kits' }, { icon: Zap, value: flashcardCount, label: 'Flashcards' }, { icon: Target, value: quizScores.length, label: 'Quiz attempts' }].map((item) => <div key={item.label} className="rounded-[18px] border border-gray-100 bg-white p-4 text-center shadow-sm"><item.icon size={19} className="mx-auto text-[#6949a8]" /><strong className="mt-2 block text-2xl text-gray-900">{item.value}</strong><span className="text-[10px] font-semibold text-gray-500">{item.label}</span></div>)}
+      </section>
 
-          <div className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-5 border border-gray-50 flex flex-col items-center justify-center text-center relative overflow-hidden">
-            <Zap className="w-5 h-5 text-[#6949a8] mb-2" />
-            <span className="text-3xl font-black text-[#6949a8] mb-1 font-poppins leading-none">
-              {flashcardsCount}
-            </span>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider font-poppins">
-              AI Flashcards
-            </span>
-          </div>
-        </StaggerItem>
+      <section className="rounded-[24px] border border-gray-100 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Current usage</p><h2 className="mt-1 text-lg font-bold text-gray-900">Your {plan} plan</h2></div><Gauge size={22} className="text-[#6949a8]" /></div>
+        {usage ? <div className="mt-5 grid sm:grid-cols-3 gap-3">{usageItems.map((item) => <div key={item.label} className="rounded-[15px] bg-gray-50 p-3"><span className="text-[11px] font-semibold text-gray-500">{item.label}</span><strong className="block text-xl text-gray-900">{item.value}</strong><span className="text-[10px] text-gray-500">{item.hint}</span></div>)}</div> : <p className="mt-4 text-sm text-gray-500">Usage information is temporarily unavailable.</p>}
+        {bestScore > 0 && <p className="mt-4 text-xs font-semibold text-gray-600">Best quiz score: <span className="text-[#6949a8]">{bestScore}%</span></p>}
+      </section>
 
-        {/* Weekly Page Quota Indicator */}
-        <StaggerItem className="bg-white rounded-[24px] shadow-[0px_10px_10px_rgba(0,0,0,0.09)] p-5 border border-gray-50 mb-8 select-none text-left">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider font-poppins">
-              Weekly Page Quota
-            </span>
-            <span className="text-xs font-bold text-gray-700 font-poppins">
-              {weeklyPagesUsed} / 100 Pages
-            </span>
-          </div>
-          <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden mt-2">
-            <div 
-              className={`${weeklyPagesUsed >= 100 ? "bg-red-500" : "bg-[#6949a8]"} h-full rounded-full transition-all duration-1000 ease-out`} 
-              style={{ width: `${Math.min(100, (weeklyPagesUsed / 100) * 100)}%` }}
-            />
-          </div>
-          {weeklyPagesUsed >= 100 && (
-            <p className="text-xs font-bold text-red-500 mt-2 font-poppins">
-              You've hit your free limit!
-            </p>
-          )}
-        </StaggerItem>
+      <section className="rounded-[24px] bg-[#6949a8] p-6 text-white shadow-[0_14px_28px_rgba(105,73,168,0.22)] flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+        <div><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/70">Omnave Pro</p><h2 className="mt-1 text-xl font-bold">More room for serious study</h2><p className="mt-1 text-xs leading-5 text-white/80">100 kits monthly, 2,000 pages weekly, 200 tutor messages daily, and larger PDFs.</p></div>
+        <button onClick={() => setShowUpgrade(true)} className="min-h-11 shrink-0 rounded-full bg-white px-5 text-sm font-bold text-[#6949a8] border-none cursor-pointer flex items-center justify-center gap-2"><Sparkles size={16} />View plans</button>
+      </section>
 
-        {/* Section 1: Account Information */}
-        <StaggerItem className="text-left mb-6">
-          <h2 className="text-sm font-bold text-gray-900 mb-2 px-1 font-poppins">
-            Account Information
-          </h2>
-          <div className="bg-white rounded-[20px] shadow-[0px_6px_15px_rgba(0,0,0,0.04)] border border-gray-100 p-2">
-            <SettingsRow icon={User} label="Edit Profile" onClick={() => handleRowClick("Edit Profile")} />
-            <SettingsRow icon={Mail} label="Change Email" onClick={() => handleRowClick("Change Email")} />
-          </div>
-        </StaggerItem>
+      <section className="overflow-hidden rounded-[20px] border border-gray-100 bg-white shadow-sm">
+        <Link href="/settings" className="min-h-[64px] flex items-center justify-between px-4 border-b border-gray-100"><span className="flex items-center gap-3 text-sm font-semibold text-gray-800"><Settings size={19} className="text-[#6949a8]" />Account and settings</span><ChevronRight size={18} className="text-gray-400" /></Link>
+        <Link href="/support" className="min-h-[64px] flex items-center justify-between px-4"><span className="text-sm font-semibold text-gray-800">Help and support</span><ChevronRight size={18} className="text-gray-400" /></Link>
+      </section>
 
-        {/* Section 2: Security */}
-        <StaggerItem className="text-left mb-6">
-          <h2 className="text-sm font-bold text-gray-900 mb-2 px-1 font-poppins">
-            Security
-          </h2>
-          <div className="bg-white rounded-[20px] shadow-[0px_6px_15px_rgba(0,0,0,0.04)] border border-gray-100 p-2">
-            <SettingsRow icon={Lock} label="Change Password" onClick={() => handleRowClick("Change Password")} />
-            <SettingsRow icon={ShieldCheck} label="Two-Factor Authentication" onClick={() => handleRowClick("Two-Factor")} />
-          </div>
-        </StaggerItem>
-
-        {/* Section 3: Preferences */}
-        <StaggerItem className="text-left mb-6">
-          <h2 className="text-sm font-bold text-gray-900 mb-2 px-1 font-poppins">
-            Preferences
-          </h2>
-          <div className="bg-white rounded-[20px] shadow-[0px_6px_15px_rgba(0,0,0,0.04)] border border-gray-100 p-2">
-            <SettingsRow icon={Moon} label="App Theme" onClick={() => handleRowClick("App Theme")} />
-            <SettingsRow icon={BellRing} label="Notifications" onClick={() => handleRowClick("Notifications")} />
-          </div>
-        </StaggerItem>
-
-        {/* Section 4: Connected Services */}
-        <StaggerItem className="text-left mb-8">
-          <h2 className="text-sm font-bold text-gray-900 mb-2 px-1 font-poppins">
-            Connected Services
-          </h2>
-          <div className="bg-white rounded-[20px] shadow-[0px_6px_15px_rgba(0,0,0,0.04)] border border-gray-100 p-2">
-            {/* Google Service Row */}
-            <div className="w-full flex items-center justify-between py-4 px-2 border-b border-gray-50 last:border-0 select-none">
-              <div className="flex items-center">
-                <div className="bg-purple-50 text-[#6949a8] p-2.5 rounded-xl mr-4 flex items-center justify-center">
-                  <Globe className="w-5 h-5" />
-                </div>
-                <span className="text-sm font-semibold text-gray-700 font-poppins">Google</span>
-              </div>
-              <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-md font-poppins">
-                Connected
-              </span>
-            </div>
-
-            {/* GitHub Service Row */}
-            <button 
-              onClick={() => toast("GitHub integration is coming soon!", "info")}
-              className="w-full flex items-center justify-between py-4 px-2 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors duration-150 text-left outline-none cursor-pointer rounded-xl border-none bg-transparent"
-            >
-              <div className="flex items-center">
-                <div className="bg-purple-50 text-[#6949a8] p-2.5 rounded-xl mr-4 flex items-center justify-center">
-                  <GitBranch className="w-5 h-5" />
-                </div>
-                <span className="text-sm font-semibold text-gray-700 font-poppins">GitHub</span>
-              </div>
-              <span className="text-xs font-bold text-[#6949a8] bg-purple-50 px-3 py-1 rounded-md font-poppins">
-                Connect
-              </span>
-            </button>
-          </div>
-        </StaggerItem>
-
-        {/* Danger Zone */}
-        <StaggerItem className="text-left mb-8">
-          <h2 className="text-sm font-bold text-red-500 mb-2 px-1 font-poppins">
-            Danger Zone
-          </h2>
-          <div className="bg-white rounded-[20px] shadow-[0px_6px_15px_rgba(0,0,0,0.04)] border border-red-100 p-2">
-            <button 
-              onClick={handleSignOut}
-              className="w-full flex items-center justify-between py-4 px-2 hover:bg-red-50/50 transition-colors duration-150 text-left outline-none cursor-pointer rounded-xl border-none bg-transparent"
-            >
-              <div className="flex items-center">
-                <div className="bg-red-50 text-red-500 p-2.5 rounded-xl mr-4 flex items-center justify-center">
-                  <LogOut className="w-5 h-5" />
-                </div>
-                <span className="text-sm font-semibold text-red-600 font-poppins">Logout</span>
-              </div>
-              <ChevronRight className="text-red-300 w-4 h-4" />
-            </button>
-          </div>
-        </StaggerItem>
-
-      </StaggerContainer>
+      <UpgradeModal isOpen={showUpgrade} onClose={() => setShowUpgrade(false)} />
     </div>
   );
 }

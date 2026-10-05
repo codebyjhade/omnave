@@ -73,3 +73,14 @@ export async function getLessonFromOffline<T = any>(id: string): Promise<T | nul
     return null;
   }
 }
+
+export async function getCachedLessonIds(): Promise<Set<string>> {
+  const cachedLibrary = await getLibraryFromOffline<Array<{ id?: string; is_processed?: boolean }>>();
+  if (!Array.isArray(cachedLibrary)) return new Set();
+  return new Set(cachedLibrary.filter((item) => item.id && item.is_processed !== false).map((item) => item.id as string));
+}
+
+export async function clearOfflineStudyData(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  await localforage.clear();
+}

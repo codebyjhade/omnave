@@ -35,16 +35,6 @@ export function generateAssessment(
     }
   });
 
-  if (concepts.length < 5) {
-    concepts.push(
-      { term: "Active Recall", desc: "A learning principle that involves testing your memory during learning to build neural links." },
-      { term: "Spaced Repetition", desc: "A method of reviewing study materials at increasing intervals to move facts into long-term storage." },
-      { term: "Cognitive Load", desc: "The total amount of mental energy being used in the working memory." },
-      { term: "Leitner System", desc: "A flashcard review schedule method that uses card boxes sorting cards by confidence levels." },
-      { term: "Feynman Technique", desc: "A study tactic of explaining a topic in simple terms as if teaching a beginner." }
-    );
-  }
-
   let targetTypes = [...types];
   if (targetTypes.length === 0) {
     targetTypes = ["multiple-choice", "true-false", "identification"];
@@ -63,7 +53,18 @@ export function generateAssessment(
   const generatedList: GeneratedQuestion[] = [];
 
   let index = 1;
-  const baseMcQuestions = Array.isArray(baseQuizzes) ? baseQuizzes : [];
+  const baseMcQuestions = Array.isArray(baseQuizzes) ? [...baseQuizzes] : [];
+  const difficultyRank: Record<string, number> = { easy: 1, moderate: 2, hard: 3 };
+  if (difficulty !== "mixed") {
+    const targetRank = difficultyRank[difficulty];
+    baseMcQuestions.sort((a, b) => {
+      const aRank = difficultyRank[String(a.difficulty || "moderate").toLowerCase()] ?? 2;
+      const bRank = difficultyRank[String(b.difficulty || "moderate").toLowerCase()] ?? 2;
+      return Math.abs(aRank - targetRank) - Math.abs(bRank - targetRank);
+    });
+  } else {
+    baseMcQuestions.sort(() => Math.random() - 0.5);
+  }
   
   baseMcQuestions.forEach((q) => {
     if (index > count) return;
@@ -83,14 +84,17 @@ export function generateAssessment(
       correctAnswer: q.correctAnswer || q.correct_answer || q.answer || options[0],
       explanation: q.correct_explanation || q.explanation || "Correct answer based on uploaded PDF.",
       difficulty: q.difficulty || "moderate",
-      subjectCategory: "Lesson Core",
+      subjectCategory: q.topic || q.subjectCategory || "Lesson Core",
       lesson_topic: q.lesson_topic || q.topic || q.lessonTopic || "General Concept",
     });
     index++;
   });
 
   let conceptIdx = 0;
-  while (index <= count) {
+  // Older kits can contain fewer generated questions than requested. Only derive
+  // additional questions when the uploaded summary yielded real source concepts.
+  // Never inject generic study-method content unrelated to the student's PDF.
+  while (index <= count && concepts.length >= 4) {
     const concept = concepts[conceptIdx % concepts.length];
     const qType = targetTypes[(index - 1) % targetTypes.length] as any;
     const diff = difficulty === "mixed" 
@@ -100,10 +104,6 @@ export function generateAssessment(
     if (qType === "multiple-choice") {
       const otherConcepts = concepts.filter((c) => c.term !== concept.term);
       const distractors = otherConcepts.slice(0, 3).map((c) => c.term);
-      while (distractors.length < 3) {
-        distractors.push(`Alternative Term ${distractors.length + 1}`);
-      }
-      
       const options = [concept.term, ...distractors].sort(() => Math.random() - 0.5);
 
       generatedList.push({

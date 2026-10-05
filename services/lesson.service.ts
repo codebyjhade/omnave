@@ -53,7 +53,7 @@ export class LessonService {
         .from('materials')
         .select('id, user_id, title, material_type, content_url, is_processed, summary, flashcards, quizzes, created_at')
         .eq('user_id', userId)
-        .neq('status', 'failed')
+        .not('status', 'in', '(FAILED,CANCELLED)')
         .order('created_at', { ascending: false })
         .returns<MaterialRow[]>();
 
@@ -95,7 +95,7 @@ export class LessonService {
 
     if (!response.ok) {
       const errorJson = await response.json().catch(() => ({}));
-      throw new Error(errorJson.error || "Failed to delete lesson");
+      throw new Error(errorJson.error?.message ?? errorJson.error ?? "Failed to delete lesson");
     }
   }
 

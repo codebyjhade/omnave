@@ -1,24 +1,67 @@
 import { inngest } from "./client";
 import { supabaseServer } from "@/utils/supabase/server-backend";
-import { generateWithWaterfall } from "../llm-waterfall";
+import {
+  AI_PROMPT_VERSION,
+  AI_SCHEMA_VERSION,
+  generateAssessments,
+  generateOverview,
+} from "@/lib/ai-engine";
 import { chunkText } from "@/utils/text-chunker";
+import type { Json } from "@/types/database";
+import { recordOperationalEvent } from "@/lib/observability";
+import crypto from 'crypto';
 
 export const processMaterial = inngest.createFunction(
   { 
     id: "process-study-material", 
     triggers: [{ event: "ai/process.material" }],
+    singleton: { key: "event.data.attemptId", mode: "skip" },
     cancelOn: [
       {
         event: "ai/process.cancel",
         match: "data.materialId"
       }
     ],
-    retries: 0
+    retries: 2,
+    onFailure: async ({ event, error }) => {
+      const original = event.data.event.data as { attemptId?: string; materialId?: string; userId?: string; correlationId?: string };
+      if (!original.attemptId) return;
+      await supabaseServer.rpc("set_processing_attempt_state", {
+        p_attempt_id: original.attemptId,
+        p_status: "DEAD_LETTER",
+        p_failure_code: "PROCESSING_RETRIES_EXHAUSTED",
+        p_failure_message: error.message,
+        p_retryable: false,
+        p_event_id: event.data.run_id,
+      });
+      await recordOperationalEvent({
+        correlationId: original.correlationId || crypto.randomUUID(), source: 'job',
+        eventName: 'material.processing', severity: 'error', status: 'failed',
+        userId: original.userId, materialId: original.materialId, attemptId: original.attemptId,
+        errorCode: 'PROCESSING_RETRIES_EXHAUSTED',
+      });
+    },
   },
-  async ({ event, step }) => {
-    const { materialId, text, planType = "free", pageCount = 0, userId } = event.data;
+  async ({ event, step, runId }) => {
+    const { materialId, attemptId, text, planType = "free", userId, correlationId = crypto.randomUUID() } = event.data;
+    const normalizedPlan = planType === "pro" || planType === "paid" ? "pro" : "free";
+    const sourceBudget = normalizedPlan === "pro" ? 300_000 : 100_000;
+    const source = String(text ?? "").slice(0, sourceBudget);
+    const jobStartedAt = performance.now();
 
     try {
+      await recordOperationalEvent({ correlationId, source: 'job', eventName: 'material.processing', status: 'started', userId, materialId, attemptId, metadata: { runId } });
+      await step.run("mark-attempt-running", async () => {
+        if (!attemptId) throw new Error("Missing durable processing attempt ID");
+        if (!userId) throw new Error("Missing job owner ID");
+        const { error } = await supabaseServer.rpc("set_processing_attempt_state", {
+          p_attempt_id: attemptId,
+          p_status: "RUNNING",
+          p_event_id: runId,
+        });
+        if (error) throw new Error(`Attempt start failed: ${error.message}`);
+      });
+
       // Granular Status 1: PARSING_DOCUMENT (10% progress)
       await step.run("status-parsing-document", async () => {
         const { error } = await supabaseServer
@@ -26,18 +69,28 @@ export const processMaterial = inngest.createFunction(
           .update({ status: "PARSING_DOCUMENT" })
           .eq("id", materialId);
         if (error) throw new Error(`Parsing update failed: ${error.message}`);
+        await supabaseServer
+          .from("processing_attempts")
+          .update({ heartbeat_at: new Date().toISOString() })
+          .eq("id", attemptId);
       });
 
       // Granular Status 2: GENERATING_SUMMARY (40% progress)
-      const summary = await step.run("generate-summary", async () => {
+      const overview = await step.run("generate-overview", async () => {
         const { error } = await supabaseServer
           .from("materials")
           .update({ status: "GENERATING_SUMMARY" })
           .eq("id", materialId);
         if (error) throw new Error(`Summary status update failed: ${error.message}`);
+        await supabaseServer
+          .from("processing_attempts")
+          .update({ heartbeat_at: new Date().toISOString() })
+          .eq("id", attemptId);
 
-        const systemInstruction = "You are an expert tutor. Summarize the provided text into a clear, comprehensive, and highly structured overview. Format the output as clean markdown.";
-        return await generateWithWaterfall(text, systemInstruction, false);
+        return generateOverview(
+          { userId, materialId, attemptId, planType: normalizedPlan, correlationId },
+          source.slice(0, 60_000),
+        );
       });
 
       // Granular Status 3: BUILDING_ASSESSMENTS (75% progress)
@@ -47,64 +100,63 @@ export const processMaterial = inngest.createFunction(
           .update({ status: "BUILDING_ASSESSMENTS" })
           .eq("id", materialId);
         if (error) throw new Error(`Assessments status update failed: ${error.message}`);
+        await supabaseServer
+          .from("processing_attempts")
+          .update({ heartbeat_at: new Date().toISOString() })
+          .eq("id", attemptId);
 
-        const isPro = planType === "pro" || planType === "paid";
-        const chunks = chunkText(text, 3000);
+        const isPro = normalizedPlan === "pro";
+        const maxChunks = isPro ? 8 : 4;
+        const chunks = chunkText(source, 12_000).slice(0, maxChunks);
         const numChunks = Math.max(1, chunks.length);
 
         const targetCardsTotal = isPro ? 80 : 25;
         const targetQuizTotal = isPro ? 80 : 25;
-        const cardsPerChunk = Math.max(5, Math.ceil(targetCardsTotal / numChunks));
-        const quizPerChunk = Math.max(5, Math.ceil(targetQuizTotal / numChunks));
+        const cardsPerChunk = Math.ceil(targetCardsTotal / numChunks);
+        const quizPerChunk = Math.ceil(targetQuizTotal / numChunks);
+        const settled = await Promise.allSettled(chunks.map((chunkContent) =>
+          generateAssessments(
+            { userId, materialId, attemptId, planType: normalizedPlan, correlationId },
+            chunkContent,
+            cardsPerChunk,
+            quizPerChunk,
+          ),
+        ));
+        const completed = settled
+          .filter((result): result is PromiseFulfilledResult<Awaited<ReturnType<typeof generateAssessments>>> => result.status === "fulfilled")
+          .map((result) => result.value);
+        if (completed.length / numChunks < 0.75) throw new Error("QUALITY_INSUFFICIENT_SOURCE_COVERAGE");
 
-        // MAP PHASE: Generate flashcards and quizzes concurrently for EACH chunk
-        const chunkResults = await Promise.all(
-          chunks.map(async (chunkContent, idx) => {
-            const chunkLabel = numChunks > 1 ? ` (Part ${idx + 1} of ${numChunks})` : "";
+        const uniqueCards = new Map<string, { front: string; back: string }>();
+        const uniqueQuizzes = new Map<string, { question: string; options: string[]; correctAnswer: string; explanation: string }>();
+        completed.flatMap((batch) => batch.flashcards).forEach((card) => uniqueCards.set(card.front.toLowerCase(), card));
+        completed.flatMap((batch) => batch.quizzes).forEach((quiz) => uniqueQuizzes.set(quiz.question.toLowerCase(), quiz));
+        const flashcards = [...uniqueCards.values()].slice(0, targetCardsTotal);
+        const quizzes = [...uniqueQuizzes.values()].slice(0, targetQuizTotal);
+        if (flashcards.length < Math.ceil(targetCardsTotal * 0.6) || quizzes.length < Math.ceil(targetQuizTotal * 0.6)) {
+          throw new Error("QUALITY_INSUFFICIENT_ASSESSMENTS");
+        }
 
-            const flashcardsSystemInstruction = isPro
-              ? `You are an expert university professor. Act as a strict professor, analyze the core topics in this text section${chunkLabel}, and incorporate related external knowledge/research to make highly challenging, comprehensive flashcards covering concepts, vocabulary, and facts. Generate exactly ${cardsPerChunk} flashcards.`
-              : `You are an expert tutor. Create highly effective flashcards covering the core concepts, vocabulary, and facts from this text section${chunkLabel}. Generate exactly ${cardsPerChunk} flashcards.`;
-
-            const quizSystemInstruction = isPro
-              ? `You are an expert university professor. Act as a strict professor, analyze the core topics in this text section${chunkLabel}, and incorporate related external knowledge/research to make the questions highly challenging and unique. Generate exactly ${quizPerChunk} questions.`
-              : `You are an expert tutor. Generate a standard multiple-choice quiz based strictly on this text section${chunkLabel}. The quiz must contain exactly ${quizPerChunk} questions.`;
-
-            const [cards, quizzes] = await Promise.all([
-              generateWithWaterfall(chunkContent, flashcardsSystemInstruction, true),
-              generateWithWaterfall(chunkContent, quizSystemInstruction, true)
-            ]);
-
-            return {
-              flashcards: Array.isArray(cards) ? (cards as any[]) : [],
-              quizzes: Array.isArray(quizzes) ? (quizzes as any[]) : []
-            };
-          })
-        );
-
-        // REDUCE PHASE: Flatten JSON arrays returned from all chunks
-        const flashcards = chunkResults.flatMap(r => r.flashcards);
-        const quizzes = chunkResults.flatMap(r => r.quizzes);
-
-        return { flashcards, quizzes };
-      });
-
-      // Granular Status 4: GENERATING_TITLE & SAVING (100% progress / COMPLETED)
-      const smartTitle = await step.run("generate-title", async () => {
-        const systemInstruction = "You are an expert tutor. Generate a short, academic, human-readable title for the provided text. Limit it to 4-6 words. Do not use quotes, prefixes like 'Title:', or markdown formatting, just return the title.";
-        return await generateWithWaterfall(text, systemInstruction, false);
+        return { flashcards, quizzes, completedChunks: completed.length, totalChunks: numChunks };
       });
 
       await step.run("save-to-database", async () => {
         const { error } = await supabaseServer
           .from("materials")
           .update({
-            is_processed: true,
-            status: "COMPLETED",
-            title: smartTitle,
-            summary,
-            flashcards: assessments.flashcards,
-            quizzes: assessments.quizzes
+            title: overview.title,
+            summary: overview.summary,
+            flashcards: assessments.flashcards as unknown as Json[],
+            quizzes: assessments.quizzes as unknown as Json[],
+            generation_metadata: {
+              promptVersion: AI_PROMPT_VERSION,
+              schemaVersion: AI_SCHEMA_VERSION,
+              sourceCharacters: source.length,
+              sourceTruncated: String(text ?? "").length > source.length,
+              completedChunks: assessments.completedChunks,
+              totalChunks: assessments.totalChunks,
+              partial: assessments.completedChunks < assessments.totalChunks,
+            }
           })
           .eq("id", materialId);
 
@@ -113,92 +165,78 @@ export const processMaterial = inngest.createFunction(
         }
       });
 
-      // Usage Increment: Update user's weekly_pages_used upon successful processing
-      await step.run("increment-user-usage", async () => {
-        if (!pageCount || pageCount <= 0) return;
-
-        const targetUserId = userId || (
-          await supabaseServer
-            .from("materials")
-            .select("user_id")
-            .eq("id", materialId)
-            .single()
-        ).data?.user_id;
-
-        if (targetUserId) {
-          const { data: usage } = await supabaseServer
-            .from("user_usage")
-            .select("weekly_pages_used")
-            .eq("user_id", targetUserId)
-            .single();
-
-          const currentUsed = usage?.weekly_pages_used ?? 0;
-          const { error: usageUpdateErr } = await supabaseServer
-            .from("user_usage")
-            .upsert(
-              {
-                user_id: targetUserId,
-                weekly_pages_used: currentUsed + pageCount,
-              },
-              { onConflict: "user_id" }
-            );
-
-          if (usageUpdateErr) {
-            console.error("Failed to increment user_usage weekly_pages_used:", usageUpdateErr);
-          }
-        }
+      await step.run("complete-processing-attempt", async () => {
+        const { error } = await supabaseServer.rpc("set_processing_attempt_state", {
+          p_attempt_id: attemptId,
+          p_status: "COMPLETED",
+          p_event_id: runId,
+        });
+        if (error) throw new Error(`Attempt completion failed: ${error.message}`);
       });
 
-      return { success: true, materialId, provider: "waterfall" };
+      await recordOperationalEvent({ correlationId, source: 'job', eventName: 'material.processing', status: 'succeeded', userId, materialId, attemptId, durationMs: Math.round(performance.now() - jobStartedAt), metadata: { runId, plan: normalizedPlan } });
+
+      return { success: true, materialId, attemptId, policy: normalizedPlan };
     } catch (err) {
-      console.error("AI Generation failed inside Inngest, running recovery safety net:", err);
-
-      await step.run("handle-failure-recovery", async () => {
-        // Fetch the material to find the owner's user_id and verify current status
-        const { data: material } = await supabaseServer
-          .from("materials")
-          .select("user_id, status")
-          .eq("id", materialId)
-          .single();
-
-        if (material && material.status !== "failed") {
-          // Update status in Supabase to `failed`
-          const { error: updateErr } = await supabaseServer
-            .from("materials")
-            .update({ status: "failed" })
-            .eq("id", materialId);
-
-          if (updateErr) {
-            console.error("Failed to update material status to failed:", updateErr);
-          }
-
-          // Decrement user's generation_count in profiles table by 1
-          if (material.user_id) {
-            const { data: profile } = await supabaseServer
-              .from("profiles")
-              .select("generation_count")
-              .eq("id", material.user_id)
-              .single();
-
-            if (profile) {
-              const currentCount = profile.generation_count || 0;
-              const newCount = Math.max(0, currentCount - 1);
-              
-              const { error: profileUpdateErr } = await supabaseServer
-                .from("profiles")
-                .update({ generation_count: newCount })
-                .eq("id", material.user_id);
-
-              if (profileUpdateErr) {
-                console.error("Failed to decrement user profile generation_count:", profileUpdateErr);
-              }
-            }
-          }
-        }
-      });
-
-      // Rethrow to let Inngest know the run failed
+      await recordOperationalEvent({ correlationId, source: 'job', eventName: 'material.processing', severity: 'error', status: 'failed', userId, materialId, attemptId, durationMs: Math.round(performance.now() - jobStartedAt), errorCode: err instanceof Error && /^[A-Z0-9_]+$/.test(err.message) ? err.message : 'PROCESSING_ATTEMPT_FAILED', metadata: { runId } });
       throw err;
     }
   }
+);
+
+export const monitorOperationalHealth = inngest.createFunction(
+  { id: 'monitor-operational-health', triggers: [{ cron: '*/10 * * * *' }], retries: 1 },
+  async () => {
+    const { data, error } = await supabaseServer.rpc('get_operational_health', { p_hours: 24 });
+    if (error) throw new Error(`Operational health query failed: ${error.message}`);
+    const health = data as { alerts?: unknown[] } | null;
+    const alerts = Array.isArray(health?.alerts) ? health.alerts.filter(Boolean) : [];
+    if (alerts.length) console.error(JSON.stringify({ timestamp: new Date().toISOString(), source: 'monitor', event: 'operational.alerts', alerts }));
+    return { alerts: alerts.length, health: data };
+  },
+);
+
+export const purgeOperationalData = inngest.createFunction(
+  { id: 'purge-operational-data', triggers: [{ cron: '0 3 * * 0' }], retries: 1 },
+  async () => {
+    const { data, error } = await supabaseServer.rpc('purge_expired_operational_data', { p_event_retention_days: 90, p_ai_retention_days: 180 });
+    if (error) throw new Error(`Operational retention failed: ${error.message}`);
+    return data;
+  },
+);
+
+export const recoverStaleMaterialJobs = inngest.createFunction(
+  {
+    id: "recover-stale-material-jobs",
+    triggers: [{ cron: "*/15 * * * *" }],
+    retries: 1,
+  },
+  async ({ step }) => {
+    const staleBefore = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const staleAttempts = await step.run("find-stale-attempts", async () => {
+      const { data, error } = await supabaseServer
+        .from("processing_attempts")
+        .select("id")
+        .in("status", ["QUEUED", "RUNNING"])
+        .lt("heartbeat_at", staleBefore)
+        .limit(100);
+      if (error) throw new Error(`Stale job lookup failed: ${error.message}`);
+      return data ?? [];
+    });
+
+    for (const attempt of staleAttempts) {
+      await step.run(`dead-letter-${attempt.id}`, async () => {
+        const { error } = await supabaseServer.rpc("set_processing_attempt_state", {
+          p_attempt_id: attempt.id,
+          p_status: "DEAD_LETTER",
+          p_failure_code: "STALE_PROCESSING_JOB",
+          p_failure_message: "The processing job stopped reporting progress and was closed automatically",
+          p_retryable: true,
+        });
+        if (error) throw new Error(`Stale job recovery failed: ${error.message}`);
+      });
+    }
+
+    return { recovered: staleAttempts.length };
+  },
 );
