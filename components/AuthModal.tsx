@@ -16,6 +16,7 @@ interface AuthModalProps {
 }
 
 type AuthStep = 'signup' | 'signin' | 'verify' | 'success';
+const EMAIL_OTP_LENGTH = 6;
 
 // Helper to safely parse and format Supabase/gotrue auth errors
 function getErrorMessage(err: any, fallback: string): string {
@@ -151,9 +152,9 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
     return () => clearTimeout(timer);
   }, [resendCooldown]);
 
-  // Auto-submit OTP when length reaches 8 digits
+  // Auto-submit when the complete Supabase email OTP has been entered.
   useEffect(() => {
-    if (authStep === 'verify' && otpToken.length === 8 && !isLoading) {
+    if (authStep === 'verify' && otpToken.length === EMAIL_OTP_LENGTH && !isLoading) {
       handleAuthSubmit({ preventDefault: () => {} } as React.FormEvent);
     }
   }, [otpToken, authStep, isLoading]);
@@ -164,7 +165,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
     newToken[index] = value.slice(-1); 
     const updatedToken = newToken.join('');
     setOtpToken(updatedToken);
-    if (value && index < 7) otpRefs.current[index + 1]?.focus();
+    if (value && index < EMAIL_OTP_LENGTH - 1) otpRefs.current[index + 1]?.focus();
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -175,10 +176,10 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
 
   const handleOtpPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 8);
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, EMAIL_OTP_LENGTH);
     if (pastedData) {
       setOtpToken(pastedData);
-      const focusIndex = Math.min(pastedData.length, 7);
+      const focusIndex = Math.min(pastedData.length, EMAIL_OTP_LENGTH - 1);
       otpRefs.current[focusIndex]?.focus();
     }
   };
@@ -234,7 +235,10 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
         const { data, error: authError } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { full_name: fullName } },
+          options: {
+            data: { full_name: fullName },
+            emailRedirectTo: `${window.location.origin}/welcome`,
+          },
         });
 
         if (authError) throw authError;
@@ -278,8 +282,8 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
         setIsLoading(false);
       }
     } else if (authStep === 'verify') {
-      if (!otpToken || otpToken.length < 8) {
-        setError('Please enter the 8-digit verification code.');
+      if (!otpToken || otpToken.length < EMAIL_OTP_LENGTH) {
+        setError(`Please enter the ${EMAIL_OTP_LENGTH}-digit verification code.`);
         setIsLoading(false);
         return;
       }
@@ -287,7 +291,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
         const { data, error: verifyError } = await supabase.auth.verifyOtp({
           email,
           token: otpToken,
-          type: 'signup',
+          type: 'email',
         });
 
         if (verifyError) throw verifyError;
@@ -406,7 +410,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
       !isPasswordValid || !email || !fullName
     )
   ) || (
-    authStep === 'verify' && otpToken.length < 8
+    authStep === 'verify' && otpToken.length < EMAIL_OTP_LENGTH
   );
 
   const modalContent = (
@@ -490,7 +494,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                   {authStep === 'signin'
                     ? 'Pick up your learning flow exactly where you left off.'
                     : authStep === 'verify'
-                      ? `Enter the 8-digit verification code sent to ${email}.`
+                      ? `Enter the ${EMAIL_OTP_LENGTH}-digit verification code sent to ${email}.`
                       : 'Start a workspace that feels as premium as your study experience.'}
                 </p>
               </div>
@@ -676,7 +680,7 @@ export default function AuthModal({ isOpen, onClose, initialView = 'login' }: Au
                       <div className="flex flex-col items-center gap-3 w-full">
                         <label className="text-sm font-bold text-gray-700 self-start">Verification Code</label>
                         <div className="flex justify-between w-full gap-1.5 sm:gap-2">
-                          {[...Array(8)].map((_, index) => (
+                          {[...Array(EMAIL_OTP_LENGTH)].map((_, index) => (
                             <input
                               key={index}
                               ref={(el) => { otpRefs.current[index] = el; }}

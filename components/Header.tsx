@@ -540,7 +540,11 @@ export default function Header() {
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-[10px] font-bold tracking-widest text-[#6949a8] uppercase">Active Task</span>
                         <button
-                          onClick={cancelUpload}
+                          onClick={() => {
+                            if (window.confirm('Cancel the active PDF processing job? Reserved quota will be refunded.')) {
+                              void cancelUpload();
+                            }
+                          }}
                           className="text-[#525252] hover:text-red-500 text-[10px] font-extrabold uppercase tracking-widest transition-colors cursor-pointer select-none border-none bg-transparent"
                         >
                           [x] Cancel

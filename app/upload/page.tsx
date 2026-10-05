@@ -27,6 +27,19 @@ export default function UploadPage() {
   const [error, setError] = useState<string | null>(null);
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [usageState, setUsageState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
+  const [pendingCancel, setPendingCancel] = useState<{ id: string; title: string } | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const confirmCancellation = async () => {
+    if (!pendingCancel || isCancelling) return;
+    setIsCancelling(true);
+    try {
+      await cancelJob(pendingCancel.id);
+      setPendingCancel(null);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   useEffect(() => {
     if (!isOnline || !user) {
@@ -378,7 +391,7 @@ export default function UploadPage() {
                             </button>
                           ) : (
                             <button
-                              onClick={() => cancelJob(job.id)}
+                              onClick={() => setPendingCancel({ id: job.id, title: cleanDocumentTitle(job.title) })}
                               className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 rounded-full transition-colors cursor-pointer border border-gray-100"
                               title="Cancel processing"
                             >
@@ -443,6 +456,28 @@ export default function UploadPage() {
 
         </StaggerContainer>
       </div>
+
+      {pendingCancel && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/45 px-5" role="dialog" aria-modal="true" aria-labelledby="cancel-processing-title">
+          <div className="w-full max-w-sm rounded-[24px] bg-white p-6 shadow-2xl font-poppins">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500">
+              <AlertCircle size={23} />
+            </div>
+            <h2 id="cancel-processing-title" className="mt-4 text-center text-lg font-bold text-gray-900">Cancel PDF processing?</h2>
+            <p className="mt-2 text-center text-sm leading-6 text-gray-600">
+              Are you sure you want to stop <strong className="text-gray-900">{pendingCancel.title}</strong>? Its reserved quota will be refunded, but the current generation work will be discarded.
+            </p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button type="button" disabled={isCancelling} onClick={() => setPendingCancel(null)} className="min-h-11 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 disabled:opacity-50">
+                Keep processing
+              </button>
+              <button type="button" disabled={isCancelling} onClick={confirmCancellation} className="min-h-11 rounded-xl bg-red-500 text-sm font-semibold text-white disabled:opacity-50">
+                {isCancelling ? 'Cancelling…' : 'Yes, cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

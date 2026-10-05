@@ -11,6 +11,18 @@ import type { Json } from "@/types/database";
 import { recordOperationalEvent } from "@/lib/observability";
 import crypto from 'crypto';
 
+function buildRepresentativeSource(source: string, segmentSize = 12_000, maxSegments = 3): string {
+  const allSegments = chunkText(source, segmentSize);
+  if (allSegments.length <= maxSegments) return allSegments.join('\n\n');
+
+  const selectedIndexes = Array.from({ length: maxSegments }, (_, index) =>
+    Math.round((index * (allSegments.length - 1)) / (maxSegments - 1)),
+  );
+  return [...new Set(selectedIndexes)]
+    .map((index) => allSegments[index])
+    .join('\n\n[DOCUMENT SECTION]\n\n');
+}
+
 export const processMaterial = inngest.createFunction(
   { 
     id: "process-study-material", 
@@ -106,8 +118,10 @@ export const processMaterial = inngest.createFunction(
           .eq("id", attemptId);
 
         const isPro = normalizedPlan === "pro";
-        const maxChunks = isPro ? 8 : 4;
-        const chunks = chunkText(source, 12_000).slice(0, maxChunks);
+        const maxChunks = 8;
+        const chunks = isPro
+          ? chunkText(source, 12_000).slice(0, maxChunks)
+          : [buildRepresentativeSource(source)];
         const numChunks = Math.max(1, chunks.length);
 
         const targetCardsTotal = isPro ? 80 : 25;
@@ -137,7 +151,13 @@ export const processMaterial = inngest.createFunction(
           throw new Error("QUALITY_INSUFFICIENT_ASSESSMENTS");
         }
 
-        return { flashcards, quizzes, completedChunks: completed.length, totalChunks: numChunks };
+        return {
+          flashcards,
+          quizzes,
+          completedChunks: completed.length,
+          totalChunks: numChunks,
+          strategy: isPro ? 'multi-section' : 'single-request-representative',
+        };
       });
 
       await step.run("save-to-database", async () => {
@@ -156,6 +176,7 @@ export const processMaterial = inngest.createFunction(
               completedChunks: assessments.completedChunks,
               totalChunks: assessments.totalChunks,
               partial: assessments.completedChunks < assessments.totalChunks,
+              assessmentStrategy: assessments.strategy,
             }
           })
           .eq("id", materialId);

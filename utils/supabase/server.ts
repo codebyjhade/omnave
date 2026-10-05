@@ -46,5 +46,9 @@ export async function requireAuthenticatedUser(): Promise<{
     throw new AuthenticationError();
   }
 
+  if (user.email && !user.email_confirmed_at) {
+    throw new AuthenticationError('Email verification required');
+  }
+
   return { supabase, user };
 }
